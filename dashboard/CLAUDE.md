@@ -1,0 +1,130 @@
+# Dashboard — Claude Code Context
+
+React + Vite + TS frontend for the QC responsable, served by Caddy from a Docker container.
+
+## Layout
+
+```
+dashboard/
+├── src/
+│   ├── main.tsx
+│   ├── App.tsx              # Router + providers ONLY, no business logic
+│   ├── config.ts            # Runtime config from injected env (single source)
+│   ├── api/                 # API client layer — one file per resource
+│   │   ├── client.ts        # axios instance, interceptors
+│   │   ├── defects.ts
+│   │   ├── operators.ts
+│   │   ├── logs.ts
+│   │   └── stats.ts
+│   ├── hooks/               # React-Query hooks wrapping api/, one file per resource
+│   ├── features/            # Feature-sliced: each feature owns its UI + state
+│   │   ├── defect-types/
+│   │   │   ├── DefectTypesPage.tsx
+│   │   │   ├── DefectTypeCard.tsx
+│   │   │   ├── DefectTypeForm.tsx
+│   │   │   └── index.ts     # public surface of the feature
+│   │   ├── operators/
+│   │   ├── logs/
+│   │   ├── analytics/
+│   │   └── devices/
+│   ├── components/
+│   │   ├── ui/              # shadcn/ui generated, do not edit by hand
+│   │   └── shared/          # Cross-feature components (DateRangePicker, etc.)
+│   ├── lib/
+│   │   ├── feature-flags.ts # Client-side flag access
+│   │   ├── format.ts        # date/number formatters
+│   │   └── schemas/         # Zod schemas, mirror api/ structure
+│   └── types/               # Shared TS types matching server schemas
+├── public/
+├── Dockerfile               # Multi-stage: node builder → caddy runtime
+├── vite.config.ts
+└── CLAUDE.md
+```
+
+## Modularity rules — feature-sliced architecture
+
+The dashboard is organized by **feature**, not by technical layer. Each
+folder under `features/` is a self-contained vertical slice:
+
+- All UI for that feature
+- Local state (if any)
+- Feature-specific hooks
+- A single `index.ts` exporting the public surface (usually just the page)
+
+Rules:
+- A feature MAY import from `api/`, `hooks/`, `components/`, `lib/`, `types/`.
+- A feature MUST NOT import from another feature's internals. If two features
+  need the same piece, lift it into `components/shared/` or `lib/`.
+- Adding a feature = adding a folder + adding a route. Removing = deleting
+  the folder + removing the route. No other code touched.
+
+## API client layer
+
+- `api/client.ts` is the only place axios is configured
+- Each resource file exports typed functions returning Promises (no React there)
+- Hooks in `hooks/` wrap those functions in `useQuery`/`useMutation`
+- Components never call axios directly. They use hooks.
+
+## Configuration
+
+A web app runs in the browser, so "env vars" mean two things:
+
+1. **Build-time** (Vite `VITE_*` vars): baked into the JS bundle at build.
+   Use for things that never change per deployment (e.g., feature toggles
+   for the build).
+2. **Runtime** (injected by Caddy at request time via a template, or fetched
+   from `/api/config` endpoint on app boot): use for anything that differs
+   per environment (API base URL, plant name, etc.).
+
+Pattern: `src/config.ts` reads from `window.__APP_CONFIG__`, populated by an
+inline `<script>` Caddy generates at request time. This means one built image
+deploys to dev, staging, and prod with no rebuild.
+
+## Feature flags
+
+- Server exposes `/api/feature-flags` returning the current map
+- Dashboard fetches on app boot, caches in TanStack Query with 5 min staleness
+- `useFlag("flag_name")` hook in `lib/feature-flags.ts` returns bool
+- Use to hide unfinished UI from production or A/B test new flows
+
+## UI rules
+
+- Defect type editor must show the 12-per-category cap as a visible counter
+  and disable the "Add" button at 12
+- After a defect mutation, show a "syncing to devices" indicator that resolves
+  when the server confirms the MQTT publish (server returns config version,
+  device status endpoint shows which devices have that version)
+- Default filter on Logs page = last 7 days
+- Devices page polls every 10s for live online/offline status
+- All forms use `react-hook-form` + `zodResolver`. Schemas in `lib/schemas/`
+- Server state in TanStack Query, NOT in component state or Redux
+- Toasts (sonner) for mutation feedback. No `alert()` ever
+
+## Containerization
+
+Multi-stage Dockerfile:
+- `builder`: node:20-alpine, runs `pnpm install` then `pnpm build`
+- `runtime`: `caddy:2-alpine`, copies `/dist` from builder, custom Caddyfile
+
+Runtime Caddy:
+- Serves SPA with fallback to `/index.html`
+- Reverse-proxies `/api/*` to the server container by service name (no
+  hardcoded IP)
+- Injects runtime config into a `/config.js` endpoint from env vars
+- Listens on 80 (TLS terminated by the upstream Caddy in `infra/`)
+
+Must build for `linux/arm64`.
+
+## Testing
+
+- Vitest + React Testing Library
+- One test per page rendering happy path. Don't chase coverage on UI.
+- Mock the API client at the axios level using MSW
+- Each feature's tests live next to its code in `features/<name>/__tests__/`
+
+## Environment Variables (runtime)
+
+- `API_BASE_URL` (injected into `window.__APP_CONFIG__`)
+- `PLANT_NAME` (display string, e.g. "Tunis Plant 1")
+- `LOCALE` (e.g. "fr-TN")
+- `FEATURE_FLAG_OVERRIDES` (optional, JSON object for dev)
