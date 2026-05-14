@@ -1,0 +1,65 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+.uv/
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# ── Node / pnpm ───────────────────────────────────────────────────────────────
+node_modules/
+.pnpm-store/
+dist/
+.vite/
+*.tsbuildinfo
+
+# ── STM32 / CubeIDE ──────────────────────────────────────────────────────────
+firmware/Debug/
+firmware/Release/
+firmware/.settings/
+firmware/*.launch
+firmware/.cproject
+*.elf
+*.bin
+*.hex
+*.map
+*.d
+*.su
+
+# ── TouchGFX ─────────────────────────────────────────────────────────────────
+firmware/TouchGFX/generated/
+firmware/TouchGFX/build/
+
+# ── Docker ───────────────────────────────────────────────────────────────────
+infra/caddy/data/
+infra/mosquitto/data/
+infra/mosquitto/log/
+
+# ── Secrets & local config ───────────────────────────────────────────────────
+.env
+infra/.env
+infra/mosquitto/passwd
+*.pem
+*.key
+*.crt
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Claude Code local settings ───────────────────────────────────────────────
+.claude/settings.local.json
