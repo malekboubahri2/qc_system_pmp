@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(find *)",
+      "Bash(grep *)",
+      "Bash(tree *)",
+      "Bash(cmake *)",
+      "Bash(make *)",
+      "Bash(ninja *)",
+      "Bash(idf.py *)",
+      "Bash(python *)",
+      "Bash(python3 *)"
+    ],
+    "deny": []
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "command": "$s = git status --porcelain; if (-not $s) { exit 0 }; git add -A; $files = @(git diff --staged --name-only); if ($files.Count -eq 0) { exit 0 }; $n = $files.Count; $f = $files[0]; $leaf = [IO.Path]::GetFileNameWithoutExtension($f); $dir = [IO.Path]::GetFileName([IO.Path]::GetDirectoryName($f)); $scope = if ($dir) { '(' + $dir + ')' } else { '' }; $subject = if ($n -eq 1) { $leaf } else { ($n.ToString() + ' files') }; git commit -m ('chore' + $scope + ': update ' + $subject)",
+            "statusMessage": "Auto-committing changes..."
+          }
+        ]
+      }
+    ]
+  }
+}
