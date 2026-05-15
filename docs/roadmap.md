@@ -391,40 +391,56 @@ actually simpler because the module owns the IP stack.
 the RPi, reconnects cleanly after a disconnect. The `net.h` API is
 implemented; everything above it is transport-agnostic.
 
-### Source the driver from L4S5I-IOT01A, not from H7B3I-DK's demo
+### Source the ST Network Library and es-wifi BSP driver from CubeH7
 
-The H7B3I-DK Clock & Weather demo only exercises the Wi-Fi module as an
-HTTP **server**. We need TCP **client**. The B-L4S5I-IOT01A IoT discovery
-board uses the same Inventek eS-WiFi module family and ships with cleaner
-client-side examples and a more portable driver layer.
+The H7B3I-DK Cube package already includes both the ST Network Library
+and the es-wifi BSP driver. Together they provide a socket-style API
+over the Inventek module. We vendor both into our repo for stability;
+we do NOT depend on the global CubeH7 install path.
 
 Tasks:
-- [ ] Download the L4S5I-IOT01A example pack from STM32CubeL4
-      (`Projects/B-L4S5I-IOT01A/Applications/WiFi/`)
-- [ ] Copy the es-wifi BSP driver into our firmware:
-      - `Drivers/BSP/Components/es-wifi/es_wifi.c/h`
-      - `Drivers/BSP/Components/es-wifi/es_wifi_io.c/h` (the I/O glue
-        we'll customize for our SPI pins)
-- [ ] In CubeMX: enable **SPI2** for the Wi-Fi module per H7B3I-DK
-      schematic (NOT SPI4, NOT SPI3). Configure CS, DATRDY (EXTI), RST,
-      WKUP pins per `firmware/CLAUDE.md` Wi-Fi specifics. Verify pins
-      against the H7B3I-DK schematic — do not trust example code from
-      a different board.
-- [ ] Adapt `es_wifi_io.c` for our SPI2 instance and pin assignments
-      (this is the only board-specific surgery needed)
+- [ ] Download STM32CubeH7 (v1.12.1 or later) from ST
+- [ ] Copy `Middlewares/ST/STM32_Network_Library/` into our
+      `firmware/Middlewares/ST/STM32_Network_Library/`
+- [ ] Copy `Drivers/BSP/Components/es-wifi/` (es_wifi.c/h) into our
+      `firmware/Drivers/BSP/Components/es-wifi/`
+- [ ] Copy the I/O glue file from the H7B3I-DK Clock-and-Weather demo
+      (`net_conf_es_wifi_spi.c/h`) as a starting point — this is the
+      board-specific layer we'll customize
+- [ ] In CubeMX: enable SPI2 for the Wi-Fi module per H7B3I-DK
+      schematic (verify SB18/19, SB21/22, SB23/24, SB25/26 are in
+      default position for SPI2 — see `firmware/CLAUDE.md` Wi-Fi
+      specifics). Configure DATRDY (PI5, EXTI), RST (PI1), WKUP (PI2),
+      GPIO (PI4) pins.
+- [ ] Adapt `net_conf_es_wifi_spi.c` for our SPI2 instance — this is
+      the only board-specific surgery needed. Pin macros only; no
+      protocol changes.
+- [ ] Add a `decisions.md` reference: `Day 18: adopted ST Network
+      Library (ADR-011)`.
 
-### Implement `net.h` over the es-wifi driver
+Note: the H7B3I-DK Clock-and-Weather demo is an HTTP *server*. We are
+not using its application logic; only its driver-level files (es-wifi
+BSP + SPI I/O glue) which are correctly configured for our board's
+pinout.
 
-- [ ] Create `Application/net/net_wifi_ism43340.c` implementing the
-      full `net.h` API:
-      - `net_init()` configures SSID/PSK from passed-in struct
-      - `net_connect_ap()` calls `WIFI_Connect(ssid, psk, WIFI_ECN_WPA2_PSK)`
-      - `net_disconnect_ap()` calls `WIFI_Disconnect()`
-      - `net_socket_open()` returns a socket index
-      - `net_socket_connect()` calls `WIFI_OpenClientConnection()`
-      - `net_socket_send/recv()` wrap `WIFI_SendData/ReceiveData()`
-      - `net_socket_close()` calls `WIFI_CloseClientConnection()`
-      - On any link event, signal `EVT_WIFI_CONNECTED/DISCONNECTED`
+### Implement `net.h` as a thin shim over the ST Network Library
+
+- [ ] Create `Application/net/net_wifi_ism43340.c` as a shim mapping
+      our `net.h` API to the ST Network Library API:
+      - `net_init()` → calls `net_if_init()` from the Network Library,
+        passes our SSID/PSK struct through
+      - `net_connect_ap()` → calls Network Library's interface-up call
+        on the es-wifi adapter
+      - `net_disconnect_ap()` → analogous interface-down
+      - `net_socket_open()` → wraps `net_sock_create()`
+      - `net_socket_connect()` → wraps `net_sock_open()` (the Network
+        Library's "open" is what POSIX calls "connect")
+      - `net_socket_send/recv()` → wrap `net_sock_send/recv()` with
+        POSIX-style behavior on partial transfers
+      - `net_socket_close()` → wraps `net_sock_close()`
+      - Reconnect orchestration: own it in this file or in `net_task.c`;
+        the Network Library will not retry by itself
+      - On every state change, set the matching FreeRTOS event bit
 - [ ] Hard-code SSID/PSK temporarily (moves to provisioning Day 23)
 
 ### Test progression (each step must pass before next)
@@ -478,15 +494,18 @@ go/no-go gate.
 
 **Claude Code prompt:**
 > Read firmware/CLAUDE.md. Implement Application/net/net_wifi_ism43340.c
-> wrapping the es-wifi BSP driver (already copied into Drivers/BSP/
-> Components/es-wifi/) in the API declared in Application/net/net.h.
-> Track link state in a static flag; on transitions, signal FreeRTOS
-> events EVT_WIFI_CONNECTED / EVT_WIFI_DISCONNECTED. Implement
-> exponential backoff reconnect with hardware module reset after 5
-> failed attempts. SSID/PSK come from a struct passed to net_init().
-> Do not hardcode strings. Implement net_socket_send/recv with
-> millisecond timeouts; wrap WIFI_SendData partial-write behavior to
-> behave like POSIX send() (caller retries with remainder).
+> as a thin shim mapping the net.h API to the ST Network Library
+> (vendored at Middlewares/ST/STM32_Network_Library/). Do not call the
+> es-wifi BSP driver directly — go through the Network Library, which
+> already wraps it. Track link state in a static flag and signal
+> FreeRTOS events EVT_WIFI_CONNECTED / EVT_WIFI_DISCONNECTED on
+> transitions. Implement exponential backoff reconnect orchestration
+> here (the Network Library does not retry on its own); after 5
+> consecutive failures, toggle the WIFI_RST GPIO before retrying.
+> SSID/PSK come from the net_config_t struct passed to net_init(). Do
+> not hardcode any strings. Wrap any non-POSIX behaviors of the Network
+> Library's send/recv (e.g., blocking instead of EAGAIN, partial writes
+> reported as errors) so our net_socket_send/recv behave POSIX-like.
 
 ---
 

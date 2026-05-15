@@ -235,3 +235,44 @@ same.
 - The version is an integer per topic, not a global API version. Each
   topic evolves independently.
 - See `docs/mqtt-topics.md` → Schema Versioning for the full rules.
+
+---
+
+## ADR-011 — Adopt ST Network Library as the es-wifi-to-net.h bridge
+
+**Date:** 2026-05-15
+**Status:** Accepted
+
+**Context:** The firmware needs a portable socket API (`net.h`) that
+the rest of the stack (coreMQTT, SNTP, defect queue) calls. The
+underlying transport is the Inventek ISM43340 Wi-Fi module via SPI.
+Two ways to bridge: (a) wrap the es-wifi BSP driver directly in our
+own ~300-line shim; (b) use the ST Network Library that already
+wraps the es-wifi BSP and present a thin ~50-line adapter on top of it.
+
+**Decision:** Option (b). Vendor `STM32_Network_Library/` from STM32CubeH7
+into `firmware/Middlewares/ST/STM32_Network_Library/`. Implement
+`Application/net/net_wifi_ism43340.c` as a thin shim mapping our `net.h`
+to the Library's socket API. The Library's es-wifi adapter and BSP
+driver are also vendored under their respective paths.
+
+**Consequences:**
+- Saves approximately one day of firmware development (Day 18 scope reduced).
+- Aligns with the architecture ST intended for this module.
+- Adds a vendored middleware whose upstream is in light maintenance;
+  any bug fixes are on us. Acceptable at PoC scale.
+- `net.h` remains the portability boundary; future swap to a different
+  transport (e.g., W5500 Ethernet shield) replaces only the shim file
+  and the underlying middleware, not application code.
+- Reconnect orchestration and FreeRTOS event signaling stay in our
+  shim/`net_task` — the Library does not own them.
+- `Application/net/net_wifi_ism43340.c` is the ONLY file allowed to
+  import the Library's headers. Enforced as a code-review rule in
+  `firmware/CLAUDE.md`.
+
+**Alternatives considered:**
+- Direct es-wifi BSP wrapping: more control, more code, more bugs to
+  own. Rejected on cost/benefit.
+- LwIP-on-host with the Wi-Fi module as a pure SPI link: not how the
+  ISM43340 firmware works (the module owns its own IP stack).
+  Architecturally impossible.

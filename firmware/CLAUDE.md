@@ -27,7 +27,12 @@ firmware/
 ├── Core/                         # CubeMX-generated HAL init, main.c
 ├── Drivers/                      # HAL, BSP, CMSIS
 │   └── BSP/                      # Board support, includes ISM43340 driver bring-up
-├── Middlewares/                  # FreeRTOS, coreMQTT, jsmn, ST Network Library
+├── Middlewares/
+│   ├── ST/
+│   │   └── STM32_Network_Library/  # vendored from STM32CubeH7
+│   ├── coreMQTT/                   # AWS, MIT, vendored
+│   ├── jsmn/                       # JSON tokenizer, MIT, vendored
+│   └── Third_Party/FreeRTOS/       # via CubeMX
 ├── TouchGFX/
 │   ├── PaintingQC.touchgfx       # Designer file
 │   ├── generated/                # Auto-generated, DO NOT EDIT BY HAND
@@ -110,12 +115,17 @@ int  net_sntp_sync(const char *server, uint32_t *out_unix_time);
 ```
 
 Three implementations selected at build time:
-- `net_wifi_ism43340.c` — default. Talks to Inventek module over SPI.
-  Wraps the **es-wifi BSP driver** ported from the B-L4S5I-IOT01A example
-  (the H7B3I-DK's own Clock-and-Weather demo only exercises an HTTP
-  *server*; the L4S5I IoT example shows TCP **client** usage, which is
-  what coreMQTT needs). The driver is portable across boards — only
-  SPI peripheral and GPIO pin assignments differ.
+- `net_wifi_ism43340.c` — default. **Thin shim** (~50 lines) over the
+  ST Network Library (`Middlewares/ST/STM32_Network_Library/`), vendored
+  from STM32CubeH7. The Network Library provides a socket-like API
+  (`net_sock_create`, `net_sock_open`, `net_sock_send`, `net_sock_recv`,
+  `net_sock_close`) and itself wraps the es-wifi BSP driver (in
+  `Drivers/BSP/Components/es-wifi/`, also vendored from CubeH7).
+  Our shim's responsibilities: map between our `net.h` API and the
+  Network Library, own FreeRTOS event signaling
+  (`EVT_WIFI_CONNECTED/DISCONNECTED`), and own reconnect-with-backoff
+  orchestration. The Network Library does NOT do reconnect orchestration
+  on its own — we layer that on top.
 - `net_eth_w5500.c` — future fallback if Wi-Fi proves unreliable.
   Uses WIZnet ioLibrary for an SPI-attached W5500 shield.
 - `net_host.c` — POSIX sockets, for host-side tests.
@@ -150,9 +160,11 @@ Wi-Fi/Ethernet swap a contained change later.**
   **Do this only if Day 18 reconnect testing fails.** Document in
   `docs/firmware-versions.md` the version actually in use.
 - Reconnect strategy: on link loss, exponential backoff up to 30s.
-  After N failed attempts (N=5), issue a hardware reset to the Wi-Fi
-  module via `WIFI_RST` before retrying. This works around module-side
-  state-machine hangs documented in community threads.
+  Orchestrated by our `net_task` calling Network Library functions —
+  not by the Network Library itself (which would just return errors and
+  leave reconnect to the caller). After N=5 consecutive failures, issue
+  a hardware reset via `WIFI_RST` before retrying, to recover from any
+  module-side state-machine hangs.
 - Persist last-known-good AP credentials in Octo-SPI (provisioned at
   flash time, never hardcoded).
 - We use **TCP client sockets only.** No HTTP, no module's HTTP server.
@@ -320,6 +332,9 @@ cannot. Modules in between have partial coverage.
 - Do not increase task stack sizes without checking
   `uxTaskGetStackHighWaterMark`.
 - Do not put domain logic in TouchGFX View/Presenter code.
+- Do not use the ST Network Library's API directly from anywhere except
+  `Application/net/net_wifi_ism43340.c`. The rest of the codebase calls
+  `net.h`. This keeps the Network Library swappable.
 
 ## Useful debug commands
 
