@@ -111,7 +111,11 @@ int  net_sntp_sync(const char *server, uint32_t *out_unix_time);
 
 Three implementations selected at build time:
 - `net_wifi_ism43340.c` — default. Talks to Inventek module over SPI.
-  Uses ST's Network Library or a custom AT-command driver.
+  Wraps the **es-wifi BSP driver** ported from the B-L4S5I-IOT01A example
+  (the H7B3I-DK's own Clock-and-Weather demo only exercises an HTTP
+  *server*; the L4S5I IoT example shows TCP **client** usage, which is
+  what coreMQTT needs). The driver is portable across boards — only
+  SPI peripheral and GPIO pin assignments differ.
 - `net_eth_w5500.c` — future fallback if Wi-Fi proves unreliable.
   Uses WIZnet ioLibrary for an SPI-attached W5500 shield.
 - `net_host.c` — POSIX sockets, for host-side tests.
@@ -123,16 +127,38 @@ Wi-Fi/Ethernet swap a contained change later.**
 
 ## Wi-Fi specifics (ISM43340)
 
-- Connect via SPI4 (per H7B3I-DK schematic — verify pins in `.ioc`)
-- DRDY pin signals when the module has data to send
-- Module firmware version matters; older firmwares are flaky.
-  Document the verified version in `docs/firmware-versions.md`.
-  Reference: STM32CubeH7 patch includes the working module firmware
-  and example driver (see ST Network Library).
+- **SPI peripheral: SPI2** (per H7B3I-DK schematic, default solder-bridge
+  configuration). NOT SPI4. The L4S5I-IOT01A reference uses SPI3; copy
+  the driver structure but reconfigure the SPI instance for our board.
+- GPIO control lines (default solder-bridge config):
+  - `WIFI_DATRDY` on PI5 (EXTI — signals module has data to send)
+  - `WIFI_RST` on PI1 (active-low reset)
+  - `WIFI_WKUP` on PI2
+  - `WIFI_GPIO` on PI4
+  - `WIFI_NSS` on (verify in `.ioc` — exposed via SPI2 chip select)
+- **Shipped module firmware:** `C3.5.2.6.STM.BETA4` (verify on first boot;
+  see the module's firmware-query AT command output in logs). This version
+  has a documented limitation: network scan operates only once after each
+  module reset. We do NOT scan at runtime (SSID comes from provisioning),
+  so this likely does not affect us — but it is the suspected root cause
+  of community reports of flaky reconnect-after-disconnect.
+- **Firmware upgrade path** (contingency, not initial plan):
+  Inventek `C6.2.1.11.E` SPI firmware available at inventeksys.com.
+  Upgrade procedure (from UM2569): remove R30 and R32, wire SWDIO from
+  R30-right to TP4, wire SWCLK from R32-right to TP5, then flash via the
+  on-board ST-LINK-V3E. This is a one-time hardware mod per board.
+  **Do this only if Day 18 reconnect testing fails.** Document in
+  `docs/firmware-versions.md` the version actually in use.
 - Reconnect strategy: on link loss, exponential backoff up to 30s.
-  Persist last-known-good AP credentials in Octo-SPI (provisioned at
+  After N failed attempts (N=5), issue a hardware reset to the Wi-Fi
+  module via `WIFI_RST` before retrying. This works around module-side
+  state-machine hangs documented in community threads.
+- Persist last-known-good AP credentials in Octo-SPI (provisioned at
   flash time, never hardcoded).
-- Do NOT use the module's HTTP client. We use raw TCP for MQTT.
+- We use **TCP client sockets only.** No HTTP, no module's HTTP server.
+  The MQTT transport opens a TCP connection to the broker, sends MQTT
+  framing bytes, and reads responses — that's the whole API surface
+  we need from the Wi-Fi module.
 
 ## Build Flags & Feature Macros
 

@@ -12,41 +12,82 @@ Mark days with `🤖` where Claude Code is high-leverage, `🔧` where manual wo
 dominates (hardware, GUI design, in-person testing).
 
 **Hardware:** Raspberry Pi 4B (server) + STM32H7B3I-DK (end device, with
-on-board Inventek ISM43340 Wi-Fi module). Network: STM32 connects to plant
-Wi-Fi; RPi sits on the same network with a static IP.
+on-board Inventek ISM43340 Wi-Fi module). **Network topology: Option A** —
+RPi joins existing plant Wi-Fi via its on-board Wi-Fi, has a static IP or
+DHCP reservation. STM32 connects to the same SSID. All MQTT traffic
+transits the plant WLAN.
 
 ---
 
 # Phase 0 — Foundation (Days 1–3)
 
-## Day 1 🔧 — Hardware bring-up
+## Day 1 🔧 — Hardware bring-up + plant Wi-Fi prep
 
-**Goal:** Both devices powered. RPi on the LAN. STM32 toolchain working.
-Wi-Fi connectivity verified.
+**Goal:** Both devices powered. RPi on the plant Wi-Fi with a stable IP.
+STM32 toolchain working. Wi-Fi module proven functional.
 
-Tasks:
+### Plant IT coordination (do this FIRST, ideally before Day 1)
+
+Plant IT must confirm:
+- [ ] **Static IP or DHCP reservation** for the RPi on the plant Wi-Fi
+      (devices will have this address hard-provisioned)
+- [ ] **Client-to-client traffic is allowed** on the SSID — many enterprise
+      APs enable "client isolation" by default, which silently blocks
+      STM32 → RPi traffic. This is the single most common reason an
+      Option A deployment fails.
+- [ ] **TCP port 1883 is not blocked** between WLAN clients (some networks
+      restrict it as a known-IoT port)
+- [ ] **WPA2-PSK is supported** (not enterprise-only WPA2-Enterprise / 802.1X
+      — the ISM43340 driver supports WPA2-PSK; enterprise auth requires
+      different module firmware and is out of scope for the PoC)
+- [ ] **RSSI ≥ -65 dBm** at the planned inspection station (a quick site
+      survey with a phone Wi-Fi analyzer suffices for now)
+
+If any answer is "no" — fall back to a small dedicated AP plugged into
+the RPi's Ethernet creating a "QC-Net" SSID. Document this as Plan B in
+`docs/decisions.md`.
+
+### Hardware setup
+
 - [ ] Flash Raspberry Pi OS Lite 64-bit (Bookworm) to SD card with Imager,
-      pre-configure SSH, hostname `qc-server`, user, locale
-- [ ] Boot RPi, SSH in, `sudo apt update && sudo apt full-upgrade -y`
-- [ ] Set static IP via `/etc/dhcpcd.conf` or `nmcli`. Document the IP.
-- [ ] **Decide Wi-Fi network topology** for the PoC:
-      - Option A: RPi joins existing plant Wi-Fi (simplest, requires IT)
-      - Option B: A cheap travel router on RPi's Ethernet creates a
-        dedicated "QC-Net" SSID (more isolated, fewer dependencies)
-      - Option C: RPi acts as the AP via hostapd (most control,
-        highest setup effort)
-- [ ] Install STM32CubeIDE (latest) and TouchGFX Designer on dev machine
-- [ ] Open the H7B3I-DK out-of-box demo in CubeIDE, build, flash via
-      ST-Link. Confirm display works and touch responds.
-- [ ] **Verify Wi-Fi module presence:** flash one of the STM32CubeH7
-      Wi-Fi demos (e.g., the HTTP server example) for H7B3I-DK to confirm
-      the ISM43340 module works and connects to the chosen Wi-Fi network.
-- [ ] Note the Wi-Fi module firmware version visible in demo output —
-      document in `docs/firmware-versions.md`
+      pre-configure: SSH on, hostname `qc-server`, user, locale, **plant
+      Wi-Fi SSID + PSK** (Imager has fields for this)
+- [ ] Boot RPi headless, SSH in over the plant Wi-Fi using the assigned
+      static IP; `sudo apt update && sudo apt full-upgrade -y`
+- [ ] Confirm RPi is reachable from your dev laptop on the same WLAN:
+      `ping qc-server.local` or `ping <rpi-ip>`
+- [ ] Install STM32CubeIDE and TouchGFX Designer on dev machine
 
-Risks: The ISM43340's firmware version matters. Older versions are
-flaky. If the OOB demo connects unreliably, update the module firmware
-using ST's tool before going further.
+### STM32 + Wi-Fi module verification
+
+- [ ] Open the H7B3I-DK Clock & Weather demo project from STM32CubeH7
+      (`Projects/STM32H7B3I-DK/Demonstrations/ClockAndWeather`)
+- [ ] Edit the demo's `mbed_app.json` (or wherever SSID/PSK is set) to
+      use your plant Wi-Fi credentials
+- [ ] Build with STM32CubeIDE; when configuring debug, enable the
+      **external loader** for the Octo-SPI flash (the demo stores assets
+      there); manually select the correct loader for MX25LM51245G_STM32H7B3I-DK
+- [ ] Flash & boot. We do NOT care that this is an HTTP server demo —
+      we only need to see the module associate with the AP. Look for:
+      1. Module firmware version logged on boot (record in
+         `docs/firmware-versions.md` — expected: `C3.5.2.6.STM.BETA4`)
+      2. Successful WPA2 association to plant SSID
+      3. DHCP-assigned IP shown on screen or in SWO log
+      4. `ping <stm32-ip>` from the RPi succeeds
+- [ ] If association fails: check RSSI, double-check PSK, verify the
+      SSID is 2.4 GHz (ISM43340 is 802.11 b/g/n single-band, no 5 GHz)
+
+Risks:
+- Plant IT delays are the most common Day 1 blocker. Reach out a week
+  ahead. Have Plan B (dedicated AP) ready in case the SSID won't work.
+- ISM43340 is **2.4 GHz only**. If the plant Wi-Fi exposes only a 5 GHz
+  SSID at your station, you need a dual-band AP or a separate 2.4 GHz
+  network. Verify before Day 1.
+- The shipped module firmware `C3.5.2.6.STM.BETA4` has a documented
+  "network scan only once" limitation. For *connecting* to a known SSID
+  this likely does not matter (we never scan at runtime); for the
+  Clock & Weather demo it does not block initial use. We'll stress-test
+  reconnect on Day 18; firmware upgrade is reserved as a contingency.
 
 ---
 
@@ -344,44 +385,108 @@ in `docs/usability-test-1.md`, fix top 2–3 issues.
 The original wired-Ethernet plan was higher-risk; the Wi-Fi path is
 actually simpler because the module owns the IP stack.
 
-## Day 18 🤖🔧 — Wi-Fi module driver bring-up
+## Day 18 🤖🔧 — Wi-Fi module driver bring-up (with reconnect test)
 
-**Goal:** STM32 connects to AP, gets an IP, can `ping` the RPi.
+**Goal:** STM32 connects to the plant AP, opens a TCP client socket to
+the RPi, reconnects cleanly after a disconnect. The `net.h` API is
+implemented; everything above it is transport-agnostic.
+
+### Source the driver from L4S5I-IOT01A, not from H7B3I-DK's demo
+
+The H7B3I-DK Clock & Weather demo only exercises the Wi-Fi module as an
+HTTP **server**. We need TCP **client**. The B-L4S5I-IOT01A IoT discovery
+board uses the same Inventek eS-WiFi module family and ships with cleaner
+client-side examples and a more portable driver layer.
 
 Tasks:
-- [ ] In CubeMX: enable SPI4 (or whichever SPI is wired to the Wi-Fi
-      module on H7B3I-DK — check schematic), enable the DRDY GPIO with
-      EXTI interrupt
-- [ ] Vendor ST's Network Library from STM32CubeH7
-      (`Middlewares/ST/STM32_Network_Library`) OR use ST's WIFI BSP
-      driver for ISM43340
-- [ ] Implement `Application/platform/platform_stm32h7b3.c` glue for
-      SPI transactions to the Wi-Fi module
-- [ ] Implement `Application/net/net_wifi_ism43340.c` wrapping the
-      driver in the `net.h` API
-- [ ] Hard-code SSID/PSK temporarily (move to provisioning Day 23)
-- [ ] On boot: connect to AP, log assigned IP via SWO
-- [ ] Add a simple TCP test: open a socket to RPi:9000, send "hello"
-- [ ] On RPi: `nc -l 9000` → see "hello"
-- [ ] Confirm `ping <stm32-ip>` from RPi succeeds
+- [ ] Download the L4S5I-IOT01A example pack from STM32CubeL4
+      (`Projects/B-L4S5I-IOT01A/Applications/WiFi/`)
+- [ ] Copy the es-wifi BSP driver into our firmware:
+      - `Drivers/BSP/Components/es-wifi/es_wifi.c/h`
+      - `Drivers/BSP/Components/es-wifi/es_wifi_io.c/h` (the I/O glue
+        we'll customize for our SPI pins)
+- [ ] In CubeMX: enable **SPI2** for the Wi-Fi module per H7B3I-DK
+      schematic (NOT SPI4, NOT SPI3). Configure CS, DATRDY (EXTI), RST,
+      WKUP pins per `firmware/CLAUDE.md` Wi-Fi specifics. Verify pins
+      against the H7B3I-DK schematic — do not trust example code from
+      a different board.
+- [ ] Adapt `es_wifi_io.c` for our SPI2 instance and pin assignments
+      (this is the only board-specific surgery needed)
+
+### Implement `net.h` over the es-wifi driver
+
+- [ ] Create `Application/net/net_wifi_ism43340.c` implementing the
+      full `net.h` API:
+      - `net_init()` configures SSID/PSK from passed-in struct
+      - `net_connect_ap()` calls `WIFI_Connect(ssid, psk, WIFI_ECN_WPA2_PSK)`
+      - `net_disconnect_ap()` calls `WIFI_Disconnect()`
+      - `net_socket_open()` returns a socket index
+      - `net_socket_connect()` calls `WIFI_OpenClientConnection()`
+      - `net_socket_send/recv()` wrap `WIFI_SendData/ReceiveData()`
+      - `net_socket_close()` calls `WIFI_CloseClientConnection()`
+      - On any link event, signal `EVT_WIFI_CONNECTED/DISCONNECTED`
+- [ ] Hard-code SSID/PSK temporarily (moves to provisioning Day 23)
+
+### Test progression (each step must pass before next)
+
+- [ ] **Test 1 — Association:** boot, `net_connect_ap()` returns OK,
+      `net_get_ip()` returns a non-zero IP. Log via SWO.
+- [ ] **Test 2 — TCP client one-shot:** on RPi run `nc -l 9000`.
+      From firmware: open socket, connect to `<rpi-ip>:9000`, send
+      "hello", close. Verify text appears on RPi's `nc` output.
+- [ ] **Test 3 — Reconnect after disconnect** (CRITICAL):
+      ```
+      open → send → close → open again → send "hello2" → close
+      ```
+      Verify both messages arrive. **This is where the scan-once
+      firmware limitation would bite us if it affects connect**, so
+      we test it explicitly before depending on the module.
+- [ ] **Test 4 — Reconnect after AP loss:** kill the AP (or block the
+      MAC briefly), wait for `EVT_WIFI_DISCONNECTED`, restore the AP,
+      verify `EVT_WIFI_CONNECTED` fires within 60s. Then run Test 2
+      again — sockets work.
+- [ ] **Test 5 — Long-haul:** open socket, send 1 byte/sec for 10
+      minutes, verify no drops.
+
+### If Test 3 or 4 fails — firmware upgrade contingency
+
+If the shipped `C3.5.2.6.STM.BETA4` firmware can't reconnect cleanly,
+upgrade to `C6.2.1.11.E` per UM2569 section 7.6.12 (~half day):
+- Remove R30 and R32 (0Ω resistors)
+- Wire SWDIO from R30-right to TP4
+- Wire SWCLK from R32-right to TP5
+- Flash the Inventek `.bin` via STM32CubeProgrammer through the on-board
+  ST-LINK-V3E
+- Reverse the wiring afterward
+- Update `docs/firmware-versions.md`
+- Re-run Tests 3, 4, 5
+
+Risks:
+- SPI2 vs SPI3 vs SPI4 confusion is real — multiple ST examples are
+  for different boards. The schematic is the source of truth.
+- The L4S5I es-wifi driver may include sleep/wake-up logic that
+  doesn't apply to our use case. Strip it down to client-socket only;
+  we don't need power management on a wall-powered device.
+- `WIFI_OpenClientConnection()` semantics differ subtly across driver
+  versions. Test return codes; some report "connected" before the
+  module finishes the handshake.
+
+This day was the riskiest in the original wired-Ethernet plan. With
+the Wi-Fi module owning the IP stack, the *technical* risk is lower
+but **driver compatibility risk** replaces it. Test 3 is the
+go/no-go gate.
 
 **Claude Code prompt:**
-> Implement Application/net/net_wifi_ism43340.c implementing the API in
-> net.h. Wrap calls to ST's WIFI BSP driver (or the Network Library's
-> socket layer). Track link state in a static flag; emit FreeRTOS
+> Read firmware/CLAUDE.md. Implement Application/net/net_wifi_ism43340.c
+> wrapping the es-wifi BSP driver (already copied into Drivers/BSP/
+> Components/es-wifi/) in the API declared in Application/net/net.h.
+> Track link state in a static flag; on transitions, signal FreeRTOS
 > events EVT_WIFI_CONNECTED / EVT_WIFI_DISCONNECTED. Implement
-> exponential backoff reconnect. Read SSID/PSK from a struct passed at
-> init — do NOT hardcode strings.
-
-Risks: Wi-Fi module firmware version matters. If connection is flaky:
-1. Verify module firmware version (community reports older versions
-   fail to associate)
-2. Check RSSI — too far from AP causes intermittent issues
-3. Verify SPI clock isn't too high — start at 10 MHz, increase if stable
-
-This day was the riskiest in the original wired plan. With Wi-Fi via
-the ISM43340, the risk is reduced because the module handles MAC, PHY,
-TCP, and DHCP for us — no LwIP, no cache-coherency issues.
+> exponential backoff reconnect with hardware module reset after 5
+> failed attempts. SSID/PSK come from a struct passed to net_init().
+> Do not hardcode strings. Implement net_socket_send/recv with
+> millisecond timeouts; wrap WIFI_SendData partial-write behavior to
+> behave like POSIX send() (caller retries with remainder).
 
 ---
 
