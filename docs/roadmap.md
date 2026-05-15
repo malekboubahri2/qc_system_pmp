@@ -11,29 +11,42 @@ Format per day:
 Mark days with `🤖` where Claude Code is high-leverage, `🔧` where manual work
 dominates (hardware, GUI design, in-person testing).
 
+**Hardware:** Raspberry Pi 4B (server) + STM32H7B3I-DK (end device, with
+on-board Inventek ISM43340 Wi-Fi module). Network: STM32 connects to plant
+Wi-Fi; RPi sits on the same network with a static IP.
+
 ---
 
 # Phase 0 — Foundation (Days 1–3)
 
 ## Day 1 🔧 — Hardware bring-up
 
-**Goal:** Both devices powered, on the LAN, pingable.
+**Goal:** Both devices powered. RPi on the LAN. STM32 toolchain working.
+Wi-Fi connectivity verified.
 
 Tasks:
 - [ ] Flash Raspberry Pi OS Lite 64-bit (Bookworm) to SD card with Imager,
-      pre-configure SSH, hostname `qc-server`, user, locale, Wi-Fi off
-- [ ] Boot RPi, SSH in, run `sudo apt update && sudo apt full-upgrade -y`
-- [ ] Set static IP via `/etc/dhcpcd.conf` or `nmcli`. Document final IP.
+      pre-configure SSH, hostname `qc-server`, user, locale
+- [ ] Boot RPi, SSH in, `sudo apt update && sudo apt full-upgrade -y`
+- [ ] Set static IP via `/etc/dhcpcd.conf` or `nmcli`. Document the IP.
+- [ ] **Decide Wi-Fi network topology** for the PoC:
+      - Option A: RPi joins existing plant Wi-Fi (simplest, requires IT)
+      - Option B: A cheap travel router on RPi's Ethernet creates a
+        dedicated "QC-Net" SSID (more isolated, fewer dependencies)
+      - Option C: RPi acts as the AP via hostapd (most control,
+        highest setup effort)
 - [ ] Install STM32CubeIDE (latest) and TouchGFX Designer on dev machine
-- [ ] Open the H750B-DK out-of-box example in CubeIDE, build, flash via ST-Link.
-      Confirm display works and touch responds.
-- [ ] Plug STM32 Ethernet into same switch as RPi. Note STM32 will DHCP from
-      the network's router — confirm it gets an address (from router admin
-      or from the demo's network screen if it has one).
-- [ ] `ping <stm32-ip>` from RPi succeeds.
+- [ ] Open the H7B3I-DK out-of-box demo in CubeIDE, build, flash via
+      ST-Link. Confirm display works and touch responds.
+- [ ] **Verify Wi-Fi module presence:** flash one of the STM32CubeH7
+      Wi-Fi demos (e.g., the HTTP server example) for H7B3I-DK to confirm
+      the ISM43340 module works and connects to the chosen Wi-Fi network.
+- [ ] Note the Wi-Fi module firmware version visible in demo output —
+      document in `docs/firmware-versions.md`
 
-Risks: STM32 Ethernet may not be enabled in the default demo firmware. If
-ping fails, defer the network validation to Day 18 — focus first on toolchain.
+Risks: The ISM43340's firmware version matters. Older versions are
+flaky. If the OOB demo connects unreliably, update the module firmware
+using ST's tool before going further.
 
 ---
 
@@ -44,27 +57,20 @@ ping fails, defer the network validation to Day 18 — focus first on toolchain.
 Tasks:
 - [ ] `gh repo create painting-qc --private`
 - [ ] Create directory structure per project root `CLAUDE.md`
-- [ ] Drop in the four `CLAUDE.md` files (root + server + dashboard + firmware)
-- [ ] Write initial `docs/data-model.md` with full SQLite schema
-- [ ] Write initial `docs/api-spec.md` listing every endpoint with example
-      request/response
-- [ ] Write initial `docs/mqtt-topics.md` with full topic table and JSON
-      payload schemas
-- [ ] Write `docs/decisions.md` recording all Phase 0 locked decisions as ADRs
+- [ ] Drop in all `CLAUDE.md` files (root + server + dashboard + firmware +
+      infra)
+- [ ] Drop in `docs/principles.md`
+- [ ] Write initial `docs/data-model.md`, `docs/api-spec.md`,
+      `docs/mqtt-topics.md`, `docs/decisions.md`, `docs/build-flags.md`,
+      `docs/feature-flags.md`
 - [ ] Initialize `.gitignore` (Python, Node, STM32 build artifacts)
 - [ ] First commit: `chore: initial repo structure and docs`
 
-**Claude Code prompt for the docs:**
-> Read CLAUDE.md, then draft `docs/data-model.md` with the complete SQLite
-> schema for the tables listed there. For each table give: CREATE TABLE
-> statement, column purposes, indexes, and example INSERT. Then draft
-> `docs/api-spec.md` with one endpoint per row including method, path,
-> auth requirement, request body schema, response body schema, and example
-> curl. Reference the data model. Finally draft `docs/mqtt-topics.md`
-> with one section per topic including direction, QoS, retained flag,
-> JSON payload schema, and example payload.
-
-Risks: Over-engineering the docs. Keep each under 300 lines. They will evolve.
+**Claude Code prompt:**
+> Read CLAUDE.md and docs/principles.md, then draft docs/data-model.md,
+> docs/api-spec.md, docs/mqtt-topics.md, docs/decisions.md,
+> docs/build-flags.md, docs/feature-flags.md per the Day 2 tasks.
+> Reference each other consistently.
 
 ---
 
@@ -73,36 +79,33 @@ Risks: Over-engineering the docs. Keep each under 300 lines. They will evolve.
 **Goal:** RPi has all needed services installed (not yet running our code).
 
 Tasks:
-- [ ] `sudo apt install mosquitto mosquitto-clients caddy git python3-pip pipx`
-- [ ] Install `uv`: `pipx install uv`
-- [ ] Install Node 20 + pnpm (via nvm or NodeSource apt repo)
-- [ ] Configure Mosquitto: enable persistence, listener on 1883 with auth,
-      create `mosquitto_passwd` entries for `qc-server` (publisher) and
-      `qc-device-template` (subscriber)
-- [ ] Write `/etc/mosquitto/conf.d/qc.conf` with ACL referencing
-      `/etc/mosquitto/acl.conf`
-- [ ] Test: `mosquitto_sub` and `mosquitto_pub` round trip from RPi to itself
-- [ ] Test: `mosquitto_pub` from dev laptop to RPi works
-- [ ] Document the Mosquitto config in `docs/deployment.md`
+- [ ] `sudo apt install docker.io docker-compose-plugin git`
+- [ ] Add user to `docker` group, reboot
+- [ ] Configure Wi-Fi network per the Day 1 decision; verify STM32 demo
+      can reach the RPi's IP via `ping` from a laptop on the same network
+- [ ] Test: `docker run hello-world` succeeds on RPi
+- [ ] Generate Mosquitto config files in `infra/mosquitto/` (mosquitto.conf,
+      acl.conf, passwd template)
+- [ ] Document network setup in `docs/deployment.md`
 
 **Claude Code prompt:**
-> Generate `/etc/mosquitto/conf.d/qc.conf` and `/etc/mosquitto/acl.conf`
-> for the topic structure in `docs/mqtt-topics.md`. Server account
-> publishes to `qc/config/#`, subscribes to `qc/device/+/#`. Device
-> account `qc-device-001` publishes only to `qc/device/qc-stm32-001a2b3c/#`,
-> subscribes only to `qc/config/#` and `qc/device/qc-stm32-001a2b3c/cmd`.
-> Include retained-message persistence and reasonable defaults.
+> Generate infra/mosquitto/mosquitto.conf and infra/mosquitto/acl.conf
+> for the topic structure in docs/mqtt-topics.md. Server account
+> publishes to qc/config/#, subscribes to qc/device/+/#. Device account
+> qc-device-001 publishes only to qc/device/qc-stm32-001a2b3c/#,
+> subscribes only to qc/config/# and its own /cmd. Include retained-
+> message persistence and reasonable defaults.
 
-Risks: Mosquitto ACL syntax is finicky. Test with `mosquitto -c <conf> -v` in
-foreground before enabling the systemd service.
+Risks: Mosquitto ACL syntax is finicky. Test with `mosquitto -c <conf> -v`
+in foreground before enabling the container.
 
 ---
 
 # Phase 1 — Server Foundation (Days 4–7)
 
-## Day 4 🤖 — FastAPI skeleton + DB models
+## Day 4 🤖 — FastAPI skeleton + DB models + Docker
 
-**Goal:** Server starts, `/health` responds, schema migrated, no business logic yet.
+**Goal:** Server starts in Docker, `/health` responds, schema migrated.
 
 Tasks:
 - [ ] `cd server && uv init` and add dependencies (fastapi, uvicorn,
@@ -114,21 +117,23 @@ Tasks:
 - [ ] Implement all SQLAlchemy models matching `docs/data-model.md`
 - [ ] `alembic init alembic`, configure, autogenerate first migration
 - [ ] `app/main.py` with FastAPI app factory and `/health` route
-- [ ] Smoke test: `uv run uvicorn app.main:app` and `curl /health`
+- [ ] Write multi-stage `server/Dockerfile`
+- [ ] Write `infra/docker-compose.dev.yml` with server + mosquitto services
+- [ ] Smoke test: `docker compose up`, then `curl localhost:8000/health`
 - [ ] Write `pytest` config + one passing test on `/health`
 
 **Claude Code prompt:**
-> Read `server/CLAUDE.md` and `docs/data-model.md`. Scaffold the FastAPI
-> server with the listed structure. Generate SQLAlchemy 2.0 declarative
-> models for every table in the data model, with proper indexes, foreign
-> keys, and `active`/`archived_at` columns where the doc requires them.
-> Use `Mapped[]` annotations and `mapped_column()`. Then generate the
-> Alembic init and a first revision. Finally write a pytest fixture that
-> gives each test a fresh in-memory SQLite session, and a single test
-> asserting `/health` returns 200.
+> Read server/CLAUDE.md, docs/data-model.md. Scaffold the FastAPI server.
+> Generate SQLAlchemy 2.0 declarative models for every table in the data
+> model with proper indexes, foreign keys, active/archived_at columns.
+> Use Mapped[] annotations. Generate Alembic init and a first revision.
+> Then write a multi-stage Dockerfile (builder stage with uv, slim
+> runtime, non-root user, healthcheck). Then write
+> infra/docker-compose.dev.yml with server + mosquitto + volumes +
+> healthchecks + a shared qc-net network.
 
-Risks: SQLAlchemy 2.0 syntax differs from 1.x. Ensure Claude Code uses
-modern `Mapped[]` style.
+Risks: SQLAlchemy 2.0 syntax differs from 1.x. Ensure modern `Mapped[]`
+style. Docker buildx may need arm64 verification later.
 
 ---
 
@@ -138,25 +143,13 @@ modern `Mapped[]` style.
 
 Tasks:
 - [ ] `app/security.py`: argon2 hash/verify, JWT encode/decode
-- [ ] `app/routers/auth.py`: `/auth/login` (returns JWT), `/auth/me`
+- [ ] `app/routers/auth.py`: `/auth/login`, `/auth/me`
 - [ ] `app/routers/operators.py`: full CRUD, PIN set endpoint
 - [ ] `app/routers/defect_categories.py`: full CRUD
-- [ ] `app/routers/defect_types.py`: full CRUD with 12-per-category server-side check
+- [ ] `app/routers/defect_types.py`: full CRUD with 12-per-category cap
 - [ ] `app/routers/devices.py`: read-only list, single detail
-- [ ] Seed script `scripts/seed_dev.py` creating 1 admin user, 2 categories,
-      a few defect types, 3 operators
-- [ ] pytest tests for happy paths + the 12-per-category cap
-
-**Claude Code prompt:**
-> Implement `app/routers/defect_types.py` with full CRUD. Use the
-> services pattern: router validates input via Pydantic, calls
-> `services.defect_types.create/update/list/get/archive`, service
-> handles SQL and enforces the 12-per-category rule by raising
-> `BusinessRuleError` if violated. Map that to HTTP 409 in a global
-> handler. Generate matching pytest tests including the cap rule.
-
-Risks: Forgetting to enforce the cap in *update* (moving a defect into a
-full category) — Claude Code will likely only cover create unless prompted.
+- [ ] Seed script `scripts/seed_dev.py`
+- [ ] pytest tests for happy paths + the cap rule
 
 ---
 
@@ -165,55 +158,34 @@ full category) — Claude Code will likely only cover create unless prompted.
 **Goal:** Mosquitto ↔ FastAPI integration working both directions.
 
 Tasks:
-- [ ] `app/mqtt/bridge.py`: paho-mqtt client connecting on app startup,
-      shutdown clean
-- [ ] `app/mqtt/handlers.py`: handler for `qc/device/+/defect` writes a
-      `defect_logs` row; handler for `qc/device/+/status` upserts `devices`
-      row with `last_seen`
+- [ ] `app/mqtt/bridge.py`: paho-mqtt client, started from FastAPI
+      `lifespan`, clean shutdown
+- [ ] `app/mqtt/handlers.py`: handler for `qc/device/+/defect` → writes
+      `defect_logs`; handler for `qc/device/+/status` → upserts `devices`
 - [ ] `app/mqtt/publisher.py`: `publish_defect_config()` and
-      `publish_operators()` building the JSON payloads from current DB state
-- [ ] Wire `publisher` calls into defect_type and operator services
-- [ ] Test by hand: `mosquitto_pub -t qc/device/test-01/status ...` and
-      verify DB row appears
-- [ ] Test the other way: PATCH a defect type, run `mosquitto_sub -t qc/config/defects`
-      in another terminal, verify retained message published
+      `publish_operators()` building JSON from current DB state
+- [ ] Wire publisher calls into defect_type and operator services
+- [ ] Hand-test: `mosquitto_pub` from inside the mosquitto container →
+      verify DB rows appear
 
 **Claude Code prompt:**
-> Implement `app/mqtt/bridge.py` running paho-mqtt in a separate thread,
-> started from FastAPI's `lifespan` context. On message, dispatch to the
-> right handler in `handlers.py` based on topic pattern matching. Each
-> handler creates its own DB session, commits, closes. Add reconnect-with-
-> backoff. Generate one pytest test using a mock paho client.
-
-Risks: paho-mqtt's threading model can deadlock with asyncio. Easiest pattern:
-let paho run its own thread loop, never `await` inside handlers.
+> Implement app/mqtt/bridge.py running paho-mqtt in a separate thread,
+> started from FastAPI lifespan. On message, dispatch to the right
+> handler in handlers.py via topic pattern matching. Each handler
+> creates its own DB session, commits, closes. Add reconnect with
+> backoff. Mock the paho client in one pytest test.
 
 ---
 
 ## Day 7 🤖 — Stats endpoints + tests
 
-**Goal:** Dashboard has all the data it needs. Server phase done.
+**Goal:** Dashboard has all the data it needs.
 
 Tasks:
-- [ ] `app/routers/stats.py`:
-      - `GET /stats/summary?days=7` → daily counts
-      - `GET /stats/by-defect?days=30` → top defects
-      - `GET /stats/by-operator?days=30` → defect counts by operator
-      - `GET /stats/heatmap?days=30` → hour-of-day × defect counts
-- [ ] `app/routers/defect_logs.py`: list endpoint with filters (date range,
-      operator_id, defect_type_id, device_id) + CSV export
+- [ ] `app/routers/stats.py` (summary, by-defect, by-operator, heatmap)
+- [ ] `app/routers/defect_logs.py`: list with filters + CSV export
 - [ ] Round out test coverage to ~60% on services
-- [ ] systemd service file in `scripts/qc-server.service`
 - [ ] Commit & tag `server-v0.1.0`
-
-**Claude Code prompt:**
-> Generate the stats endpoints listed in `docs/api-spec.md`. Use
-> SQLAlchemy's `func` for aggregation. For the heatmap, group by
-> `strftime('%H', logged_at)` and `defect_type_id`. Return shapes
-> exactly as documented in api-spec.md so the dashboard can rely on them.
-
-Risks: SQLite's date functions differ from Postgres. Stick to `strftime`,
-test with realistic data.
 
 ---
 
@@ -221,27 +193,20 @@ test with realistic data.
 
 ## Day 8 🤖 — Frontend scaffold + auth
 
-**Goal:** Vite app boots, login page works against the server.
+**Goal:** Vite app boots inside Docker, login works against server.
 
 Tasks:
 - [ ] `pnpm create vite@latest dashboard -- --template react-ts`
-- [ ] Install Tailwind, shadcn/ui init, TanStack Query, axios, react-router,
-      react-hook-form, zod, sonner, date-fns, recharts
-- [ ] `src/api/client.ts` axios instance with interceptors (auth header,
-      401 redirect to login)
+- [ ] Install all deps from `dashboard/CLAUDE.md`
+- [ ] `src/config.ts` reading from `window.__APP_CONFIG__`
+- [ ] `src/api/client.ts` axios instance with interceptors
 - [ ] `src/hooks/useAuth.tsx` provider + hook
 - [ ] `src/pages/Login.tsx` working against `/auth/login`
 - [ ] `src/components/RequireAuth.tsx` route guard
-- [ ] Empty `Dashboard.tsx` showing "logged in as {user}" — confirm full
-      round trip works
-
-**Claude Code prompt:**
-> Read `dashboard/CLAUDE.md`. Scaffold the API client and auth provider.
-> JWT lives in memory (state in AuthProvider), refresh token in
-> httpOnly cookie set by server (we'll add cookie support to server
-> later — for now just localStorage as a stopgap, but document the TODO).
-> Generate `Login.tsx` using react-hook-form + zod, shadcn Form components,
-> sonner toast on error.
+- [ ] Multi-stage Dockerfile: node builder → Caddy runtime
+- [ ] Add dashboard service to `docker-compose.dev.yml`
+- [ ] `infra/caddy/Caddyfile.dev` serving dashboard + reverse-proxying
+      `/api/*` to server
 
 ---
 
@@ -250,27 +215,12 @@ Tasks:
 **Goal:** QC responsable can manage all configuration.
 
 Tasks:
-- [ ] `src/pages/DefectTypes.tsx` — table with inline add/edit, deactivate
-      with confirm dialog, **12-per-category counter visible**
-- [ ] `src/pages/Operators.tsx` — table with add/edit, PIN set dialog
-      (4-digit numeric, confirm twice)
-- [ ] `src/pages/DefectCategories.tsx` — simple list, edit category names only
-- [ ] Optimistic updates with TanStack Query mutations
-- [ ] Toast on success/failure for every mutation
+- [ ] `pages/DefectTypes.tsx` with 12-per-category visible counter
+- [ ] `pages/Operators.tsx` with PIN set dialog
+- [ ] `pages/DefectCategories.tsx`
+- [ ] Optimistic updates with TanStack Query
+- [ ] Toasts for all mutations
 - [ ] One Vitest smoke test per page
-
-**Claude Code prompt:**
-> Generate `pages/DefectTypes.tsx`. Layout: page header with title and
-> "Add defect" button, two side-by-side cards (one per category), each
-> card shows current count (e.g. "8 / 12") in red when at cap. Add
-> button is disabled at cap with tooltip explaining why. List rows have
-> inline edit (label + active toggle) and a deactivate button (soft-delete).
-> Use shadcn Card, Table, Dialog, Form, Switch. Hook into `useDefectTypes`,
-> `useCreateDefectType`, `useUpdateDefectType`, `useArchiveDefectType` (all
-> in `hooks/defect-types.ts`).
-
-Risks: Optimistic updates with cap enforcement is tricky — if the optimistic
-state would exceed 12, surface error before the server roundtrip.
 
 ---
 
@@ -279,62 +229,38 @@ state would exceed 12, surface error before the server roundtrip.
 **Goal:** QC responsable can see data and patterns.
 
 Tasks:
-- [ ] `src/pages/Logs.tsx` — filterable table (date range with default
-      last-7-days, operator dropdown, defect type dropdown, device dropdown),
-      CSV export button, pagination (50 per page)
-- [ ] `src/pages/Analytics.tsx`:
-      - Daily defect count line chart (Recharts)
-      - Top 10 defects bar chart
-      - Operator × defect heatmap
-      - Hour-of-day distribution
-- [ ] Date range picker reusable component
-
-**Claude Code prompt:**
-> Generate `pages/Analytics.tsx` with four Recharts visualizations laid
-> out in a responsive 2×2 grid. Data from the `/stats/*` endpoints via
-> TanStack Query hooks. Each chart in its own card with a title, a
-> period selector (7d/30d/90d) at top right, and a loading skeleton.
-> For the heatmap, use a custom Recharts implementation or a simple
-> table with color-graded cells (Tailwind bg-red-{intensity}).
-
-Risks: Recharts heatmaps are awkward. A colored-cell HTML table is
-often better than fighting the library.
+- [ ] `pages/Logs.tsx` with filters, CSV export, pagination
+- [ ] `pages/Analytics.tsx`: daily count, top defects, heatmap,
+      hour-of-day distribution
+- [ ] Reusable date range picker
 
 ---
 
 ## Day 11 🤖 — Devices page + dashboard home
 
-**Goal:** Status visibility for the QC responsable.
+**Goal:** Status visibility.
 
 Tasks:
-- [ ] `src/pages/Devices.tsx` — list of devices, last seen, current config
-      version, online/offline indicator (green if last_seen < 90s ago),
-      polling every 10s via TanStack Query refetchInterval
-- [ ] `src/pages/Dashboard.tsx` (home) — four stat tiles: today's defect count,
-      defects this week, active devices, top defect this week. Recent logs
-      feed (last 10) below.
-- [ ] Navigation sidebar with all pages
-- [ ] Settings page stub (change own password)
+- [ ] `pages/Devices.tsx` with online/offline, RSSI if exposed, config
+      version, last-seen
+- [ ] `pages/Dashboard.tsx` (home) with stat tiles + recent logs feed
+- [ ] Navigation sidebar
+- [ ] Settings page stub
 
 ---
 
 ## Day 12 🤖🔧 — Polish + integration test
 
-**Goal:** Dashboard feels finished. Manual end-to-end test passes.
+**Goal:** Dashboard feels finished. Manual E2E test passes.
 
 Tasks:
-- [ ] Run the seed script on the RPi server
-- [ ] Walk through every page from the dashboard at `http://<rpi-ip>:8000`
-      using the deployed server (not localhost)
+- [ ] Run seed script on RPi server
+- [ ] Walk through every page at the deployed URL (not localhost)
 - [ ] Use `mosquitto_pub` to inject fake defect logs, watch dashboard
-      update in real time (poll-based — no websocket yet)
-- [ ] Fix any visual or UX issues
-- [ ] Test on a tablet-sized screen (the QC responsable might use one)
-- [ ] Build production bundle: `pnpm build`, serve via Caddy on RPi
+- [ ] Fix visual/UX issues
+- [ ] Test on tablet-sized screen
+- [ ] Build production images, push to RPi
 - [ ] Commit & tag `dashboard-v0.1.0`
-
-Risks: Dashboard built for desktop may break on tablet. Test resolution
-matters — Caddy needs to serve the SPA with fallback to `/index.html`.
 
 ---
 
@@ -342,18 +268,19 @@ matters — Caddy needs to serve the SPA with fallback to `/index.html`.
 
 ## Day 13 🔧 — TouchGFX project & screen skeletons
 
-**Goal:** TouchGFX project created with all screens defined (empty).
+**Goal:** TouchGFX project with all screens defined (empty).
 
 Tasks:
-- [ ] Open TouchGFX Designer, create new project from H750B-DK template
-- [ ] Define screens: `screenSplash`, `screenLogin`, `screenProductRef`,
-      `screenDefects`, `screenSummary`
-- [ ] Set up navigation: splash → login → productRef → defects ↔ summary
-- [ ] Define color palette (high contrast: white BG, dark blue accents,
-      green/red for status), one shared text style
-- [ ] Generate code, build, flash. Confirm you can tap through empty screens.
+- [ ] Open TouchGFX Designer, new project from H7B3I-DK template
+- [ ] Define screens: splash, login, productRef, defects, summary
+- [ ] Set up navigation
+- [ ] Define color palette and shared text style
+- [ ] Place TouchGFX framebuffer in SDRAM (the H7B3 has 16 MB, use it)
+- [ ] Generate code, build, flash. Tap through empty screens.
 
-Risks: TouchGFX Designer has a learning curve. Plan for half-day of fumbling.
+Risks: TouchGFX Designer has a learning curve. Half-day of fumbling
+expected. H7B3I-DK template configures SDRAM correctly out of the box —
+do not modify.
 
 ---
 
@@ -362,138 +289,114 @@ Risks: TouchGFX Designer has a learning curve. Plan for half-day of fumbling.
 **Goal:** Working numeric keypad and PIN flow with hard-coded operators.
 
 Tasks:
-- [ ] Design login screen in Designer:
-      - Title "Painting QC" + plant logo
-      - 4 PIN dots (Image widgets, swap source between empty/filled)
-      - Numeric keypad 0–9 + clear + enter (use a Container with 12 Buttons)
-- [ ] Custom code in `LoginPresenter.cpp/hpp`:
-      - Handle digit taps, build PIN buffer
-      - On 4 digits, check against hard-coded `{1234: "Mohammed"}` map
-      - On match: store operator in `model`, navigate to productRef
-      - On mismatch: show error toast, clear PIN
-- [ ] Operator name appears briefly between login and productRef screen
+- [ ] Design login screen: title, plant logo, 4 PIN dots, numeric keypad
+- [ ] `LoginPresenter` handles PIN buffer, hard-coded operator check
+- [ ] Operator name shown briefly between login and productRef
 
 **Claude Code prompt:**
-> In `firmware/TouchGFX/gui/src/login_screen/LoginView.cpp` and the
-> corresponding Presenter, implement the PIN logic per `firmware/CLAUDE.md`.
-> Hard-code 3 operators (Mohammed/1234, Aïcha/5678, Karim/9999) in
-> `Model.cpp` for now. The Presenter holds the buffer; the View renders
-> filled-dot images based on Presenter state via `setDigitCount(int)`.
+> In firmware/TouchGFX/gui/src/login_screen/, implement the PIN logic
+> per firmware/CLAUDE.md. Hard-code 3 operators in Model.cpp. Presenter
+> holds the buffer; View renders filled dots via setDigitCount(int).
 
 ---
 
-## Day 15 🔧🤖 — Defect grid screen (the big one)
+## Day 15 🔧🤖 — Defect grid screen
 
 **Goal:** 2-column defect grid with hard-coded config rendering correctly.
 
 Tasks:
-- [ ] In Designer, lay out screenDefects:
-      - Top header: operator name, product ref, defect count badge,
-        sync status icon
-      - Two large containers side-by-side, each with 12 button slots
-        in a 4×3 grid
-      - Bottom: "Finish" button
-- [ ] Make each button 100×60 px with text label centered
-- [ ] In `DefectsView`: implement `refresh()` reading
-      `model->getDefectConfig()` and binding labels + visibility
-- [ ] In `DefectsPresenter`: handle button taps, log to a hard-coded
-      in-RAM array (real publish comes Phase 4)
-- [ ] Confirmation toast component (overlay container, auto-dismiss
-      after 1.5s, slide-in animation)
+- [ ] In Designer: 2 containers, 12 button slots each (4×3 grid)
+- [ ] Top header: operator, product ref, defect count, sync icon
+- [ ] `DefectsView::refresh()` reads model, binds labels + visibility
+- [ ] `DefectsPresenter` handles taps, logs to in-RAM array
+- [ ] Confirmation toast component
 
 **Claude Code prompt:**
-> Read `firmware/CLAUDE.md`. Implement `DefectsView::refresh()` that
-> reads `presenter->getConfig()` (a `DefectConfig` struct) and binds
-> the 24 pre-placed buttons (named `btnCat1_0` through `btnCat1_11`
-> and `btnCat2_0` through `btnCat2_11`). For each visible defect,
-> set the corresponding TextArea buffer via `Unicode::strncpy` and
-> `invalidate()`. Hide unused slots with `setVisible(false)`. Maintain
-> a parallel array `slotToDefectId[24]` that the tap handler uses.
-
-Risks: TouchGFX text buffers are wide chars. The `Unicode::strncpy` API
-is mandatory — regular `strncpy` will silently produce garbage.
+> Implement DefectsView::refresh() reading presenter->getConfig() and
+> binding 24 pre-placed buttons (btnCat1_0..btnCat1_11, btnCat2_0..
+> btnCat2_11). For each visible defect, set the TextArea buffer via
+> Unicode::strncpy and invalidate(). Hide unused slots. Maintain
+> slotToDefectId[24] for tap handlers.
 
 ---
 
 ## Day 16 🔧 — Remaining screens & polish
 
-**Goal:** Splash, product ref, summary, error states all working.
-
 Tasks:
-- [ ] Splash: animated logo + "Connecting..." text, auto-advance after 1s
-      (will gate on real MQTT connect later)
-- [ ] Product ref: alphanumeric on-screen keyboard (or simpler: 6-digit
-      numeric for PoC), "Start Inspection" button
-- [ ] Summary screen: defects logged this session in a scrollable list,
-      "End Shift" and "New Product" buttons
-- [ ] Persistent error banner component for "offline" state
-- [ ] Sync status icon (placeholder for now — colored circle)
-
-Risks: Alphanumeric on-screen keyboards in TouchGFX are tedious. Numeric-only
-for product ref is a reasonable PoC scope.
+- [ ] Splash, productRef, summary screens
+- [ ] Persistent error banner for offline state
+- [ ] Sync icon (placeholder for now)
 
 ---
 
 ## Day 17 🔧 — Operator usability test
 
-**Goal:** Real human user feedback before investing in networking.
+**Goal:** Real human feedback before networking.
 
-Tasks:
-- [ ] Schedule 30 min with an actual operator or production supervisor
-- [ ] Set up the STM32 at their workstation, on a table at realistic height
-- [ ] Pre-load with realistic defect labels (get from QC responsable)
-- [ ] Have them go through a fake inspection while you observe silently
-- [ ] Capture: tap accuracy, time vs paper, points of confusion, fonts
-      legible at distance, anything they say out loud
-- [ ] Brief debrief: "What would make this faster than paper?"
-- [ ] Document findings in `docs/usability-test-1.md`
-- [ ] Spend remaining time fixing the top 2–3 issues found
-
-Risks: This is the single most important day in the project. Resist the urge
-to "demo" — be quiet, watch, take notes. Friction here predicts adoption failure.
+Tasks: as before — schedule 30 min, observe silently, capture findings
+in `docs/usability-test-1.md`, fix top 2–3 issues.
 
 ---
 
 # Phase 4 — STM32 Networking & MQTT (Days 18–24)
 
-## Day 18 🔧 — LwIP + Ethernet bring-up
+**Note:** This phase is rewritten for Wi-Fi via the Inventek ISM43340.
+The original wired-Ethernet plan was higher-risk; the Wi-Fi path is
+actually simpler because the module owns the IP stack.
 
-**Goal:** STM32 has a working IP stack on the LAN.
+## Day 18 🤖🔧 — Wi-Fi module driver bring-up
+
+**Goal:** STM32 connects to AP, gets an IP, can `ping` the RPi.
 
 Tasks:
-- [ ] In CubeMX: enable ETH peripheral, LwIP middleware, DHCP, SNTP
-- [ ] Configure interrupt priorities (LwIP needs `tcpip_thread`)
-- [ ] In code: implement `net_task.c` that brings up LwIP after FreeRTOS starts
-- [ ] On link-up, log assigned IP via SWO
-- [ ] Implement a tiny TCP echo test: open port 7, echo bytes
-- [ ] From RPi: `nc <stm32-ip> 7` → type, see echo
-- [ ] If ping/TCP fails: check link LEDs, switch MAC config, RX descriptor
-      alignment in D2 SRAM
+- [ ] In CubeMX: enable SPI4 (or whichever SPI is wired to the Wi-Fi
+      module on H7B3I-DK — check schematic), enable the DRDY GPIO with
+      EXTI interrupt
+- [ ] Vendor ST's Network Library from STM32CubeH7
+      (`Middlewares/ST/STM32_Network_Library`) OR use ST's WIFI BSP
+      driver for ISM43340
+- [ ] Implement `Application/platform/platform_stm32h7b3.c` glue for
+      SPI transactions to the Wi-Fi module
+- [ ] Implement `Application/net/net_wifi_ism43340.c` wrapping the
+      driver in the `net.h` API
+- [ ] Hard-code SSID/PSK temporarily (move to provisioning Day 23)
+- [ ] On boot: connect to AP, log assigned IP via SWO
+- [ ] Add a simple TCP test: open a socket to RPi:9000, send "hello"
+- [ ] On RPi: `nc -l 9000` → see "hello"
+- [ ] Confirm `ping <stm32-ip>` from RPi succeeds
 
-Risks: H7 + LwIP is notorious for cache coherency issues. The Ethernet
-descriptors must be in an uncached SRAM region (D2 SRAM via MPU config or
-linker). Many tutorials are wrong. Use ST's `STM32CubeH7` reference example
-as ground truth.
+**Claude Code prompt:**
+> Implement Application/net/net_wifi_ism43340.c implementing the API in
+> net.h. Wrap calls to ST's WIFI BSP driver (or the Network Library's
+> socket layer). Track link state in a static flag; emit FreeRTOS
+> events EVT_WIFI_CONNECTED / EVT_WIFI_DISCONNECTED. Implement
+> exponential backoff reconnect. Read SSID/PSK from a struct passed at
+> init — do NOT hardcode strings.
+
+Risks: Wi-Fi module firmware version matters. If connection is flaky:
+1. Verify module firmware version (community reports older versions
+   fail to associate)
+2. Check RSSI — too far from AP causes intermittent issues
+3. Verify SPI clock isn't too high — start at 10 MHz, increase if stable
+
+This day was the riskiest in the original wired plan. With Wi-Fi via
+the ISM43340, the risk is reduced because the module handles MAC, PHY,
+TCP, and DHCP for us — no LwIP, no cache-coherency issues.
 
 ---
 
-## Day 19 🔧🤖 — SNTP + identity
+## Day 19 🤖 — SNTP + device identity
 
 **Goal:** STM32 knows its own ID and the current time.
 
 Tasks:
 - [ ] Implement `device_id()` returning a stable lowercase hex string
-      derived from STM32 UID (`HAL_GetUIDw0/1/2`)
-- [ ] Configure LwIP SNTP client pointing at RPi
-- [ ] Verify time sync: log `time(NULL)` periodically, confirm it matches RPi
-- [ ] Set time on RTC (BKP-backed) so it survives soft resets
-
-**Claude Code prompt:**
-> Implement `app/device_id.c/h`: a function returning `"qc-stm32-XXXXXXXX"`
-> where X = lowercase hex of the lower 32 bits of the chip UID. Cache the
-> result in BSS after first call. Then implement `sntp_task.c` that
-> initializes LwIP's SNTP at boot, syncs to the host in `config.h`, and
-> calls a callback that sets the RTC.
+      from STM32 UID (`HAL_GetUIDw0/1/2`)
+- [ ] Implement SNTP client in `Application/net/sntp_client.c` using
+      `net.h` socket API (NOT a Wi-Fi-module-specific call — keep
+      transport-agnostic)
+- [ ] Sync to RPi's NTP service, set RTC
+- [ ] Log time periodically, confirm it matches RPi
 
 ---
 
@@ -502,26 +405,28 @@ Tasks:
 **Goal:** Client connects, subscribes, publishes status.
 
 Tasks:
-- [ ] Vendor coreMQTT (git submodule under `Middlewares/coreMQTT`)
-- [ ] Implement transport interface (LwIP raw sockets or Netconn API)
+- [ ] Vendor coreMQTT as a submodule under `Middlewares/coreMQTT`
+- [ ] Implement `Application/mqtt/mqtt_transport.c` for coreMQTT,
+      using `net.h` (NOT the Wi-Fi module driver directly)
 - [ ] `mqtt_task.c`: connect loop with exponential backoff
 - [ ] Publish `qc/device/<id>/status` every 30s (QoS 0)
 - [ ] Subscribe to `qc/config/defects`, `qc/config/operators`,
       `qc/device/<id>/cmd` (QoS 1)
-- [ ] On connect: log "MQTT connected" via SWO
-- [ ] Smoke test: server's `mosquitto` log shows the subscription
+- [ ] Smoke test: Mosquitto logs show subscriptions
 
 **Claude Code prompt:**
-> Generate `firmware/Application/mqtt_task.c` using coreMQTT and LwIP
-> netconn API for transport. Single FreeRTOS task. State machine:
-> DISCONNECTED → CONNECTING → CONNECTED → DISCONNECTED on error.
-> Reconnect with exponential backoff capped at 30s. While CONNECTED,
-> loop calling `MQTT_ProcessLoop` with a 1000 ms timeout. Status
-> publish handled via a 30s xTimer that signals via a queue.
+> Generate firmware/Application/mqtt/mqtt_task.c using coreMQTT.
+> Transport via Application/mqtt/mqtt_transport.c calling net_socket_*
+> functions. Single FreeRTOS task. State machine: DISCONNECTED →
+> CONNECTING → CONNECTED → DISCONNECTED on error. Reconnect with
+> exponential backoff (cap 30s). While CONNECTED, MQTT_ProcessLoop
+> with 1000ms timeout. Status publish via a 30s xTimer signaling a
+> queue. Wait on EVT_WIFI_CONNECTED before first connect attempt.
 
-Risks: coreMQTT's transport interface is generic — you must write the
-LwIP glue. This is ~150 lines of careful code (send, recv with timeout,
-clean close).
+Risks: coreMQTT's transport interface is just function pointers for
+`send` and `recv`. Mapping to `net_socket_send/recv` is straightforward
+(~50 lines). Be careful about how the Wi-Fi module reports partial
+sends and timeouts — wrap them to behave like POSIX sockets.
 
 ---
 
@@ -531,83 +436,97 @@ clean close).
 
 Tasks:
 - [ ] Vendor jsmn (`Middlewares/jsmn`)
-- [ ] Implement `config_parse.c`: parse JSON payload from MQTT into a
-      stack-allocated `DefectConfig` struct, validate all fields,
-      return 0 on success
-- [ ] On valid parse: copy to model (mutex-protected), set event group bit
-      `CONFIG_UPDATED`
-- [ ] GUI task observes event group, calls `currentScreen->refresh()`
-- [ ] End-to-end test: modify a defect label in dashboard → see it on STM32
-      within a couple seconds
+- [ ] Implement `Application/domain/defect_config.c`: parse JSON into
+      a stack-allocated struct, validate every field, return error
+      codes
+- [ ] On valid parse: copy to model (mutex-protected), set
+      `EVT_CONFIG_UPDATED`
+- [ ] GUI task observes event, calls `currentScreen->refresh()`
+- [ ] End-to-end test: modify a defect label in dashboard → see it on
+      STM32 within seconds
 
 **Claude Code prompt:**
-> Implement `config_parse.c` using jsmn. Parser is strict: max 24
-> categories, max 24 defects, label max 24 chars including null. Reject
-> on any field missing or wrong type. Return negative error codes from
-> `app_errors.h`. Generate a host-side test harness in `firmware/tests/`
-> that runs the parser against 5 fixture JSON files (valid, missing field,
-> extra field, oversize label, bad type).
-
-Risks: jsmn returns tokens, not parsed values. The parser is ~200 lines of
-careful index walking. Test thoroughly off-target before integrating.
+> Implement Application/domain/defect_config.c using jsmn. Strict
+> parser: max 24 categories, max 24 defects, label max 24 chars.
+> Reject on missing field, wrong type, oversize. Return negative error
+> codes from app_errors.h. Generate a host-side test harness in
+> firmware/tests/ running against 5 fixture JSON files (valid,
+> missing field, extra field, oversize label, bad type). The parser
+> code must compile against both APP_TARGET_STM32H7B3 and
+> APP_TARGET_HOST unchanged.
 
 ---
 
 ## Day 22 🤖 — Defect log publish
 
-**Goal:** Tapping a defect button on STM32 puts a row in the SQLite DB.
+**Goal:** Tapping a defect button puts a row in the SQLite DB.
 
 Tasks:
-- [ ] `DefectsPresenter`: on button tap, build a `defect_log_t` (operator id,
-      defect id, product ref, timestamp, device id) and push to publish queue
-- [ ] `mqtt_task`: drain publish queue, format JSON, publish QoS 1 on
-      `qc/device/<id>/defect`
-- [ ] On server side: confirm `defect_logs` row appears, visible in
-      dashboard's Recent Logs feed
-- [ ] Measure end-to-end latency (tap → DB row): should be <500 ms
+- [ ] `DefectsPresenter`: on tap, build a `defect_log_t`, push to
+      publish queue
+- [ ] `mqtt_task`: drain publish queue, format JSON, publish QoS 1
+- [ ] Server side: confirm `defect_logs` row appears, dashboard shows
+      it within seconds
+- [ ] Measure end-to-end latency (tap → DB row): target <1000 ms on
+      Wi-Fi
+
+Note: Wi-Fi latency is typically 50–200 ms in good conditions, vs
+~10–50 ms on wired Ethernet. Still well within usability.
 
 ---
 
-## Day 23 🤖 — Persistent config + operator list
+## Day 23 🤖 — Provisioning, persistent config, operator list
 
-**Goal:** STM32 boots into a usable UI before MQTT connects, using cached config.
+**Goal:** STM32 boots usable with cached config. Credentials are
+provisioned per-device, not hardcoded.
 
 Tasks:
-- [ ] Implement `config_store.c`: write/read `DefectConfig` and `OperatorList`
-      to QSPI flash at fixed offsets, with magic number + version + CRC32
-- [ ] On boot, before MQTT: load both from flash, populate model
-- [ ] On valid MQTT config receive: write back to flash if version changed
-- [ ] Move operator check from hard-coded list to the model's `OperatorList`
-- [ ] Hash compare for PIN (argon2 ON STM32 — verify cycle count is acceptable;
-      fallback to sha256(pin+salt) if argon2 is too slow)
+- [ ] Implement `Application/persistence/config_store.c`: read/write
+      `DefectConfig`, `OperatorList`, and `WiFiCredentials` to Octo-SPI
+      at fixed offsets, with magic + version + CRC32
+- [ ] On boot, before Wi-Fi: load all three from flash, populate model
+- [ ] On valid MQTT config receive: write back to flash if version
+      changed (defect config and operators only — Wi-Fi creds are write-
+      once at provisioning)
+- [ ] Move operator check from hard-coded list to the model
+- [ ] PIN hash compare (sha256 + salt for PoC; argon2 if cycle count
+      acceptable)
+- [ ] Implement `scripts/provision-device.sh` on server side:
+      1. Generate Wi-Fi creds + MQTT creds for the device
+      2. Output a binary blob to be flashed at a known Octo-SPI offset
+         via STM32CubeProgrammer
+      3. Add MQTT creds to Mosquitto ACL
 
 **Claude Code prompt:**
-> Implement `config_store.c/h`. QSPI is memory-mapped at `0x90800000`.
-> Write functions use the QSPI driver's program/erase APIs (not memory-
-> mapped writes). Layout: 4-byte magic, 4-byte version, 4-byte length,
-> 4-byte CRC32, payload. Reserve 64 KB for config_defects, 64 KB for
-> config_operators. Implement erase-sector-then-program semantics. Verify
-> by reading back through memory-mapped region.
+> Implement Application/persistence/config_store.c. Octo-SPI is memory-
+> mapped at 0x90000000. Writes go through octospi_driver.c which
+> temporarily unmaps, programs, and remaps. Layout per
+> firmware/CLAUDE.md memory map. Three records: defect_config (16 KB),
+> operator_list (16 KB), wifi_credentials (4 KB). Each has magic +
+> version + length + CRC32 header. Provide read/write/validate
+> functions. Generate a host test using a file-backed fake.
 
-Risks: QSPI write/erase requires unmapping memory-mapped mode, writing,
-remapping. Get this wrong and you can corrupt running code if assets are
-also in QSPI. Read ST's AN5050 carefully.
+Risks: Octo-SPI write/erase requires unmapping memory-mapped mode.
+Get this wrong and you corrupt running code if assets are in Octo-SPI.
+For the PoC, place TouchGFX assets in internal flash (we have 2 MB, that's
+plenty) to avoid this risk entirely. Read ST's AN5050.
 
 ---
 
-## Day 24 🤖 — Sync indicator + cleanup
+## Day 24 🤖 — Sync indicator + connection UX
 
-**Goal:** UI accurately reflects network state.
+**Goal:** UI accurately reflects network and broker state.
 
 Tasks:
-- [ ] Sync status icon: green (connected, queue empty), amber (connected
-      but draining queue), red (disconnected >60s)
-- [ ] Connection state events from `mqtt_task` → event group → GUI redraws
-      the icon
+- [ ] Sync status icon: 3 states (red disconnected, amber connected to
+      Wi-Fi but no MQTT, green fully connected)
+- [ ] Connection state events from `net_task` and `mqtt_task` → event
+      group → GUI redraws icon
+- [ ] Show RSSI value somewhere accessible (small text in corner or
+      diagnostic screen). Useful for plant-floor signal-strength debug.
 - [ ] Disable "Start Inspection" if no config has ever been received
-      (first-boot guard)
-- [ ] Test: unplug cable, watch icon go red within 60s; plug back, watch
-      it go green within a few seconds
+- [ ] Test: walk away from AP, watch icon degrade; come back, watch it
+      recover
 
 ---
 
@@ -615,56 +534,50 @@ Tasks:
 
 ## Day 25 🤖 — Offline queue
 
-**Goal:** Defect logs survive a disconnected period and replay in order.
+**Goal:** Defect logs survive disconnected periods and replay in order.
 
 Tasks:
-- [ ] `defect_queue.c`: circular buffer in QSPI, ~1000 entries of 64 bytes each
-- [ ] On publish failure (or while DISCONNECTED): append to queue
-- [ ] On reconnect: `queue_task` drains queue, publishing one at a time,
-      waiting for QoS 1 puback before advancing the tail pointer
-- [ ] Queue depth visible in sync icon hover state (or as a count badge)
+- [ ] `Application/persistence/defect_queue.c`: circular buffer in
+      Octo-SPI, ~1000 entries × 64 bytes
+- [ ] On publish failure or while disconnected: append
+- [ ] On reconnect: drain in order, wait for QoS 1 puback before
+      advancing tail
+- [ ] Queue depth visible in sync icon
+- [ ] Test: kill Wi-Fi (`net_disconnect_ap()` from a debug command),
+      log 20 defects, restore Wi-Fi, verify all 20 arrive in DB
 
 **Claude Code prompt:**
-> Implement `defect_queue.c/h` as a power-loss-safe circular buffer in
-> QSPI flash. Use double-buffered head/tail pointers in their own sector
-> with sequence numbers; pick the higher sequence on boot. Each entry is
-> a fixed 64-byte record. Provide `queue_push`, `queue_peek`, `queue_pop`,
-> `queue_depth`. Add a host-side test harness simulating writes, power
-> losses (interrupt mid-write), and recovery.
+> Implement Application/persistence/defect_queue.c as a power-loss-safe
+> circular buffer in Octo-SPI. Use double-buffered head/tail pointers
+> in their own sector with sequence numbers; pick the higher sequence
+> on boot. 64-byte fixed records. queue_push/peek/pop/depth. Host
+> tests simulating power loss mid-write.
 
-Risks: Power-loss safety is the hard part. Without double buffering you
-can lose the queue on a crash mid-update.
+Risks: Wi-Fi will drop more often than wired Ethernet would have. The
+queue is more important here than in the original plan.
 
 ---
 
 ## Day 26 🤖 — Watchdog + recovery
 
-**Goal:** System self-recovers from hangs and unexpected states.
+**Goal:** Self-recovery from hangs.
 
 Tasks:
-- [ ] IWDG enable at 8s timeout, kick from a low-priority watchdog task
-      that itself waits on a queue from every other task
+- [ ] IWDG at 8s timeout, kicked from `wdg_task` which waits on each
+      other task's heartbeat queue
 - [ ] If any task fails to check in within 6s, watchdog stops kicking → reset
-- [ ] On reset, log a "recovered from watchdog reset" entry (read RCC reset
+- [ ] On reset: log "recovered from watchdog reset" (read RCC reset
       flags before clearing)
-- [ ] Server side: systemd `Restart=always` on FastAPI, MQTT bridge, Caddy
+- [ ] Special case: if Wi-Fi module hangs (DRDY pin stuck), watchdog
+      resets the whole MCU — but also expose `platform_wifi_module_reset()`
+      to allow a softer recovery first
 
 ---
 
 ## Day 27 🤖 — Server hardening
 
-**Goal:** Server tolerates restarts, power cuts, growing data.
-
-Tasks:
-- [ ] SQLite WAL mode in `db.py` engine config
-- [ ] `scripts/backup-db.sh` doing `.backup` to dated file in `/var/backups/qc/`,
-      keep last 14 days
-- [ ] Add cron entry for daily backup
-- [ ] Log rotation via journald + size limits
-- [ ] Verify Mosquitto persistence file survives restart (retained messages
-      still delivered to new subscriber)
-- [ ] Add `/api/health/detailed` reporting DB OK, MQTT broker OK,
-      last-seen of each device, current config version
+Same as before. SQLite WAL, daily backup, log rotation, healthcheck
+endpoint, retained messages survive Mosquitto restart.
 
 ---
 
@@ -673,17 +586,19 @@ Tasks:
 **Goal:** PoC-appropriate security baseline.
 
 Tasks:
-- [ ] Each STM32 has its own MQTT credentials in QSPI (not hard-coded);
-      provisioning script writes them at flash time
-- [ ] Mosquitto ACL: each device username restricted to its own topics
-- [ ] Caddy in front of FastAPI with self-signed cert; document trust setup
-      on dashboard machines
-- [ ] Operator PINs hashed with argon2 (or sha256 fallback) — never logged
-- [ ] Audit code for any `print()` of secrets
-- [ ] `.env.example` finalized; real `.env` confirmed not in git
+- [ ] Each STM32 has its own MQTT credentials in Octo-SPI (provisioning)
+- [ ] Each STM32 has its own Wi-Fi credentials in Octo-SPI (provisioning) —
+      enables per-device WPA2 PSK rotation later, or migration to WPA-
+      Enterprise if needed
+- [ ] Mosquitto ACL: each device username restricted to own topics
+- [ ] Caddy in front of FastAPI with self-signed cert
+- [ ] Operator PINs hashed (argon2 or sha256+salt) — never logged
+- [ ] Audit code for any `printf` of secrets
+- [ ] `.env.example` finalized
 
-Risks: If argon2 is too slow on STM32 (it might be — it's memory-hard),
-fall back to PBKDF2-SHA256 with high iteration count.
+Note: Wi-Fi traffic on the plant network is not encrypted end-to-end
+beyond WPA2. For the PoC this is acceptable; for production, enable
+`APP_FEATURE_MQTT_TLS=1` and provision per-device certificates.
 
 ---
 
@@ -692,33 +607,28 @@ fall back to PBKDF2-SHA256 with high iteration count.
 **Goal:** Confirm failure modes are clean.
 
 Tasks:
-- [ ] **Cable pull:** log 30 defects while disconnected → reconnect → all 30 arrive
-- [ ] **Power cut on STM32 mid-log:** verify no corruption, in-flight log lost
-      (acceptable) but queue intact
-- [ ] **Power cut on RPi:** boot back up, retained config still delivered,
-      DB intact
+- [ ] **Wi-Fi outage:** kill the AP, log 30 defects, restore, verify all 30
+- [ ] **Power cut on STM32:** verify no flash corruption, queue intact
+- [ ] **Power cut on RPi:** boot back up, retained config still arrives
 - [ ] **Config change while STM32 offline:** STM32 reconnects, immediately
       receives new config via retained message
-- [ ] **Two STM32s** (if you have a second board, or use a software MQTT
-      client mocking one): both stay in sync, defects from both logged
-- [ ] **24-hour soak test:** leave the system running overnight, monitor
-      memory leaks via heap stats, MQTT reconnect counts
-
-Risks: This is where bugs hide. Allocate the full day for finding and fixing.
+- [ ] **RSSI degradation:** physically move farther from AP, observe
+      reconnect behavior — document min usable RSSI
+- [ ] **24-hour soak test:** overnight, monitor heap, reconnect count
 
 ---
 
 ## Day 30 🤖🔧 — Documentation & demo prep
 
-**Goal:** Project ready to show stakeholders.
-
 Tasks:
-- [ ] `README.md` — what the project does, screenshots, quickstart
-- [ ] `docs/deployment.md` — how to flash STM32, how to deploy server
-- [ ] `docs/operator-guide.md` — one-page printable for operators
-- [ ] `docs/qc-guide.md` — how the QC responsable uses the dashboard
-- [ ] Record a 3-minute screen+phone video of full workflow
-- [ ] Tag the milestone: `v0.1.0-pilot-ready`
+- [ ] `README.md` with screenshots and quickstart
+- [ ] `docs/deployment.md` covering Wi-Fi network setup
+- [ ] `docs/operator-guide.md` — one-page printable
+- [ ] `docs/qc-guide.md` — for the responsable
+- [ ] `docs/wifi-troubleshooting.md` — RSSI, reconnect, diagnostic
+      screen usage
+- [ ] 3-minute screen+phone demo video
+- [ ] Tag `v0.1.0-pilot-ready`
 
 ---
 
@@ -727,134 +637,92 @@ Tasks:
 ## Day 31 🔧 — Plant deployment
 
 Tasks:
-- [ ] Mount STM32 in a temporary enclosure (cardboard or 3D-printed bracket
-      is fine) at a real inspection station
-- [ ] Run Ethernet to the nearest switch (coordinate with IT in advance)
+- [ ] Mount STM32 in temporary enclosure at one inspection station
+- [ ] **Site survey first** — measure RSSI from the chosen location to
+      the AP. If < -70 dBm, move the AP or add a repeater before going
+      live. Painting equipment is electrically noisy; signal margin
+      matters.
+- [ ] Provision device: flash with unique Wi-Fi + MQTT creds, MAC-
+      registered in router if isolation is desired
 - [ ] RPi in QC office, on UPS if possible
-- [ ] Power both up, confirm operator can log in, full flow works in situ
-- [ ] Print the operator quick-start sheet, tape it next to the station
+- [ ] Operator can log in, full flow works in situ
+- [ ] Print quick-start sheet, tape next to station
 
 ---
 
-## Day 32 🔧 — Shadow day 1
+## Day 32–35 🔧 — Shadow + iterate
 
-Tasks:
-- [ ] Stand next to the operator for the first 2 hours of their shift
-- [ ] Note every hesitation, every wrong tap, every "what does this mean?"
-- [ ] Check dashboard in real time, confirm data is flowing
-- [ ] After lunch: address the top 2 issues with hotfix flash + dashboard
-      deploy if possible
-- [ ] Brief end-of-day debrief with operator
-
----
-
-## Day 33–35 🔧 — Iterate
-
-Tasks:
-- [ ] Address fixable issues from shadow day
-- [ ] Check in with operator daily, briefly
-- [ ] Watch dashboard data accumulate, sanity-check it against operator
-      memory ("does this look like a normal day to you?")
+As before. Note any Wi-Fi-specific issues (reconnect events, dropped
+defects ending up in offline queue) and address.
 
 ---
 
 ## Day 36 🔧 — QC responsable training
 
-Tasks:
-- [ ] 60 min session with the QC responsable
-- [ ] Show every dashboard page, every feature
-- [ ] Have them add a new defect type, watch it appear on STM32
-- [ ] Have them filter logs, export a CSV
-- [ ] Hand off `docs/qc-guide.md`
+As before.
 
 ---
 
 ## Day 37–40 🔧 — Hands-off observation
 
-Tasks:
-- [ ] No interventions unless something breaks
-- [ ] Daily 5-min check of dashboard for data flow + device status
-- [ ] Note any issues raised by operator or QC responsable
+Pay extra attention to Wi-Fi reliability metrics in the dashboard
+(devices page should show reconnect count per device).
 
 ---
 
 ## Day 41 🔧 — Pattern analysis
 
-**Goal:** Did the system surface patterns invisible on paper?
-
-Tasks:
-- [ ] Pull 7 days of data, generate a report
-- [ ] Look for:
-      - Defect rate spikes correlating with time of day
-      - Specific defects clustering on specific product references
-      - Operator-specific patterns (likely indicates training need, not
-        operator fault — frame carefully)
-- [ ] Sit with QC responsable, walk through findings together
-- [ ] Compare to their paper-era intuition: confirm or surprise?
+As before — the value proposition test.
 
 ---
 
 ## Day 42 🔧 — Decision day
 
-**Goal:** Documented go/no-go on next phase, with rationale.
+Same three possible outcomes as the original plan, plus a fourth
+specific to Wi-Fi choice:
 
-Tasks:
-- [ ] Structured interview with operator and QC responsable
-      ("Would you go back to paper? What's missing? What's better?")
-- [ ] Quantify if possible: defects logged per shift vs paper era
-- [ ] Write `docs/pilot-results.md` with findings, recommendations, v2 backlog
-- [ ] Present to management or stakeholders
-- [ ] Three possible outcomes:
-      1. **Scale:** plan to deploy at 5–10 more stations
-      2. **Productionize:** invest in proper enclosures, redundancy,
-         MES integration
-      3. **Pivot:** if STM32 iteration speed was a blocker, evaluate
-         RPi-Zero-based stations for v2
+1. **Scale** to more stations on same architecture
+2. **Productionize** with proper enclosures, redundancy
+3. **Pivot hardware** (e.g., RPi-based stations for v2)
+4. **Switch transport to wired** — if Wi-Fi reliability proved
+   inadequate, swap to W5500 Ethernet shield. Thanks to `net.h`
+   abstraction, this is a ~3-day change, not a rewrite.
 
 ---
 
 # Working with Claude Code — Daily Rituals
 
-Adopt these habits from day 1:
+**Start of session:** Give Claude Code a one-line context with current day.
 
-**Start of session:** Open the repo, give Claude Code a one-line context:
-"Working on Day 14, login screen. Yesterday I finished Day 13 (screen
-skeletons). Reference firmware/CLAUDE.md."
+**Before generating code:** Make sure relevant `CLAUDE.md` and `docs/*.md`
+are up to date. Outdated context → plausible-looking wrong code.
 
-**Before generating code:** Make sure the relevant `CLAUDE.md` and the
-relevant `docs/*.md` file are up to date. Outdated context produces
-plausible-looking but wrong code.
+**After generating code:** Always read it. Especially firmware — silent
+bugs cost hours.
 
-**After generating code:** Always read it before running. Especially on
-firmware — silent bugs there cost hours to debug.
+**End of session:** Ask for a summary of changes + what's next, paste
+into `TODO.md`.
 
-**End of session:** Ask Claude Code to summarize what changed, what's
-half-finished, and what's next. Paste that summary into a `TODO.md` so
-tomorrow's session starts with context.
-
-**Weekly:** Ask Claude Code to review the week's commits against the
-roadmap and `docs/decisions.md`. Catch architectural drift early.
+**Weekly:** Review the week's commits against the roadmap and
+`docs/decisions.md`. Catch drift early.
 
 ---
 
 # Scope-Cut Options if Behind Schedule
 
-In rough priority order — drop the bottom first:
+Priority order — drop bottom first:
 
 1. Stats heatmap → keep top defects + daily count only
-2. CSV export → defer to v2
-3. Settings page → defer (use seed script for user creation)
+2. CSV export → defer
+3. Settings page → defer
 4. Watchdog task → defer (rely on systemd + manual restart)
-5. argon2 PIN hash → use sha256+salt for PoC (faster on STM32)
-6. Power-loss-safe queue → use simple non-atomic queue (data loss on power
-   cut is OK for PoC)
-7. Two-device test → defer (one device proves the architecture)
-8. argon2 for dashboard passwords → use bcrypt
+5. argon2 PIN hash → use sha256+salt
+6. Power-loss-safe queue → use simple non-atomic queue
+7. argon2 for dashboard passwords → use bcrypt
+8. Two-device test → defer
 
 Never cut:
-- The Phase 3.17 usability test
-- The Phase 6.32 shadow day
-- The Phase 6.41 pattern analysis
-
-These are the demonstrations of value. Without them the PoC doesn't prove
-anything.
+- The Phase 3 Day 17 usability test
+- The Phase 6 Day 32 shadow day
+- The Phase 6 Day 41 pattern analysis
+- **The Day 31 site survey** — added for the Wi-Fi path

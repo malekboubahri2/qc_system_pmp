@@ -1,13 +1,23 @@
 # Firmware — Claude Code Context
 
-STM32H750B-DK application: TouchGFX UI + FreeRTOS + LwIP + coreMQTT.
+STM32H7B3I-DK application: TouchGFX UI + FreeRTOS + Inventek Wi-Fi + coreMQTT.
 
 ## Critical context
 
-The board's internal flash is only 128 KB. TouchGFX assets (fonts, images,
-screen layouts) live on external QSPI flash, memory-mapped at `0x90000000`.
-Linker scripts must place `.gnu.linkonce.t.ttdf*` and similar TouchGFX sections
-there. Do not "fix" linker scripts unless you understand the dual-flash layout.
+**No LwIP.** The on-board Inventek ISM43340 Wi-Fi module is not a bare radio;
+it's a self-contained networking appliance with its own STM32F405 host and a
+full TCP/IP stack. The H7B3 host MCU controls it over SPI via an AT-command-
+style protocol. Our firmware uses the module's socket API (open/connect/
+send/recv/close); we do not run a TCP/IP stack ourselves.
+
+The MCU is the STM32H7B3LIH6Q: 2 MB internal flash, 1.4 MB internal RAM,
+single Cortex-M7 @ 280 MHz (NOT dual-core — some web sources are wrong).
+On-board: 16 MB SDRAM and 64 MB Octo-SPI flash, both memory-mappable.
+
+Internal flash is generous enough to hold all application code and many
+TouchGFX assets; we do NOT need the dual-flash linker complexity that
+the H750B-DK forces. Octo-SPI is used for asset overflow (large images
+or fonts), the config store, and the offline defect queue.
 
 ## Layout
 
@@ -16,7 +26,8 @@ firmware/
 ├── PaintingQC.ioc                # CubeMX config
 ├── Core/                         # CubeMX-generated HAL init, main.c
 ├── Drivers/                      # HAL, BSP, CMSIS
-├── Middlewares/                  # FreeRTOS, LwIP, coreMQTT, jsmn
+│   └── BSP/                      # Board support, includes ISM43340 driver bring-up
+├── Middlewares/                  # FreeRTOS, coreMQTT, jsmn, ST Network Library
 ├── TouchGFX/
 │   ├── PaintingQC.touchgfx       # Designer file
 │   ├── generated/                # Auto-generated, DO NOT EDIT BY HAND
@@ -24,36 +35,38 @@ firmware/
 │   │   ├── include/{model,presenter,view}/
 │   │   └── src/
 │   └── target/                   # FreeRTOS task driving TouchGFX engine
-├── Application/                  # Our application code, modular
+├── Application/
 │   ├── config/
-│   │   ├── app_config.h          # Top-level build flags & feature macros
+│   │   ├── app_config.h          # Build flags & feature macros
 │   │   ├── app_errors.h          # Error code enum
 │   │   └── app_version.h         # Generated from git tag at build
 │   ├── platform/                 # Hardware Abstraction Layer (HAL)
-│   │   ├── platform.h            # Public API
-│   │   ├── platform_stm32h7.c    # Real implementation
+│   │   ├── platform.h            # Public API: stable across hardware swaps
+│   │   ├── platform_stm32h7b3.c  # Real implementation
 │   │   ├── platform_host.c       # Host-side stub for unit tests
-│   │   └── qspi_driver.{c,h}
+│   │   └── octospi_driver.{c,h}
 │   ├── net/
-│   │   ├── net.h
-│   │   ├── net_task.c
-│   │   └── sntp_client.{c,h}
+│   │   ├── net.h                 # Public socket API our app uses
+│   │   ├── net_wifi_ism43340.c   # Default: Wi-Fi via Inventek module
+│   │   ├── net_eth_w5500.c       # Alternate: future wired Ethernet shield
+│   │   ├── net_host.c            # Host stub for tests
+│   │   └── sntp_client.{c,h}     # Uses net.h, transport-agnostic
 │   ├── mqtt/
 │   │   ├── mqtt_task.{c,h}
-│   │   ├── mqtt_transport.{c,h} # LwIP glue for coreMQTT
-│   │   └── mqtt_topics.h        # Topic strings, one source of truth
+│   │   ├── mqtt_transport.{c,h}  # coreMQTT transport — calls net.h
+│   │   └── mqtt_topics.h         # Topic strings, single source of truth
 │   ├── persistence/
-│   │   ├── config_store.{c,h}
-│   │   └── defect_queue.{c,h}
-│   ├── domain/                  # Business logic, NO hardware dependencies
-│   │   ├── defect_config.{c,h}  # parser, validator, accessors
+│   │   ├── config_store.{c,h}    # Octo-SPI-backed config cache
+│   │   └── defect_queue.{c,h}    # Octo-SPI circular buffer
+│   ├── domain/                   # Business logic, NO hardware dependencies
+│   │   ├── defect_config.{c,h}
 │   │   ├── operator_list.{c,h}
 │   │   ├── session.{c,h}
 │   │   └── pin_hash.{c,h}
-│   ├── app_events.h             # FreeRTOS event group bits, queue handles
-│   ├── app_log.h                # APP_LOG macro
-│   └── main_app.c               # FreeRTOS task creation, kicks off everything
-└── tests/                       # Host-side tests for portable modules
+│   ├── app_events.h              # FreeRTOS event group bits, queue handles
+│   ├── app_log.h                 # APP_LOG macro
+│   └── main_app.c                # FreeRTOS task creation
+└── tests/                        # Host-side tests for portable modules
     ├── Makefile
     ├── mocks/
     └── test_*.c
@@ -62,70 +75,101 @@ firmware/
 ## Modularity rules
 
 - **Three concentric layers:** `domain/` (pure, portable) → `net/`,
-  `persistence/`, `mqtt/` (use platform) → `platform/` (hardware).
+  `persistence/`, `mqtt/` (use platform & net) → `platform/` (hardware).
   Arrows only go down. `domain/` never includes a HAL header.
-- **One module = one folder or one `.c/.h` pair.** Header has only the public
-  API; implementation details stay in `.c`. Use `static` aggressively.
+- **One module = one folder or one `.c/.h` pair.** Header has only the
+  public API; everything else `static`.
 - **No globals across module boundaries.** State exposed via accessor
-  functions. Inter-module comms via queues/event groups declared in
-  `app_events.h`.
-- **No business logic in TouchGFX Views.** Views render; Presenters decide;
-  Models hold state. Domain logic lives in `Application/domain/`, not in GUI code.
-- **No HAL calls from Views or Presenters.** If a presenter needs persistence,
-  it calls `config_store_*`, which calls the platform layer.
+  functions. Inter-module comms via queues/event groups in `app_events.h`.
+- **No business logic in TouchGFX Views.** Views render; Presenters
+  decide; Models hold state. Domain logic in `Application/domain/`.
+- **No HAL calls from Views, Presenters, or domain.** If they need
+  persistence, they call `config_store_*`, which calls the platform layer.
 
-## Hardware Abstraction (`platform/`)
+## Network abstraction (critical for portability)
 
-The platform layer is the single bridge between application code and the
-STM32 HAL. Everything above it is portable.
+The whole point of `net/` is that the rest of the codebase doesn't care
+*how* IP packets get out. `net.h` defines a minimal socket-like API:
 
-`platform.h` defines a narrow interface:
 ```c
-int  platform_init(void);
-uint32_t platform_uptime_ms(void);
-int  platform_random_bytes(uint8_t *out, size_t n);
-int  platform_qspi_read(uint32_t offset, void *buf, size_t n);
-int  platform_qspi_write(uint32_t offset, const void *buf, size_t n);
-int  platform_qspi_erase_sector(uint32_t offset);
-void platform_reboot(void);
-/* … */
+typedef int net_socket_t;
+
+int  net_init(const net_config_t *cfg);   /* SSID, PSK, etc. */
+int  net_connect_ap(void);
+int  net_disconnect_ap(void);
+bool net_is_link_up(void);
+int  net_get_ip(uint8_t out_ip[4]);
+
+net_socket_t net_socket_open(net_proto_t proto);
+int  net_socket_connect(net_socket_t s, const char *host, uint16_t port);
+int  net_socket_send(net_socket_t s, const void *buf, size_t n, uint32_t to_ms);
+int  net_socket_recv(net_socket_t s, void *buf, size_t n, uint32_t to_ms);
+int  net_socket_close(net_socket_t s);
+
+int  net_sntp_sync(const char *server, uint32_t *out_unix_time);
 ```
 
-Two implementations:
-- `platform_stm32h7.c` — real hardware, calls into STM32 HAL
-- `platform_host.c` — runs on a Linux dev machine with files as fake QSPI
+Three implementations selected at build time:
+- `net_wifi_ism43340.c` — default. Talks to Inventek module over SPI.
+  Uses ST's Network Library or a custom AT-command driver.
+- `net_eth_w5500.c` — future fallback if Wi-Fi proves unreliable.
+  Uses WIZnet ioLibrary for an SPI-attached W5500 shield.
+- `net_host.c` — POSIX sockets, for host-side tests.
 
-This makes `domain/`, `persistence/`, and most of `mqtt/` testable on a
-laptop without flashing.
+Selection via `APP_NET_BACKEND` macro in `app_config.h`. The MQTT
+transport, SNTP client, and queue task all call `net_*` functions —
+they don't know which backend is active. **This is what makes the
+Wi-Fi/Ethernet swap a contained change later.**
+
+## Wi-Fi specifics (ISM43340)
+
+- Connect via SPI4 (per H7B3I-DK schematic — verify pins in `.ioc`)
+- DRDY pin signals when the module has data to send
+- Module firmware version matters; older firmwares are flaky.
+  Document the verified version in `docs/firmware-versions.md`.
+  Reference: STM32CubeH7 patch includes the working module firmware
+  and example driver (see ST Network Library).
+- Reconnect strategy: on link loss, exponential backoff up to 30s.
+  Persist last-known-good AP credentials in Octo-SPI (provisioned at
+  flash time, never hardcoded).
+- Do NOT use the module's HTTP client. We use raw TCP for MQTT.
 
 ## Build Flags & Feature Macros
 
 `Application/config/app_config.h` is the single source of truth for
-compile-time configuration. Pattern:
+compile-time configuration.
 
 ```c
 /* ============ Build target ============ */
-#define APP_TARGET_STM32H7   1
-#define APP_TARGET_HOST      2
+#define APP_TARGET_STM32H7B3   1
+#define APP_TARGET_HOST        2
 #ifndef APP_TARGET
-  #define APP_TARGET APP_TARGET_STM32H7
+  #define APP_TARGET APP_TARGET_STM32H7B3
+#endif
+
+/* ============ Network backend ============ */
+#define APP_NET_BACKEND_WIFI_ISM43340  1
+#define APP_NET_BACKEND_ETH_W5500      2
+#define APP_NET_BACKEND_HOST           3
+#ifndef APP_NET_BACKEND
+  #define APP_NET_BACKEND APP_NET_BACKEND_WIFI_ISM43340
 #endif
 
 /* ============ Feature toggles ============ */
 #ifndef APP_FEATURE_MQTT_TLS
-  #define APP_FEATURE_MQTT_TLS       0   /* PoC: cleartext on plant LAN */
+  #define APP_FEATURE_MQTT_TLS       0   /* PoC: cleartext */
 #endif
-
 #ifndef APP_FEATURE_OFFLINE_QUEUE
   #define APP_FEATURE_OFFLINE_QUEUE  1
 #endif
-
 #ifndef APP_FEATURE_ARGON2_PIN
   #define APP_FEATURE_ARGON2_PIN     0   /* fallback: sha256+salt */
 #endif
-
 #ifndef APP_FEATURE_WATCHDOG
   #define APP_FEATURE_WATCHDOG       1
+#endif
+#ifndef APP_FEATURE_SDRAM_FRAMEBUFFER
+  #define APP_FEATURE_SDRAM_FRAMEBUFFER 1  /* H7B3 has SDRAM, use it */
 #endif
 
 /* ============ Sizing ============ */
@@ -138,6 +182,7 @@ compile-time configuration. Pattern:
 /* ============ Timing ============ */
 #define APP_MQTT_STATUS_PERIOD_MS    30000
 #define APP_MQTT_RECONNECT_MAX_MS    30000
+#define APP_WIFI_RECONNECT_MAX_MS    30000
 #define APP_SNTP_RESYNC_PERIOD_MS    3600000  /* 1h */
 
 /* ============ Logging ============ */
@@ -157,21 +202,20 @@ compile-time configuration. Pattern:
 ```
 
 Rules:
-- **Every feature toggleable** at compile time gets an `APP_FEATURE_*` macro
-  with a sane default
-- Use `#if APP_FEATURE_X` blocks, NOT `#ifdef` — that way the macro is always
-  defined and accidentally-undefined macros become compile errors
-- Pass overrides via `-DAPP_FEATURE_X=1` in CubeIDE project settings or
-  `Makefile`. Never edit `app_config.h` to disable a feature for one build.
-- Sizing macros let us tune per target (e.g., smaller queue on a future
-  L-series port)
+- **Every toggleable feature** gets an `APP_FEATURE_*` macro with a default
+- Use `#if APP_FEATURE_X`, not `#ifdef` — accidentally-undefined macros
+  become compile errors
+- Pass overrides via `-DAPP_FEATURE_X=1` in CubeIDE → C/C++ Build →
+  Settings → Preprocessor
+- Sizing macros allow tuning per future target (e.g., smaller queue
+  on an L-series port)
 - All `#define`s here are documented in `docs/build-flags.md`
 
 ## Inter-task communication
 
 `Application/app_events.h` declares:
 - FreeRTOS event group `app_events` with named bits:
-  - `EVT_NET_LINK_UP`, `EVT_NET_LINK_DOWN`
+  - `EVT_WIFI_CONNECTED`, `EVT_WIFI_DISCONNECTED`
   - `EVT_MQTT_CONNECTED`, `EVT_MQTT_DISCONNECTED`
   - `EVT_CONFIG_UPDATED`, `EVT_OPERATORS_UPDATED`
   - `EVT_QUEUE_NONEMPTY`
@@ -186,63 +230,74 @@ Never declare ad-hoc globals to share state. Use the events module.
 | Task | Priority | Stack | Purpose |
 |---|---|---|---|
 | `GUI_Task` (TouchGFX) | normal | 4 KB | TouchGFX engine, screen rendering |
-| `mqtt_task` | normal | 4 KB | coreMQTT loop, reconnect, queue drain |
-| `net_task` | high | 2 KB | LwIP `tcpip_thread` (managed by LwIP) |
+| `net_task` | high | 3 KB | Wi-Fi link management, reconnect |
+| `mqtt_task` | normal | 4 KB | coreMQTT loop, reconnect, publish queue |
 | `sntp_task` | low | 1 KB | Periodic time sync |
 | `queue_task` | low | 2 KB | Drain offline defect queue on reconnect |
-| `wdg_task` | highest | 512 B | Aggregate task heartbeats, kick IWDG |
+| `wdg_task` | highest | 512 B | Aggregate heartbeats, kick IWDG |
 
 ## Memory map (high level)
 
-- `0x08000000` — internal flash (128 KB) — bootloader + tiny core
-- `0x24000000` — AXI SRAM (512 KB) — heap, stacks, framebuffers
-- `0x30000000` — D2 SRAM — Ethernet descriptors (uncached region)
-- `0x90000000` — QSPI flash (128 MB), memory-mapped:
-  - `0x90000000`–`0x907FFFFF` — TouchGFX assets
-  - `0x90800000`–`0x9080FFFF` — Config store (defect/operator cache)
+H7B3I-DK has substantially more on-chip memory than the H750:
+- `0x08000000` — internal flash (2 MB) — application code + small assets
+- `0x20000000` — DTCM SRAM (128 KB) — fast, no DMA — FreeRTOS heap here
+- `0x24000000` — AXI SRAM (512 KB) — general-purpose
+- `0x30000000` — D2 SRAM (288 KB) — peripheral DMA buffers
+- `0x38000000` — D3 SRAM (64 KB) — backup-domain RAM
+- `0x60000000` — FMC/SDRAM (16 MB) — TouchGFX framebuffer, asset cache
+- `0x90000000` — Octo-SPI flash (64 MB), memory-mapped:
+  - `0x90000000`–`0x907FFFFF` — TouchGFX asset overflow (if needed)
+  - `0x90800000`–`0x9080FFFF` — Config store
   - `0x90810000`–`0x908FFFFF` — Defect log offline queue (circular)
+  - `0x90820000`–`0x9082FFFF` — Wi-Fi credentials (provisioning sector)
+
+Exact offsets validated against linker script before code freeze.
 
 ## Conventions
 
 - C11. No C++ outside TouchGFX-generated code.
-- Header guards `#ifndef APP_FOO_H` style. No `#pragma once`.
+- Header guards `#ifndef APP_FOO_H`. No `#pragma once`.
 - One `init`, one `task` function per module.
-- Error returns: `int`, 0 = ok, negative = error code from `app_errors.h`.
+- Error returns: `int`, 0 = ok, negative = error from `app_errors.h`.
 - Logging:
   ```c
-  APP_LOG(APP_LOG_LEVEL_INFO, "mqtt", "connected to %s", host);
+  APP_LOG(APP_LOG_LEVEL_INFO, "wifi", "connected to %s", ssid);
   ```
-  Macro evaluates to nothing if level exceeds `APP_LOG_LEVEL`. Zero overhead
-  in release builds.
+  Compiles to nothing if level exceeds `APP_LOG_LEVEL`.
 - File header comment with one-sentence purpose. No author tags.
 
 ## Host-side tests
 
-`tests/` builds on a Linux/macOS host using `platform_host.c`.
-Run with `make test`. Tests cover:
+`tests/` builds on a Linux/macOS host using `platform_host.c` and
+`net_host.c`. Run with `make test`. Tests cover:
 - `defect_config` JSON parsing (fuzz with malformed inputs)
 - `operator_list` parsing
 - `defect_queue` circular buffer (including simulated power-loss)
 - `pin_hash` correctness
-- `config_store` round-trip with fake QSPI
+- `config_store` round-trip with fake Octo-SPI
+- `mqtt_transport` against a real Mosquitto on localhost
 
-Anything in `domain/` MUST have host tests. Anything in `platform/` cannot.
-Modules in between may have partial coverage.
+Anything in `domain/` MUST have host tests. Anything in `platform/`
+cannot. Modules in between have partial coverage.
 
 ## DO NOT
 
+- Do not introduce LwIP. The Wi-Fi module is the IP stack.
 - Do not edit anything under `TouchGFX/generated/`. Regenerate from Designer.
-- Do not call HAL functions from anywhere but `platform/`.
+- Do not call HAL functions from anywhere but `platform/` and the
+  ISM43340 driver internals.
 - Do not use `printf` directly. Use `APP_LOG`.
-- Do not enable Wi-Fi peripherals. Wired-only.
-- Do not add a feature without an `APP_FEATURE_*` flag if it could ever be
+- Do not hardcode SSID, PSK, or broker IP in source. Provisioning writes
+  them to Octo-SPI.
+- Do not add a feature without an `APP_FEATURE_*` flag if it could be
   optional.
-- Do not increase task stack sizes without checking `uxTaskGetStackHighWaterMark`.
-- Do not put domain logic in TouchGFX View/Presenter code — keep it in
-  `Application/domain/` so it's testable on the host.
+- Do not increase task stack sizes without checking
+  `uxTaskGetStackHighWaterMark`.
+- Do not put domain logic in TouchGFX View/Presenter code.
 
 ## Useful debug commands
 
 - ST-Link CLI flash: `STM32_Programmer_CLI -c port=SWD -w PaintingQC.elf -rst`
 - Live SWO log capture: `STM32_Programmer_CLI -c port=SWD -SWV portb=2000000`
 - Host tests: `cd firmware/tests && make && ./run_tests`
+- Wi-Fi module firmware check: `ATCMD test program` from STM32CubeH7 examples
