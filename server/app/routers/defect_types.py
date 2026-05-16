@@ -11,10 +11,11 @@ router = APIRouter(prefix="/defect-types", tags=["defect-types"])
 @router.get("", response_model=list[DefectTypeRead])
 def list_types(
     category_id: int | None = None,
+    include_archived: bool = False,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
-    return svc.get_all(db, category_id=category_id)
+    return svc.get_all(db, category_id=category_id, active_only=not include_archived)
 
 
 @router.post("", response_model=DefectTypeRead, status_code=status.HTTP_201_CREATED)

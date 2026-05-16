@@ -69,7 +69,7 @@ def publish_operator_list() -> None:
     try:
         operators = (
             db.query(Operator)
-            .filter(Operator.active.is_(True))
+            .filter(Operator.active.is_(True), Operator.pin_hash.isnot(None))
             .order_by(Operator.id)
             .all()
         )

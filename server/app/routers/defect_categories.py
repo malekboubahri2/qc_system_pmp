@@ -9,8 +9,12 @@ router = APIRouter(prefix="/defect-categories", tags=["defect-categories"])
 
 
 @router.get("", response_model=list[DefectCategoryRead])
-def list_categories(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
-    return svc.get_all(db)
+def list_categories(
+    include_archived: bool = False,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    return svc.get_all(db, active_only=not include_archived)
 
 
 @router.post("", response_model=DefectCategoryRead, status_code=status.HTTP_201_CREATED)

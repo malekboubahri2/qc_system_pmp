@@ -5,6 +5,7 @@ from pydantic import BaseModel
 class DeviceRead(BaseModel):
     id: str
     last_seen: Optional[str] = None
+    online: bool
     config_version: Optional[int] = None
     operator_version: Optional[int] = None
     active: bool

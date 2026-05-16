@@ -10,7 +10,7 @@ class Operator(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
-    pin_hash: Mapped[str] = mapped_column(String, nullable=False)
+    pin_hash: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
     archived_at: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     created_at: Mapped[str] = mapped_column(
@@ -18,3 +18,7 @@ class Operator(Base):
         nullable=False,
         server_default=text("(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))"),
     )
+
+    @property
+    def pin_set(self) -> bool:
+        return self.pin_hash is not None

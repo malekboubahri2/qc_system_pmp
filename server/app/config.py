@@ -39,4 +39,4 @@ class Settings(BaseSettings):
     feature_flags_refresh_secs: int = Field(default=30)
 
 
-settings = Settings()
+settings = Settings()  # type: ignore[call-arg]  # pydantic-settings reads from env

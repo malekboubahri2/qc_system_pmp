@@ -18,6 +18,7 @@ class DefectCategoryRead(BaseModel):
     display_order: int
     active: bool
     created_at: str
+    defect_count: int = 0
 
     model_config = {"from_attributes": True}
 

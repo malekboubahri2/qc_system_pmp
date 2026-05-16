@@ -131,3 +131,57 @@ def test_archived_type_does_not_count_toward_cap(client, auth_headers):
 def test_type_unknown_category_returns_404(client, auth_headers):
     resp = _create_type(client, auth_headers, 9999, "Ghost")
     assert resp.status_code == 404
+
+
+# ── defect_count ──────────────────────────────────────────────────────────────
+
+def test_defect_category_includes_active_count_only(client, auth_headers):
+    cat = _create_category(client, auth_headers, "Count Test")
+    for i in range(5):
+        _create_type(client, auth_headers, cat["id"], f"Active {i}")
+    # Create 3 more then archive them.
+    archived = [
+        _create_type(client, auth_headers, cat["id"], f"Arch {i}").json()
+        for i in range(3)
+    ]
+    for t in archived:
+        client.delete(f"/defect-types/{t['id']}", headers=auth_headers)
+
+    resp = client.get("/defect-categories", headers=auth_headers)
+    counts = {c["id"]: c["defect_count"] for c in resp.json()}
+    assert counts[cat["id"]] == 5
+
+
+# ── include_archived ──────────────────────────────────────────────────────────
+
+def test_list_categories_excludes_archived_by_default(client, auth_headers):
+    cat = _create_category(client, auth_headers, "ToArchive")
+    client.delete(f"/defect-categories/{cat['id']}", headers=auth_headers)
+    listing = client.get("/defect-categories", headers=auth_headers).json()
+    assert all(c["id"] != cat["id"] for c in listing)
+
+
+def test_list_categories_includes_archived_when_requested(client, auth_headers):
+    cat = _create_category(client, auth_headers, "Archived Cat")
+    client.delete(f"/defect-categories/{cat['id']}", headers=auth_headers)
+    listing = client.get("/defect-categories?include_archived=true", headers=auth_headers).json()
+    assert any(c["id"] == cat["id"] for c in listing)
+
+
+def test_list_types_excludes_archived_by_default(client, auth_headers):
+    cat = _create_category(client, auth_headers)
+    dt = _create_type(client, auth_headers, cat["id"], "ArchivedType").json()
+    client.delete(f"/defect-types/{dt['id']}", headers=auth_headers)
+    listing = client.get(f"/defect-types?category_id={cat['id']}", headers=auth_headers).json()
+    assert all(t["id"] != dt["id"] for t in listing)
+
+
+def test_list_types_includes_archived_when_requested(client, auth_headers):
+    cat = _create_category(client, auth_headers)
+    dt = _create_type(client, auth_headers, cat["id"], "ArchivedType2").json()
+    client.delete(f"/defect-types/{dt['id']}", headers=auth_headers)
+    listing = client.get(
+        f"/defect-types?category_id={cat['id']}&include_archived=true",
+        headers=auth_headers,
+    ).json()
+    assert any(t["id"] == dt["id"] for t in listing)

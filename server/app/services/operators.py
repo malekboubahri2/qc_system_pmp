@@ -26,11 +26,12 @@ def get_by_id(db: Session, operator_id: int) -> Operator:
 
 
 def create(db: Session, data: OperatorCreate) -> Operator:
-    op = Operator(name=data.name, pin_hash=hash_pin(data.pin))
+    op = Operator(name=data.name)
     db.add(op)
     db.commit()
     db.refresh(op)
-    mqtt_payloads.publish_operator_list()
+    # No MQTT publish: operator has no PIN yet, so it is not eligible for
+    # STM32 use. Publish happens after POST /operators/{id}/pin.
     return op
 
 
@@ -44,13 +45,11 @@ def update(db: Session, operator_id: int, data: OperatorUpdate) -> Operator:
     return op
 
 
-def set_pin(db: Session, operator_id: int, pin: str) -> Operator:
+def set_pin(db: Session, operator_id: int, pin: str) -> None:
     op = get_by_id(db, operator_id)
     op.pin_hash = hash_pin(pin)
     db.commit()
-    db.refresh(op)
     mqtt_payloads.publish_operator_list()
-    return op
 
 
 def archive(db: Session, operator_id: int) -> None:

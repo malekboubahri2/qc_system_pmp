@@ -1,7 +1,13 @@
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from sqlalchemy import String, Integer, Boolean, text
 from sqlalchemy.orm import Mapped, mapped_column
 from app.models.base import Base
+
+# Aligned with docs/api-spec.md and CLAUDE.md devices section:
+# a device is "online" if its status heartbeat arrived within the last 90s.
+# STM32 firmware publishes status every 30s, so 90s = 3 missed heartbeats.
+ONLINE_THRESHOLD_SECONDS = 90
 
 
 class Device(Base):
@@ -18,3 +24,13 @@ class Device(Base):
         nullable=False,
         server_default=text("(strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))"),
     )
+
+    @property
+    def online(self) -> bool:
+        if self.last_seen is None:
+            return False
+        try:
+            last = datetime.fromisoformat(self.last_seen.replace("Z", "+00:00"))
+            return (datetime.now(timezone.utc) - last) < timedelta(seconds=ONLINE_THRESHOLD_SECONDS)
+        except (ValueError, TypeError):
+            return False

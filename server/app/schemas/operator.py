@@ -3,8 +3,7 @@ from pydantic import BaseModel, Field
 
 
 class OperatorCreate(BaseModel):
-    name: str
-    pin: str = Field(min_length=4, max_length=8, pattern=r"^\d+$")
+    name: str = Field(min_length=1, max_length=64)
 
 
 class OperatorUpdate(BaseModel):
@@ -18,7 +17,9 @@ class OperatorSetPin(BaseModel):
 class OperatorRead(BaseModel):
     id: int
     name: str
+    pin_set: bool
     active: bool
     created_at: str
+    archived_at: Optional[str] = None
 
     model_config = {"from_attributes": True}

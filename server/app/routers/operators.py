@@ -9,8 +9,12 @@ router = APIRouter(prefix="/operators", tags=["operators"])
 
 
 @router.get("", response_model=list[OperatorRead])
-def list_operators(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
-    return svc.get_all(db)
+def list_operators(
+    include_archived: bool = False,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+):
+    return svc.get_all(db, active_only=not include_archived)
 
 
 @router.post("", response_model=OperatorRead, status_code=status.HTTP_201_CREATED)
@@ -41,14 +45,14 @@ def update_operator(
     return svc.update(db, operator_id, body)
 
 
-@router.put("/{operator_id}/pin", response_model=OperatorRead)
+@router.post("/{operator_id}/pin", status_code=status.HTTP_204_NO_CONTENT)
 def set_pin(
     operator_id: int,
     body: OperatorSetPin,
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
-    return svc.set_pin(db, operator_id, body.pin)
+    svc.set_pin(db, operator_id, body.pin)
 
 
 @router.delete("/{operator_id}", status_code=status.HTTP_204_NO_CONTENT)

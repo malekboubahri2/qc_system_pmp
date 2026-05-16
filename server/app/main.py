@@ -11,7 +11,12 @@ app_logging.setup_logging()
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     from app.mqtt.bridge import start, stop
+    from app.mqtt.publisher import publish_defect_config, publish_operator_list
     start()
+    # Re-publish retained config so devices get current state even if
+    # Mosquitto's persistence DB was wiped between restarts.
+    publish_defect_config()
+    publish_operator_list()
     yield
     stop()
 

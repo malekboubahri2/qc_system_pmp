@@ -51,3 +51,7 @@ def stop() -> None:
 
 def get_client() -> mqtt.Client | None:
     return _client
+
+
+def is_connected() -> bool:
+    return _connected.is_set()
