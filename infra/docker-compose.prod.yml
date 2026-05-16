@@ -1,0 +1,80 @@
+# Production stack — runs on the Raspberry Pi.
+# Pulls pre-built multi-arch images from ghcr.io; no build: directives.
+#
+# Start : docker compose -f infra/docker-compose.prod.yml up -d
+# Update: ./scripts/deploy.sh
+#
+# Secrets live in /etc/qc/.env on the RPi (root-readable only, never
+# committed). See docs/deployment.md for one-time setup.
+
+name: qc-prod
+
+services:
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    ports:
+      - "1883:1883"  # exposed to plant LAN for STM32 devices
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./mosquitto/acl.conf:/mosquitto/config/acl.conf:ro
+      - ./mosquitto/passwd:/mosquitto/config/passwd:ro
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-log:/mosquitto/log
+    env_file:
+      - /etc/qc/.env
+    networks: [qc-net]
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >
+          mosquitto_pub
+          -h 127.0.0.1 -p 1883
+          -u qc-server -P "$$MQTT_SERVER_PASSWORD"
+          -t qc/config/health -m ""
+          2>/dev/null || exit 1
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  server:
+    image: ghcr.io/${GITHUB_REPOSITORY:-OWNER/REPO}/qc-server:${QC_VERSION:-latest}
+    restart: unless-stopped
+    env_file:
+      - /etc/qc/.env
+    volumes:
+      - qc-data:/var/lib/qc
+    networks: [qc-net]
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  dashboard:
+    image: ghcr.io/${GITHUB_REPOSITORY:-OWNER/REPO}/qc-dashboard:${QC_VERSION:-latest}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    environment:
+      - API_BASE_URL=http://server:8000
+      - PLANT_NAME=${PLANT_NAME:-Plant 1}
+      - LOCALE=${LOCALE:-fr-TN}
+    networks: [qc-net]
+    depends_on:
+      server:
+        condition: service_healthy
+
+volumes:
+  qc-data:
+  mosquitto-data:
+  mosquitto-log:
+
+networks:
+  qc-net:
+    driver: bridge
