@@ -28,3 +28,16 @@ def is_enabled(name: str, default: bool = False) -> bool:
             except Exception as exc:
                 logger.warning("Feature flag refresh failed: {}", exc)
     return _cache.get(name, default)
+
+
+def reset_cache() -> None:
+    """Expire the cache immediately.
+
+    Call after a write so the same process sees its own changes on the
+    next is_enabled() call without waiting for the 30s TTL. Also call
+    in tests after DB writes to avoid stale reads.
+    """
+    global _cache_expires
+    with _lock:
+        _cache.clear()
+        _cache_expires = 0.0
