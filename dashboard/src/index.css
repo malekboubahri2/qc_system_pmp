@@ -1,0 +1,104 @@
+@import "tailwindcss";
+
+@theme {
+  /* ── Brand teal ────────────────────────────────────────── */
+  --color-brand: #1A5560;
+  --color-brand-dark: #134349;
+  --color-brand-deep: #0E353C;
+
+  /* ── Accent gold ───────────────────────────────────────── */
+  --color-accent: #D4B765;
+  --color-accent-light: #E4CD8B;
+
+  /* ── Surfaces ──────────────────────────────────────────── */
+  --color-cream: #FAEEE3;
+  --color-cream-subtle: #F5E8DC;
+
+  /* ── Semantic status ───────────────────────────────────── */
+  --color-success: #2E7D5B;
+  --color-warning: #C89238;
+  --color-danger: #B84545;
+  --color-info: #3E7B86;
+
+  /* ── Text ──────────────────────────────────────────────── */
+  --color-ink: #2D2D2D;
+  --color-ink-heading: #1A5560;
+  --color-ink-inverse: #FAEEE3;
+  --color-ink-muted: #6B6B6B;
+
+  /* ── Typography ────────────────────────────────────────── */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* ── Brand-tinted shadows ──────────────────────────────── */
+  --shadow-card: 0 1px 3px rgba(26, 85, 96, 0.08), 0 1px 2px rgba(26, 85, 96, 0.04);
+  --shadow-elevated: 0 4px 12px rgba(26, 85, 96, 0.12);
+  --shadow-popover: 0 8px 24px rgba(26, 85, 96, 0.15);
+}
+
+/* ── shadcn/ui CSS variable bridge ─────────────────────────── */
+:root {
+  --background: #FAEEE3;
+  --foreground: #2D2D2D;
+  --card: #FFFFFF;
+  --card-foreground: #2D2D2D;
+  --popover: #FFFFFF;
+  --popover-foreground: #2D2D2D;
+  --primary: #1A5560;
+  --primary-foreground: #FAEEE3;
+  --secondary: #F5E8DC;
+  --secondary-foreground: #1A5560;
+  --muted: #F5E8DC;
+  --muted-foreground: #6B6B6B;
+  --accent: #D4B765;
+  --accent-foreground: #0E353C;
+  --destructive: #B84545;
+  --destructive-foreground: #FAEEE3;
+  --border: #F5E8DC;
+  --input: #F5E8DC;
+  --ring: #D4B765;
+  --radius: 0.5rem;
+}
+
+/* ── Base ──────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: #FAEEE3;
+  color: #2D2D2D;
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.6;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: #1A5560;
+}
+
+/* ── Gold focus ring (brand signature) ─────────────────────── */
+*:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #FAEEE3, 0 0 0 4px #D4B765;
+  border-radius: 0.375rem;
+}
+
+/* ── Scrollbar styling ─────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F5E8DC;
+}
+::-webkit-scrollbar-thumb {
+  background: #1A556066;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #1A5560;
+}
