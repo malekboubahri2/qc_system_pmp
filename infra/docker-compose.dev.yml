@@ -1,0 +1,80 @@
+---
+# Painting QC — local development stack
+# Usage: docker compose -f infra/docker-compose.dev.yml up --build
+#
+# Requires infra/.env (copy from infra/.env.example).
+# Mosquitto passwd file must be bootstrapped first — see docs/deployment.md §5.
+
+networks:
+  qc-net:
+    driver: bridge
+
+volumes:
+  qc-data:       # SQLite database
+  mosquitto-data: # Mosquitto persistence (retained messages)
+
+services:
+
+  # ── MQTT broker ───────────────────────────────────────────────
+  mosquitto:
+    image: eclipse-mosquitto:2
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./mosquitto/acl.conf:/mosquitto/config/acl.conf:ro
+      - ./mosquitto/passwd:/mosquitto/config/passwd:ro
+      - mosquitto-data:/mosquitto/data
+    ports:
+      - "1883:1883"
+    networks:
+      - qc-net
+    environment:
+      # Exposed to the container so the healthcheck can authenticate.
+      MQTT_SERVER_PASSWORD: ${MQTT_SERVER_PASSWORD:-change-me}
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >
+          mosquitto_pub
+          -h 127.0.0.1 -p 1883
+          -u qc-server -P "$$MQTT_SERVER_PASSWORD"
+          -t qc/config/health -m ""
+          2>/dev/null || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 5s
+    restart: unless-stopped
+
+  # ── FastAPI server ────────────────────────────────────────────
+  qc-server:
+    build:
+      context: ../server
+      dockerfile: Dockerfile
+      target: runtime
+    # Override CMD for hot-reload in dev; migrations still run first.
+    command:
+      - sh
+      - -c
+      - alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ../server/app:/app/app  # bind-mount source for --reload
+      - qc-data:/var/lib/qc
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      MQTT_HOST: mosquitto
+      MQTT_PORT: "1883"
+    networks:
+      - qc-net
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    restart: unless-stopped
