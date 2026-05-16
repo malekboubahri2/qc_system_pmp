@@ -303,9 +303,11 @@ Firmware CI deferred to a later phase.
 - The Raspberry Pi never builds images; it only pulls from GHCR.
 - `scripts/deploy.sh` is the canonical deploy path; image build is
   decoupled from deploy.
-- ARM64 builds use QEMU emulation on amd64 runners (~15 min).
-  Acceptable at PoC scale. Migrate to GitHub-hosted ARM64 runners if
-  build wait becomes a bottleneck (paid option for private repos).
+- ARM64 builds use GitHub-hosted native ARM64 runners
+  (`ubuntu-24.04-arm`), not QEMU emulation. Build time is ~4 min per
+  arch, matching amd64. The per-arch jobs push by digest; a merge job
+  assembles the final multi-arch manifest via `docker buildx imagetools
+  create`.
 - GHCR repo visibility matches the source repo (private). The RPi
   needs a one-time `docker login ghcr.io` with a Personal Access Token
   (`read:packages` scope).
