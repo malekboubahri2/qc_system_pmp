@@ -70,4 +70,4 @@ def test_archive_operator(client, auth_headers):
 
 
 def test_requires_auth(client):
-    assert client.get("/operators").status_code == 403
+    assert client.get("/operators").status_code == 401

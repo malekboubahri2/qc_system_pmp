@@ -24,7 +24,7 @@ services:
       - MQTT_USERNAME=dev
       - MQTT_PASSWORD=dev
       - DATABASE_URL=sqlite:////workspace/server/qc-dev.db
-      - JWT_SECRET=dev-only-not-a-real-secret
+      - JWT_SECRET=dev-only-not-a-real-secret-for-devcontainer-use
       - LOG_LEVEL=DEBUG
 
   mosquitto:

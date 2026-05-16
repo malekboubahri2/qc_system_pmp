@@ -11,13 +11,12 @@ COPY --from=ghcr.io/astral-sh/uv:0.4 /uv /usr/local/bin/uv
 
 WORKDIR /build
 
-# Copy only the dependency manifest first so this layer is cached
-# when only source code changes.
-COPY pyproject.toml .
+# Copy manifests first so dep layer is cached when only source changes.
+COPY pyproject.toml uv.lock ./
 
 ENV VIRTUAL_ENV=/build/.venv
-RUN uv venv $VIRTUAL_ENV && \
-    uv pip install --python $VIRTUAL_ENV/bin/python .
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev --no-install-project
 
 # ── runtime ────────────────────────────────────────────────────
 FROM python:3.11-slim AS runtime

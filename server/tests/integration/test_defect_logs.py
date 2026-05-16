@@ -111,5 +111,5 @@ def test_export_csv(client, auth_headers, seed):
 
 
 def test_requires_auth(client):
-    assert client.get("/logs").status_code == 403
-    assert client.get("/logs/export.csv").status_code == 403
+    assert client.get("/logs").status_code == 401
+    assert client.get("/logs/export.csv").status_code == 401

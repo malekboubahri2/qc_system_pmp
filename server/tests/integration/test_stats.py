@@ -90,4 +90,4 @@ def test_days_validation(client, auth_headers):
 
 def test_requires_auth(client):
     for path in ["/stats/summary", "/stats/by-defect", "/stats/by-operator", "/stats/heatmap"]:
-        assert client.get(path).status_code == 403
+        assert client.get(path).status_code == 401

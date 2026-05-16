@@ -2,7 +2,6 @@ import csv
 import io
 from typing import Iterator, Optional
 
-from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.defect import DefectCategory, DefectLog, DefectType

@@ -26,4 +26,4 @@ def test_me_returns_user(client, test_user, auth_headers):
 
 def test_me_requires_auth(client):
     resp = client.get("/auth/me")
-    assert resp.status_code == 403
+    assert resp.status_code == 401

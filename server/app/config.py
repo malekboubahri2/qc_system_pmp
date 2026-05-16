@@ -13,7 +13,13 @@ class Settings(BaseSettings):
     database_url: str = Field(default="sqlite:////var/lib/qc/qc.db")
 
     # JWT
-    jwt_secret: str = Field(default="dev-secret-change-in-production")
+    jwt_secret: str = Field(
+        ...,
+        min_length=32,
+        description="HMAC signing key for JWTs. Must be ≥32 bytes. "
+                    "Required at startup — no default. Generate with: "
+                    "python -c 'import secrets; print(secrets.token_urlsafe(48))'",
+    )
     jwt_expiry_seconds: int = Field(default=3600)
 
     # MQTT
