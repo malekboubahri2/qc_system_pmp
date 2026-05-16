@@ -3,7 +3,15 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { AuthProvider } from '@/hooks/useAuth';
 import { RequireAuth } from '@/components/RequireAuth';
+import { AppShell } from '@/components/shared/AppShell';
 import { LoginPage } from '@/pages/Login';
+import { DashboardPage } from '@/features/dashboard';
+import { DefectsPage } from '@/features/defect-types';
+import { OperatorsPage } from '@/features/operators';
+import { LogsPage } from '@/features/logs';
+import { AnalyticsPage } from '@/features/analytics';
+import { DevicesPage } from '@/features/devices';
+import { SettingsPage } from '@/features/settings';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -14,6 +22,14 @@ const queryClient = new QueryClient({
   },
 });
 
+function ProtectedShell({ children }: { children: React.ReactNode }) {
+  return (
+    <RequireAuth>
+      <AppShell>{children}</AppShell>
+    </RequireAuth>
+  );
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -21,20 +37,40 @@ export default function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+
             <Route
-              path="/*"
-              element={
-                <RequireAuth>
-                  {/* Dashboard shell — pages added in Day 9–11 */}
-                  <div className="min-h-screen bg-cream flex items-center justify-center">
-                    <p className="text-ink-muted">Dashboard — à venir</p>
-                  </div>
-                </RequireAuth>
-              }
+              path="/"
+              element={<ProtectedShell><DashboardPage /></ProtectedShell>}
             />
+            <Route
+              path="/defects"
+              element={<ProtectedShell><DefectsPage /></ProtectedShell>}
+            />
+            <Route
+              path="/operators"
+              element={<ProtectedShell><OperatorsPage /></ProtectedShell>}
+            />
+            <Route
+              path="/logs"
+              element={<ProtectedShell><LogsPage /></ProtectedShell>}
+            />
+            <Route
+              path="/analytics"
+              element={<ProtectedShell><AnalyticsPage /></ProtectedShell>}
+            />
+            <Route
+              path="/devices"
+              element={<ProtectedShell><DevicesPage /></ProtectedShell>}
+            />
+            <Route
+              path="/settings"
+              element={<ProtectedShell><SettingsPage /></ProtectedShell>}
+            />
+
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
+
         <Toaster
           position="top-right"
           toastOptions={{
