@@ -27,10 +27,13 @@ def _on_message(_client, _userdata, msg: mqtt.MQTTMessage):
     dispatch(msg)
 
 
-def start() -> None:
+def start(client: mqtt.Client | None = None) -> None:
     global _client
-    _client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+    if client is None:
+        client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+    _client = client
     _client.username_pw_set(settings.mqtt_username, settings.mqtt_password)
+    _client.reconnect_delay_set(min_delay=1, max_delay=30)
     _client.on_connect = _on_connect
     _client.on_disconnect = _on_disconnect
     _client.on_message = _on_message
