@@ -10,7 +10,7 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - ../..:/workspace:cached
+      - ../:/workspace:cached
       # Mount host Docker socket for docker-outside-of-docker
       - /var/run/docker.sock:/var/run/docker.sock
       # Persist shell history and tool caches across container rebuilds

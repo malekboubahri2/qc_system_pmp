@@ -6,6 +6,9 @@ FROM mcr.microsoft.com/devcontainers/python:1-3.11-bookworm
 ARG NODE_VERSION=20
 ARG PNPM_VERSION=9
 
+# Remove broken Yarn repository inherited from base image
+RUN rm -f /etc/apt/sources.list.d/yarn.list
+
 # System deps: C build toolchain for host firmware tests + general tooling
 RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
@@ -31,7 +34,7 @@ RUN curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - \
 
 # uv — installed for the vscode user so it lands in ~/.local/bin
 USER vscode
-RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+RUN mkdir -p /home/vscode/.cache && curl -LsSf https://astral.sh/uv/install.sh | sh
 ENV PATH="/home/vscode/.local/bin:${PATH}"
 
 # Persist bash history across container rebuilds
