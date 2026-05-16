@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import app.logging as app_logging
 from app.config import settings
-from app.routers import health, auth, operators, defect_categories, defect_types, devices
+from app.routers import health, auth, operators, defect_categories, defect_types, devices, defect_logs, stats
 
 app_logging.setup_logging()
 
@@ -32,3 +32,5 @@ app.include_router(operators.router)
 app.include_router(defect_categories.router)
 app.include_router(defect_types.router)
 app.include_router(devices.router)
+app.include_router(defect_logs.router)
+app.include_router(stats.router)
