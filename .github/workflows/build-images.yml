@@ -45,7 +45,7 @@ jobs:
             runner: ubuntu-24.04-arm
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       # Derive short arch tag (linux/arm64 → arm64) for cache scopes and
       # artifact names. Using shell expansion avoids fragile expression logic.
