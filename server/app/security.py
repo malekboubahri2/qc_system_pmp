@@ -1,3 +1,5 @@
+import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 import argon2
@@ -33,3 +35,21 @@ def decode_access_token(token: str) -> Optional[dict]:
         return jwt.decode(token, settings.jwt_secret, algorithms=["HS256"])
     except jwt.PyJWTError:
         return None
+
+
+# PIN hashing — SHA-256 with random salt so firmware can verify in C.
+# Format: "sha256:<16-hex-char-salt>:<64-hex-char-digest>"
+def hash_pin(pin: str) -> str:
+    salt = secrets.token_hex(8)
+    digest = hashlib.sha256(f"{salt}{pin}".encode()).hexdigest()
+    return f"sha256:{salt}:{digest}"
+
+
+def verify_pin(pin: str, pin_hash: str) -> bool:
+    try:
+        algo, salt, expected = pin_hash.split(":")
+    except ValueError:
+        return False
+    if algo != "sha256":
+        return False
+    return hashlib.sha256(f"{salt}{pin}".encode()).hexdigest() == expected
