@@ -1,0 +1,11 @@
+target-version = "py311"
+line-length = 100
+
+[lint]
+select = ["E", "F"]
+ignore = [
+    "E501",   # line too long — not enforced at PoC scale
+]
+
+[lint.per-file-ignores]
+"alembic/*" = ["E402"]
