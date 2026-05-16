@@ -29,22 +29,24 @@ All endpoints require a valid JWT except:
 |---|---|---|---|
 | POST | `/auth/login` | — | Get JWT |
 | GET | `/auth/me` | ✓ | Current user info |
-| GET | `/operators` | ✓ | List active operators |
-| POST | `/operators` | ✓ | Create operator |
+| GET | `/operators` | ✓ | List operators (active by default) |
+| POST | `/operators` | ✓ | Create operator (no PIN) |
 | GET | `/operators/{id}` | ✓ | Get operator |
 | PATCH | `/operators/{id}` | ✓ | Update operator |
 | DELETE | `/operators/{id}` | ✓ | Soft-delete operator |
 | POST | `/operators/{id}/pin` | ✓ | Set operator PIN |
-| GET | `/categories` | ✓ | List active categories |
-| POST | `/categories` | ✓ | Create category |
-| PATCH | `/categories/{id}` | ✓ | Update category |
-| DELETE | `/categories/{id}` | ✓ | Soft-delete category |
-| GET | `/categories/{id}/types` | ✓ | List defect types in category |
-| POST | `/categories/{id}/types` | ✓ | Create defect type |
-| PATCH | `/types/{id}` | ✓ | Update defect type |
-| DELETE | `/types/{id}` | ✓ | Soft-delete defect type |
+| GET | `/defect-categories` | ✓ | List categories (active by default) |
+| POST | `/defect-categories` | ✓ | Create category |
+| GET | `/defect-categories/{category_id}` | ✓ | Get category |
+| PATCH | `/defect-categories/{category_id}` | ✓ | Update category |
+| DELETE | `/defect-categories/{category_id}` | ✓ | Soft-delete category |
+| GET | `/defect-types` | ✓ | List defect types (filter by category_id) |
+| POST | `/defect-types` | ✓ | Create defect type |
+| GET | `/defect-types/{type_id}` | ✓ | Get defect type |
+| PATCH | `/defect-types/{type_id}` | ✓ | Update defect type |
+| DELETE | `/defect-types/{type_id}` | ✓ | Soft-delete defect type |
 | GET | `/devices` | ✓ | List known devices |
-| GET | `/devices/{id}` | ✓ | Get device detail |
+| GET | `/devices/{device_id}` | ✓ | Get device detail |
 | GET | `/logs` | ✓ | List defect logs (filtered) |
 | GET | `/logs/export.csv` | ✓ | Export logs as CSV |
 | GET | `/stats/summary` | ✓ | Daily defect counts |
@@ -87,25 +89,49 @@ curl -X POST http://localhost:8000/auth/login \
 
 ## Operators
 
+An operator without a PIN is not eligible for STM32 login. Set a PIN
+before expecting the operator to appear on devices.
+
 ### `GET /operators`
 
-Returns active operators only. Add `?include_archived=true` for all.
+Returns active operators only by default. Add `?include_archived=true`
+to include archived operators.
 
 ```json
 // Response 200
 [
-  { "id": 1, "name": "Mohammed", "active": true, "created_at": "2024-01-10T09:00:00Z" }
+  {
+    "id": 1,
+    "name": "Mohammed",
+    "pin_set": true,
+    "active": true,
+    "created_at": "2024-01-10T09:00:00Z",
+    "archived_at": null
+  }
 ]
 ```
 
+`pin_set` is `true` if the operator has a hashed PIN stored. Only
+operators with `pin_set: true` appear in the STM32 operator list.
+
 ### `POST /operators`
+
+Creates an operator without a PIN (`pin_set: false`). Set a PIN
+separately via `POST /operators/{id}/pin`.
 
 ```json
 // Request
 { "name": "Aïcha" }
 
 // Response 201
-{ "id": 2, "name": "Aïcha", "active": true, "created_at": "2024-01-10T09:05:00Z" }
+{
+  "id": 2,
+  "name": "Aïcha",
+  "pin_set": false,
+  "active": true,
+  "created_at": "2024-01-10T09:05:00Z",
+  "archived_at": null
+}
 ```
 
 ### `PATCH /operators/{id}`
@@ -120,9 +146,7 @@ Returns active operators only. Add `?include_archived=true` for all.
 ### `DELETE /operators/{id}`
 
 Soft-delete: sets `active=false` and `archived_at`. Returns 204.
-Fails with 409 if the operator has defect logs (referenced by logs).
-Actually: never hard-fail — the operator is soft-deleted and remains
-readable in log history.
+The operator remains readable in log history.
 
 ### `POST /operators/{id}/pin`
 
@@ -133,44 +157,63 @@ readable in log history.
 // Response 204
 ```
 
-PIN is hashed server-side. The raw PIN is never stored.
-After this call, a new `qc/config/operators` MQTT message is published
-with updated hashes. See `docs/mqtt-topics.md`.
+PIN must be 4–8 numeric digits. Hashed server-side; the raw PIN is
+never stored. After this call, a new `qc/config/operators` MQTT message
+is published with updated hashes. See `docs/mqtt-topics.md`.
 
 ---
 
 ## Defect Categories
 
-### `GET /categories`
+### `GET /defect-categories`
+
+Returns active categories only by default. Add `?include_archived=true`
+to include archived categories.
 
 ```json
 // Response 200
 [
   {
-    "id": 1, "name": "Surface Defects", "display_order": 0,
-    "active": true, "defect_count": 8
+    "id": 1,
+    "name": "Surface Defects",
+    "display_order": 0,
+    "active": true,
+    "created_at": "2024-01-10T09:00:00Z",
+    "defect_count": 8
   }
 ]
 ```
 
-### `POST /categories`
+`defect_count` is the number of active (non-archived) defect types in
+the category. Max is 12.
+
+### `POST /defect-categories`
 
 ```json
 // Request
 { "name": "Assembly Defects", "display_order": 1 }
 
 // Response 201
-{ "id": 2, "name": "Assembly Defects", "display_order": 1, "active": true, ... }
+{
+  "id": 2,
+  "name": "Assembly Defects",
+  "display_order": 1,
+  "active": true,
+  "created_at": "2024-01-10T09:05:00Z",
+  "defect_count": 0
+}
 ```
 
-### `PATCH /categories/{id}`
+### `PATCH /defect-categories/{category_id}`
 
 ```json
 // Request
 { "name": "Paint Defects", "display_order": 0 }
+
+// Response 200 — updated category object
 ```
 
-### `DELETE /categories/{id}`
+### `DELETE /defect-categories/{category_id}`
 
 Soft-delete. Also soft-deletes all `defect_types` in this category.
 Returns 204. Triggers `qc/config/defects` MQTT publish.
@@ -179,42 +222,55 @@ Returns 204. Triggers `qc/config/defects` MQTT publish.
 
 ## Defect Types
 
-### `GET /categories/{id}/types`
+### `GET /defect-types`
+
+Query params: `category_id` (filter by category), `include_archived`
+(default `false`).
 
 ```json
+// GET /defect-types?category_id=1
 // Response 200
 [
-  { "id": 1, "category_id": 1, "label": "Scratch", "display_order": 0, "active": true }
+  {
+    "id": 1,
+    "category_id": 1,
+    "label": "Scratch",
+    "display_order": 0,
+    "active": true,
+    "created_at": "2024-01-10T09:00:00Z"
+  }
 ]
 ```
 
-### `POST /categories/{id}/types`
+### `POST /defect-types`
 
 ```json
 // Request
-{ "label": "Scratch", "display_order": 0 }
+{ "category_id": 1, "label": "Scratch", "display_order": 0 }
 
 // Response 201
-{ "id": 1, "category_id": 1, "label": "Scratch", "display_order": 0, "active": true }
+{ "id": 1, "category_id": 1, "label": "Scratch", "display_order": 0, "active": true, "created_at": "..." }
 
 // Response 409 — if category already has 12 active types
-{ "detail": "Category has reached the 12-defect limit." }
+{ "detail": "Category already has 12 active defect types" }
 ```
 
 After a successful create or update, the server publishes a new
 `qc/config/defects` retained MQTT message. See `docs/mqtt-topics.md`.
 
-### `PATCH /types/{id}`
+### `PATCH /defect-types/{type_id}`
 
 ```json
 // Request
 { "label": "Deep Scratch", "display_order": 0 }
+
+// Response 200 — updated defect type object
 ```
 
 Moving a defect type to a different category is not supported. Archive
 and recreate instead.
 
-### `DELETE /types/{id}`
+### `DELETE /defect-types/{type_id}`
 
 Soft-delete. Returns 204. Triggers `qc/config/defects` MQTT publish.
 
@@ -235,14 +291,16 @@ Read-only. Devices are auto-registered on first heartbeat.
     "online": true,
     "config_version": 1,
     "operator_version": 1,
+    "active": true,
     "first_seen": "2024-01-10T07:00:00Z"
   }
 ]
 ```
 
-`online` is `true` if `last_seen` is within the last 90 seconds.
+`online` is `true` if `last_seen` is within the last 90 seconds (3
+missed 30-second heartbeats from the STM32 firmware).
 
-### `GET /devices/{id}`
+### `GET /devices/{device_id}`
 
 Same shape as list item. Returns 404 if device is unknown.
 
@@ -371,12 +429,21 @@ Liveness only. Returns 200 if the process is alive.
   "status": "ok",
   "db": "ok",
   "mqtt_broker": "ok",
+  "config_version": 1,
   "devices": [
-    { "id": "qc-stm32-001a2b3c", "online": true, "last_seen": "2024-01-15T08:23:00Z" }
-  ],
-  "config_version": 1
+    {
+      "id": "qc-stm32-001a2b3c",
+      "online": true,
+      "last_seen": "2024-01-15T08:23:00Z",
+      "config_version": 1
+    }
+  ]
 }
 ```
+
+`status` is `"ok"` when both `db` and `mqtt_broker` are `"ok"`;
+`"degraded"` otherwise. This endpoint itself always returns HTTP 200 —
+it reports component health, not its own health.
 
 ---
 

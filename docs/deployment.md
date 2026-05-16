@@ -241,17 +241,13 @@ provisioning.
 
 ### Re-publish retained config after a Mosquitto wipe
 
-If `infra/mosquitto/data/mosquitto.db` is lost (wipe, first boot), the
-retained config messages must be re-published. The deploy script handles
-this automatically. If done manually:
+After a Mosquitto wipe or volume reset, the server's startup lifespan
+re-publishes all retained config messages automatically. No manual
+action needed; just restart the `server` container:
 
 ```bash
-# Trigger a re-publish of defect config and operator list
-curl -X POST http://<rpi-ip>:8000/api/v1/admin/mqtt/republish-retained
+docker compose -f infra/docker-compose.prod.yml restart server
 ```
-
-This endpoint exists for operations use only; it requires an admin JWT.
-See ADR-003 in `docs/decisions.md` for the retained-message design rationale.
 
 ---
 
@@ -311,8 +307,8 @@ After bringing up the stack and flashing a device:
   Use a dedicated SSID with a stable PSK on a closed network segment
   to minimise rotation frequency.
 - **Mosquitto restart:** Retained messages survive via the persistence DB
-  (`mosquitto.db`). If the DB is deleted, re-publish via the admin endpoint
-  (section 6) before any device power-cycles.
+  (`mosquitto.db`). If the DB is deleted, restart the `server` container
+  (section 6) — startup automatically re-publishes all retained config.
 - **Adding a new device:** Run `scripts/provision-device.sh <uid>`, copy
   credentials to the flashing tool, flash the device. No broker restart
   required.
