@@ -216,6 +216,19 @@ Tasks:
 > creates its own DB session, commits, closes. Add reconnect with
 > backoff. Mock the paho client in one pytest test.
 
+### Day 6 side task: CI setup (see ADR-012)
+
+- [x] Create `.github/workflows/ci.yml` running server pytest + ruff
+      and dashboard vitest on every push
+- [x] Create `.github/workflows/build-images.yml` building multi-arch
+      Docker images on main + tags, pushing to ghcr.io
+- [x] Add `ruff` and `mypy` to `server/pyproject.toml` dev deps
+- [ ] Run `uv lock` from `server/` to generate `server/uv.lock`
+      (required for `uv sync --frozen` in CI)
+- [ ] Verify first CI run passes (green badge on README)
+- [ ] Generate a GHCR PAT (`read:packages`), `docker login ghcr.io`
+      on the RPi once
+
 ---
 
 ## Day 7 🤖 — Stats endpoints + tests
@@ -300,7 +313,13 @@ Tasks:
 - [ ] Use `mosquitto_pub` to inject fake defect logs, watch dashboard
 - [ ] Fix visual/UX issues
 - [ ] Test on tablet-sized screen
-- [ ] Build production images, push to RPi
+- [ ] Tag a release: `git tag v0.1.0 && git push --tags` — triggers
+      the build-images workflow
+- [ ] Wait for green build in Actions (~15 min for both images)
+- [ ] Run `QC_VERSION=v0.1.0 ./scripts/deploy.sh pi@<rpi-ip>` from
+      dev laptop, or `QC_VERSION=v0.1.0 ./scripts/deploy.sh` from the
+      RPi directly
+- [ ] Verify dashboard at `http://<rpi-ip>/`
 - [ ] Commit & tag `dashboard-v0.1.0`
 
 ---

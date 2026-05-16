@@ -319,3 +319,53 @@ After bringing up the stack and flashing a device:
 - **Device offline queue:** Each STM32 queues up to 1 000 defect logs to
   Octo-SPI flash during Wi-Fi outages and drains them on reconnect. This
   covers approximately 24 hours of typical plant use.
+
+---
+
+## 10. CI/CD Deployment Workflow
+
+Images are built in GitHub Actions and pulled to the RPi — the RPi
+never builds images itself (see ADR-012).
+
+### Automated flow
+
+1. **Code change** → push to any branch
+   - `ci.yml` runs server pytest + ruff and dashboard vitest + tsc
+2. **Merge to `main`**
+   - `ci.yml` runs again
+   - `build-images.yml` builds multi-arch images, pushes to ghcr.io
+     tagged with `sha-<short>`, `main`, and `latest`
+3. **Release**
+   - `git tag v0.1.0 && git push --tags`
+   - `build-images.yml` also tags the images as `v0.1.0`, `0.1`, and
+     updates `latest`
+
+### Deploy to RPi
+
+```bash
+# From dev laptop — pulls images and restarts the stack over SSH
+QC_VERSION=v0.1.0 ./scripts/deploy.sh pi@<rpi-ip>
+
+# From the RPi itself
+QC_VERSION=v0.1.0 ./scripts/deploy.sh
+
+# Rolling back to a previous version
+QC_VERSION=v0.0.9 ./scripts/deploy.sh pi@<rpi-ip>
+```
+
+### One-time RPi setup
+
+```bash
+# On the RPi:
+mkdir -p ~/qc-deploy
+sudo mkdir -p /etc/qc
+sudo cp .env.example /etc/qc/.env   # fill in production secrets
+sudo chmod 600 /etc/qc/.env
+
+# GHCR auth — generate a Personal Access Token at
+# github.com/settings/tokens with read:packages scope
+echo "$GHCR_PAT" | docker login ghcr.io -u <github-user> --password-stdin
+```
+
+The PAT is stored in `~/.docker/config.json` and does not expire
+unless revoked. A single PAT per RPi is sufficient.

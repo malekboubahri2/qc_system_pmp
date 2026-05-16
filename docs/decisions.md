@@ -276,3 +276,46 @@ driver are also vendored under their respective paths.
 - LwIP-on-host with the Wi-Fi module as a pure SPI link: not how the
   ISM43340 firmware works (the module owns its own IP stack).
   Architecturally impossible.
+
+---
+
+## ADR-012 — CI/CD via GitHub Actions + GHCR
+
+**Date:** 2026-05-16
+**Status:** Accepted
+
+**Context:** Day 6 of the roadmap. The server has accumulated enough
+CRUD, auth, and MQTT-handler code that local test discipline alone is
+not sufficient — regressions slip between manual pytest runs. The RPi
+4B can technically build Docker images but doing so is slow (~15 min
+full stack) and competes with running services for RAM. Multi-arch
+builds belong upstream.
+
+**Decision:** Two GitHub Actions workflows:
+- `ci.yml` — runs server pytest + ruff and dashboard vitest + tsc on
+  every push and every PR to main. Target: <3 min wall time.
+- `build-images.yml` — builds and pushes multi-arch (amd64 + arm64)
+  Docker images to ghcr.io on push to `main` and on `v*` tags.
+
+Firmware CI deferred to a later phase.
+
+**Consequences:**
+- The Raspberry Pi never builds images; it only pulls from GHCR.
+- `scripts/deploy.sh` is the canonical deploy path; image build is
+  decoupled from deploy.
+- ARM64 builds use QEMU emulation on amd64 runners (~15 min).
+  Acceptable at PoC scale. Migrate to GitHub-hosted ARM64 runners if
+  build wait becomes a bottleneck (paid option for private repos).
+- GHCR repo visibility matches the source repo (private). The RPi
+  needs a one-time `docker login ghcr.io` with a Personal Access Token
+  (`read:packages` scope).
+- CI never receives production secrets. Tests use ephemeral values
+  generated per run.
+
+**Alternatives considered:**
+- Docker Hub: adds another account and rate-limits anonymous pulls.
+  Rejected.
+- Self-hosted runner on the RPi: defeats the goal of offloading builds.
+  Rejected.
+- Single unified workflow: mixes fast test feedback with slow image
+  builds; harder to triage. Rejected.
