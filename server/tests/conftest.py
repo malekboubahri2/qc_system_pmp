@@ -10,11 +10,7 @@ os.environ["DATABASE_URL"] = "sqlite:///:memory:"
 os.environ.setdefault("JWT_SECRET", "test-secret-32-chars-min-required!")
 os.environ.setdefault("MQTT_PASSWORD", "test-pass")
 
-from app.models.base import Base  # noqa: E402
-from app.db import get_session  # noqa: E402
-from app.main import app  # noqa: E402
-
-# StaticPool: all sessions/connections share one in-memory SQLite database.
+# Build the test engine first so we can patch app.db before app.main loads.
 _engine = create_engine(
     "sqlite:///:memory:",
     connect_args={"check_same_thread": False},
@@ -28,6 +24,17 @@ def _pragmas(conn, _):
     c.close()
 
 _Session = sessionmaker(autocommit=False, autoflush=False, bind=_engine)
+
+# Patch app.db BEFORE importing app.main so that deferred
+# `from app.db import SessionLocal` calls in handlers and publisher
+# resolve to the test session factory.
+import app.db as _app_db  # noqa: E402
+_app_db.engine = _engine
+_app_db.SessionLocal = _Session
+
+from app.models.base import Base  # noqa: E402
+from app.db import get_session  # noqa: E402
+from app.main import app  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
