@@ -1,0 +1,29 @@
+{
+	admin off
+}
+
+# Dev: serve on :80 via dashboard container, proxying /api/* to qc-server
+:80 {
+	root * /usr/share/caddy
+
+	handle /config.js {
+		header Content-Type "application/javascript"
+		respond `window.__APP_CONFIG__ = {
+  "apiBaseUrl": "/api",
+  "plantName": "{env.PLANT_NAME}",
+  "locale": "{env.LOCALE}"
+};`
+	}
+
+	handle /api/* {
+		uri strip_prefix /api
+		reverse_proxy {env.API_BASE_URL}
+	}
+
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
+
+	encode gzip
+}

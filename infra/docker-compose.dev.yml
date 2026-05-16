@@ -78,3 +78,27 @@ services:
       retries: 6
       start_period: 20s
     restart: unless-stopped
+
+  # ── Dashboard (Caddy serving built SPA) ──────────────────────
+  qc-dashboard:
+    build:
+      context: ../dashboard
+      dockerfile: Dockerfile
+    environment:
+      API_BASE_URL: http://qc-server:8000
+      PLANT_NAME: ${PLANT_NAME:-Plant 1}
+      LOCALE: ${LOCALE:-fr-TN}
+    ports:
+      - "80:80"
+    networks:
+      - qc-net
+    depends_on:
+      qc-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    restart: unless-stopped

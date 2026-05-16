@@ -1,0 +1,6 @@
+node_modules
+dist
+.git
+*.md
+CLAUDE.md
+VISUAL_IDENTITY.md

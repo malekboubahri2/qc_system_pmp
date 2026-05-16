@@ -1,0 +1,31 @@
+{
+	admin off
+}
+
+:80 {
+	root * /usr/share/caddy
+
+	# Inject runtime config so the built JS can read API URL, plant name, locale
+	handle /config.js {
+		header Content-Type "application/javascript"
+		respond `window.__APP_CONFIG__ = {
+  "apiBaseUrl": "{env.API_BASE_URL}",
+  "plantName": "{env.PLANT_NAME}",
+  "locale": "{env.LOCALE}"
+};`
+	}
+
+	# Proxy API calls to the FastAPI server (strips /api prefix)
+	handle /api/* {
+		uri strip_prefix /api
+		reverse_proxy {env.API_BASE_URL}
+	}
+
+	# SPA fallback — always serve index.html for unknown paths
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
+
+	encode gzip
+}
