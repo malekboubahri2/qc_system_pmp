@@ -52,8 +52,16 @@ server/
 - **Cross-module communication via function calls, not imports of internals.**
   `services.defect_types.create()` may call `mqtt.publisher.publish_defect_config()`.
   It must NOT reach into `mqtt.bridge` directly.
-- **No global state.** Settings, DB sessions, MQTT clients all live in the app
-  state or are injected as FastAPI dependencies.
+- **No global state — with one documented exception.** Settings (via
+  `lru_cache`) and the in-memory feature-flag cache in
+  `app/feature_flags.py` are intentional module-level state. The cache
+  is thread-safe (`threading.Lock`) and exposes a `reset_cache()` hook
+  for tests and post-write invalidation. Adding any further module-level
+  mutable state requires:
+  1. A documented `reset_*()` hook callable from tests
+  2. Thread-safe access (lock or atomic)
+  3. An entry in `docs/decisions.md` explaining why dependency injection
+     didn't fit
 
 ## Module dependency direction (strict)
 

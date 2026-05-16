@@ -322,4 +322,6 @@ See per-component `CLAUDE.md`.
 
 ## Status
 
-Currently in: **Phase 0 — Foundation & Setup** (see `docs/roadmap.md`).
+Currently in: **Phase 2 — Dashboard** (Phase 1 server foundation complete,
+audited in `docs/audits/phase-1-audit.md` and remediated across batches
+1–3 of audit follow-up work). See `docs/roadmap.md`.
