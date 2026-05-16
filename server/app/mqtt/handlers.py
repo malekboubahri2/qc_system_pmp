@@ -1,9 +1,11 @@
 import json
 from datetime import datetime, timezone
+from typing import Callable
 from loguru import logger
 import paho.mqtt.client as mqtt
 
-_handlers: dict[str, callable] = {}
+HandlerFn = Callable[[str, dict], None]
+_handlers: dict[str, HandlerFn] = {}
 
 
 def _topic_matches(pattern: str, topic: str) -> bool:

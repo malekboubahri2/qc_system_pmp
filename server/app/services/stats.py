@@ -18,14 +18,14 @@ def summary(db: Session, days: int = 7) -> list[SummaryPoint]:
     rows = (
         db.query(
             func.strftime("%Y-%m-%d", DefectLog.logged_at).label("date"),
-            func.count().label("count"),
+            func.count().label("cnt"),
         )
         .filter(DefectLog.logged_at >= cut)
         .group_by("date")
         .order_by("date")
         .all()
     )
-    return [SummaryPoint(date=r.date, count=r.count) for r in rows]
+    return [SummaryPoint(date=r.date, count=int(r.cnt)) for r in rows]
 
 
 def by_defect(db: Session, days: int = 30) -> list[ByDefectPoint]:
@@ -35,7 +35,7 @@ def by_defect(db: Session, days: int = 30) -> list[ByDefectPoint]:
             DefectLog.defect_type_id,
             DefectType.label,
             DefectCategory.name.label("category"),
-            func.count().label("count"),
+            func.count().label("cnt"),
         )
         .join(DefectType, DefectLog.defect_type_id == DefectType.id)
         .join(DefectCategory, DefectType.category_id == DefectCategory.id)
@@ -49,7 +49,7 @@ def by_defect(db: Session, days: int = 30) -> list[ByDefectPoint]:
             defect_type_id=r.defect_type_id,
             label=r.label,
             category=r.category,
-            count=r.count,
+            count=int(r.cnt),
         )
         for r in rows
     ]
@@ -61,7 +61,7 @@ def by_operator(db: Session, days: int = 30) -> list[ByOperatorPoint]:
         db.query(
             DefectLog.operator_id,
             Operator.name,
-            func.count().label("count"),
+            func.count().label("cnt"),
         )
         .join(Operator, DefectLog.operator_id == Operator.id)
         .filter(DefectLog.logged_at >= cut)
@@ -70,7 +70,7 @@ def by_operator(db: Session, days: int = 30) -> list[ByOperatorPoint]:
         .all()
     )
     return [
-        ByOperatorPoint(operator_id=r.operator_id, name=r.name, count=r.count)
+        ByOperatorPoint(operator_id=r.operator_id, name=r.name, count=int(r.cnt))
         for r in rows
     ]
 
@@ -80,11 +80,11 @@ def heatmap(db: Session, days: int = 30) -> list[HeatmapPoint]:
     rows = (
         db.query(
             func.strftime("%H", DefectLog.logged_at).label("hour_str"),
-            func.count().label("count"),
+            func.count().label("cnt"),
         )
         .filter(DefectLog.logged_at >= cut)
         .group_by("hour_str")
         .order_by("hour_str")
         .all()
     )
-    return [HeatmapPoint(hour=int(r.hour_str), count=r.count) for r in rows]
+    return [HeatmapPoint(hour=int(r.hour_str), count=int(r.cnt)) for r in rows]

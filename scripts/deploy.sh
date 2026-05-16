@@ -32,7 +32,12 @@ else
     fi
 fi
 
-VERSION="${QC_VERSION:-latest}"
+if [[ -z "${QC_VERSION:-}" ]]; then
+    echo "ERROR: QC_VERSION must be set explicitly (e.g., 'v0.1.0' or 'sha-abc1234')." >&2
+    echo "       Latest tag is not allowed for prod deploys (ADR-002)." >&2
+    exit 2
+fi
+VERSION="$QC_VERSION"
 GITHUB_REPO="$(git -C "$REPO_ROOT" config --get remote.origin.url \
     | sed -E 's#.*github\.com[:/]([^/]+/[^/.]+)(\.git)?$#\1#')"
 
