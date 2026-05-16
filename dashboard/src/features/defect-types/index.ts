@@ -1,0 +1,1 @@
+export { DefectsPage } from './DefectsPage';
