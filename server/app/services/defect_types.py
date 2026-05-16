@@ -62,7 +62,7 @@ def create(db: Session, data: DefectTypeCreate) -> DefectType:
     db.add(dt)
     db.commit()
     db.refresh(dt)
-    mqtt_payloads.publish_defect_config(db)
+    mqtt_payloads.publish_defect_config()
     return dt
 
 
@@ -74,7 +74,7 @@ def update(db: Session, type_id: int, data: DefectTypeUpdate) -> DefectType:
         dt.display_order = data.display_order
     db.commit()
     db.refresh(dt)
-    mqtt_payloads.publish_defect_config(db)
+    mqtt_payloads.publish_defect_config()
     return dt
 
 
@@ -83,4 +83,4 @@ def archive(db: Session, type_id: int) -> None:
     dt.active = False
     dt.archived_at = _utc_now()
     db.commit()
-    mqtt_payloads.publish_defect_config(db)
+    mqtt_payloads.publish_defect_config()

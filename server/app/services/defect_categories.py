@@ -29,7 +29,7 @@ def create(db: Session, data: DefectCategoryCreate) -> DefectCategory:
     db.add(cat)
     db.commit()
     db.refresh(cat)
-    mqtt_payloads.publish_defect_config(db)
+    mqtt_payloads.publish_defect_config()
     return cat
 
 
@@ -41,7 +41,7 @@ def update(db: Session, category_id: int, data: DefectCategoryUpdate) -> DefectC
         cat.display_order = data.display_order
     db.commit()
     db.refresh(cat)
-    mqtt_payloads.publish_defect_config(db)
+    mqtt_payloads.publish_defect_config()
     return cat
 
 
@@ -50,4 +50,4 @@ def archive(db: Session, category_id: int) -> None:
     cat.active = False
     cat.archived_at = _utc_now()
     db.commit()
-    mqtt_payloads.publish_defect_config(db)
+    mqtt_payloads.publish_defect_config()

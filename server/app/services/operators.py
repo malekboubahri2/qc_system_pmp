@@ -30,7 +30,7 @@ def create(db: Session, data: OperatorCreate) -> Operator:
     db.add(op)
     db.commit()
     db.refresh(op)
-    mqtt_payloads.publish_operator_list(db)
+    mqtt_payloads.publish_operator_list()
     return op
 
 
@@ -40,7 +40,7 @@ def update(db: Session, operator_id: int, data: OperatorUpdate) -> Operator:
         op.name = data.name
     db.commit()
     db.refresh(op)
-    mqtt_payloads.publish_operator_list(db)
+    mqtt_payloads.publish_operator_list()
     return op
 
 
@@ -49,7 +49,7 @@ def set_pin(db: Session, operator_id: int, pin: str) -> Operator:
     op.pin_hash = hash_pin(pin)
     db.commit()
     db.refresh(op)
-    mqtt_payloads.publish_operator_list(db)
+    mqtt_payloads.publish_operator_list()
     return op
 
 
@@ -58,4 +58,4 @@ def archive(db: Session, operator_id: int) -> None:
     op.active = False
     op.archived_at = _utc_now()
     db.commit()
-    mqtt_payloads.publish_operator_list(db)
+    mqtt_payloads.publish_operator_list()
