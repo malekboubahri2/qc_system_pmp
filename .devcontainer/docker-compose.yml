@@ -1,0 +1,46 @@
+# Devcontainer composition: workspace + Mosquitto sidecar.
+# Separate from infra/docker-compose.{dev,prod}.yml — this is purely
+# for the IDE-attached development workflow.
+
+name: qc-devcontainer
+
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ../..:/workspace:cached
+      # Mount host Docker socket for docker-outside-of-docker
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Persist shell history and tool caches across container rebuilds
+      - dev-cache:/home/vscode/.cache
+      - dev-bash-history:/commandhistory
+    command: sleep infinity
+    networks: [qc-dev]
+    environment:
+      - MQTT_HOST=mosquitto
+      - MQTT_PORT=1883
+      - MQTT_USERNAME=dev
+      - MQTT_PASSWORD=dev
+      - DATABASE_URL=sqlite:////workspace/server/qc-dev.db
+      - JWT_SECRET=dev-only-not-a-real-secret
+      - LOG_LEVEL=DEBUG
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    volumes:
+      - ./mosquitto-dev.conf:/mosquitto/config/mosquitto.conf:ro
+    networks: [qc-dev]
+    healthcheck:
+      test: ["CMD", "mosquitto_sub", "-h", "localhost", "-t", "$$SYS/broker/uptime", "-C", "1", "-W", "3"]
+      interval: 30s
+
+volumes:
+  dev-cache:
+  dev-bash-history:
+
+networks:
+  qc-dev:
+    driver: bridge

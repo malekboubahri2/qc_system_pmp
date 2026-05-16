@@ -1,0 +1,68 @@
+{
+  "name": "Painting QC Dev",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "dev",
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "stopCompose",
+
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+      "moby": true
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "ms-vscode.cpptools",
+        "ms-azuretools.vscode-docker",
+        "github.vscode-github-actions",
+        "github.vscode-pull-request-github",
+        "redhat.vscode-yaml",
+        "tamasfe.even-better-toml",
+        "yzhang.markdown-all-in-one"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+          "source.fixAll.ruff": "explicit",
+          "source.organizeImports.ruff": "explicit"
+        },
+        "python.defaultInterpreterPath": "/workspace/server/.venv/bin/python",
+        "python.testing.pytestEnabled": true,
+        "python.testing.pytestPath": "/workspace/server/.venv/bin/pytest",
+        "python.testing.cwd": "${workspaceFolder}/server",
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff"
+        },
+        "[typescript]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+        "[typescriptreact]": { "editor.defaultFormatter": "esbenp.prettier-vscode" },
+        "eslint.workingDirectories": [{ "directory": "dashboard", "changeProcessCWD": true }],
+        "files.watcherExclude": {
+          "**/.venv/**": true,
+          "**/node_modules/**": true,
+          "**/__pycache__/**": true
+        }
+      }
+    }
+  },
+
+  "forwardPorts": [8000, 5173, 1883],
+  "portsAttributes": {
+    "8000": { "label": "FastAPI server", "onAutoForward": "notify" },
+    "5173": { "label": "Vite dev server", "onAutoForward": "openBrowser" },
+    "1883": { "label": "Mosquitto", "onAutoForward": "silent" }
+  },
+
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+
+  "remoteUser": "vscode",
+  "containerUser": "vscode"
+}

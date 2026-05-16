@@ -369,3 +369,19 @@ echo "$GHCR_PAT" | docker login ghcr.io -u <github-user> --password-stdin
 
 The PAT is stored in `~/.docker/config.json` and does not expire
 unless revoked. A single PAT per RPi is sufficient.
+
+---
+
+## 11. Development Environment (Devcontainer)
+
+The repo ships with a VS Code devcontainer at `.devcontainer/`. Open the
+repo in VS Code with the **Dev Containers** extension installed and choose
+"Reopen in Container". This gives you Python 3.11, Node 20, GCC, and a
+Mosquitto broker sidecar with zero host setup beyond Docker and VS Code.
+
+See `.devcontainer/README.md` for the full task reference and
+troubleshooting guide.
+
+Firmware GUI tooling (STM32CubeIDE, TouchGFX Designer) remains on the
+host — only the host-buildable C tests in `firmware/tests/` run
+in-container.
