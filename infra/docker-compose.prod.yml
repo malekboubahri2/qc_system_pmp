@@ -62,7 +62,7 @@ services:
     ports:
       - "80:80"
     environment:
-      - API_BASE_URL=http://server:8000
+      - API_HOST=server:8000
       - PLANT_NAME=${PLANT_NAME:-Plant 1}
       - LOCALE=${LOCALE:-fr-TN}
     networks: [qc-net]

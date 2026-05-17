@@ -103,6 +103,7 @@ services:
       context: ../dashboard
       dockerfile: Dockerfile
     environment:
+      API_HOST: qc-server:8000
       PLANT_NAME: ${PLANT_NAME:-Plant 1}
       LOCALE: ${LOCALE:-fr-TN}
     ports:
