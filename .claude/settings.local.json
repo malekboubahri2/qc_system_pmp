@@ -1,4 +1,24 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(pip --version)",
+      "Bash(pip install *)",
+      "Bash(docker --version)",
+      "Bash(docker compose *)",
+      "Bash(docker run *)",
+      "PowerShell(docker info *)",
+      "PowerShell(Set-Location \"C:\\\\Users\\\\malek\\\\Desktop\\\\qc_system_pmp\\\\infra\"; docker run --rm -v \"${PWD}\\\\mosquitto:/mosquitto/config\" eclipse-mosquitto:2 mosquitto_passwd -b -c /mosquitto/config/passwd qc-server change-me; if \\($?\\) { \"passwd created\" } else { \"FAILED\" })",
+      "Bash(ping *)",
+      "Bash(sshpass *)",
+      "Bash(uv run *)",
+      "Bash(docker exec qc-devcontainer-dev-1 *)",
+      "Bash(docker exec *)",
+      "Bash(docker build *)",
+      "Bash(docker start *)",
+      "Bash(QC_VERSION=v0.1.0 GITHUB_REPOSITORY=org/repo docker compose -f infra/docker-compose.prod.yml config)",
+      "Bash(GITHUB_REPOSITORY=org/repo docker compose -f infra/docker-compose.prod.yml config)"
+    ]
+  },
   "disabledMcpjsonServers": [
     "claude-flow"
   ]
