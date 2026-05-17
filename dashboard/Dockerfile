@@ -3,7 +3,7 @@ FROM node:20-alpine AS builder
 WORKDIR /build
 
 # pnpm via corepack
-RUN corepack enable && corepack prepare pnpm@latest --activate
+RUN corepack enable && corepack prepare pnpm@9.15.9 --activate
 
 # Install dependencies with frozen lockfile
 COPY package.json pnpm-lock.yaml ./
