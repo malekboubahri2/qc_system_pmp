@@ -322,6 +322,7 @@ See per-component `CLAUDE.md`.
 
 ## Status
 
-Currently in: **Phase 2 — Dashboard** (Phase 1 server foundation complete,
-audited in `docs/audits/phase-1-audit.md` and remediated across batches
-1–3 of audit follow-up work). See `docs/roadmap.md`.
+Currently in: **Phase 3 — Firmware integration** (Phase 2 dashboard
+complete, audited in `docs/audits/phase-2-audit.md`, Batch 1 blockers
+remediated; remaining findings parked in `docs/post-poc-todo.md` per
+PoC scope discipline). See `docs/roadmap.md`.

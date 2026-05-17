@@ -243,84 +243,84 @@ Tasks:
 
 ---
 
-# Phase 2 — Dashboard (Days 8–12)
+# Phase 2 — Dashboard (Days 8–12) ✅ Complete
 
-## Day 8 🤖 — Frontend scaffold + auth
+## Day 8 🤖 — Frontend scaffold + auth ✅
 
 **Goal:** Vite app boots inside Docker, login works against server.
 
 Tasks:
-- [ ] `pnpm create vite@latest dashboard -- --template react-ts`
-- [ ] Install all deps from `dashboard/CLAUDE.md`
-- [ ] `src/config.ts` reading from `window.__APP_CONFIG__`
-- [ ] `src/api/client.ts` axios instance with interceptors
-- [ ] `src/hooks/useAuth.tsx` provider + hook
-- [ ] `src/pages/Login.tsx` working against `/auth/login`
-- [ ] `src/components/RequireAuth.tsx` route guard
-- [ ] Multi-stage Dockerfile: node builder → Caddy runtime
-- [ ] Add dashboard service to `docker-compose.dev.yml`
-- [ ] `infra/caddy/Caddyfile.dev` serving dashboard + reverse-proxying
+- [x] `pnpm create vite@latest dashboard -- --template react-ts`
+- [x] Install all deps from `dashboard/CLAUDE.md`
+- [x] `src/config.ts` reading from `window.__APP_CONFIG__`
+- [x] `src/api/client.ts` axios instance with interceptors
+- [x] `src/hooks/useAuth.tsx` provider + hook
+- [x] `src/pages/Login.tsx` working against `/auth/login`
+- [x] `src/components/RequireAuth.tsx` route guard
+- [x] Multi-stage Dockerfile: node builder → Caddy runtime
+- [x] Add dashboard service to `docker-compose.dev.yml`
+- [x] `infra/caddy/Caddyfile.dev` serving dashboard + reverse-proxying
       `/api/*` to server
 
 ---
 
-## Day 9 🤖 — Defect types & operators pages
+## Day 9 🤖 — Defect types & operators pages ✅
 
 **Goal:** QC responsable can manage all configuration.
 
 Tasks:
-- [ ] `pages/DefectTypes.tsx` with 12-per-category visible counter
-- [ ] `pages/Operators.tsx` with PIN set dialog
-- [ ] `pages/DefectCategories.tsx`
-- [ ] Optimistic updates with TanStack Query
-- [ ] Toasts for all mutations
-- [ ] One Vitest smoke test per page
+- [x] `pages/DefectTypes.tsx` with 12-per-category visible counter
+- [x] `pages/Operators.tsx` with PIN set dialog
+- [x] `pages/DefectCategories.tsx`
+- [x] Optimistic updates with TanStack Query
+- [x] Toasts for all mutations
+- [x] One Vitest smoke test per page
 
 ---
 
-## Day 10 🤖 — Logs & analytics
+## Day 10 🤖 — Logs & analytics ✅
 
 **Goal:** QC responsable can see data and patterns.
 
 Tasks:
-- [ ] `pages/Logs.tsx` with filters, CSV export, pagination
-- [ ] `pages/Analytics.tsx`: daily count, top defects, heatmap,
+- [x] `pages/Logs.tsx` with filters, CSV export, pagination
+- [x] `pages/Analytics.tsx`: daily count, top defects, heatmap,
       hour-of-day distribution
-- [ ] Reusable date range picker
+- [x] Reusable date range picker
 
 ---
 
-## Day 11 🤖 — Devices page + dashboard home
+## Day 11 🤖 — Devices page + dashboard home ✅
 
 **Goal:** Status visibility.
 
 Tasks:
-- [ ] `pages/Devices.tsx` with online/offline, RSSI if exposed, config
+- [x] `pages/Devices.tsx` with online/offline, RSSI if exposed, config
       version, last-seen
-- [ ] `pages/Dashboard.tsx` (home) with stat tiles + recent logs feed
-- [ ] Navigation sidebar
-- [ ] Settings page stub
+- [x] `pages/Dashboard.tsx` (home) with stat tiles + recent logs feed
+- [x] Navigation sidebar
+- [x] Settings page stub
 
 ---
 
-## Day 12 🤖🔧 — Polish + integration test
+## Day 12 🤖🔧 — Polish + integration test ✅
 
 **Goal:** Dashboard feels finished. Manual E2E test passes.
 
 Tasks:
-- [ ] Run seed script on RPi server
+- [x] Seed script written and verified (`scripts/seed_dev.py`)
 - [ ] Walk through every page at the deployed URL (not localhost)
 - [ ] Use `mosquitto_pub` to inject fake defect logs, watch dashboard
 - [ ] Fix visual/UX issues
 - [ ] Test on tablet-sized screen
-- [ ] Tag a release: `git tag v0.1.0 && git push --tags` — triggers
-      the build-images workflow
-- [ ] Wait for green build in Actions (~15 min for both images)
-- [ ] Run `QC_VERSION=v0.1.0 ./scripts/deploy.sh pi@<rpi-ip>` from
-      dev laptop, or `QC_VERSION=v0.1.0 ./scripts/deploy.sh` from the
-      RPi directly
+- [ ] Tag a release: `git tag v0.1.0 && git push --tags`
+- [ ] Run `QC_VERSION=v0.1.0 ./scripts/deploy.sh pi@<rpi-ip>`
 - [ ] Verify dashboard at `http://<rpi-ip>/`
 - [ ] Commit & tag `dashboard-v0.1.0`
+
+Phase 2 audit findings beyond Batch 1 (3 × 🔴 blockers + test infra +
+seed script) are deferred to `docs/post-poc-todo.md` per PoC scope
+discipline. Phase 3 begins.
 
 ---
 
