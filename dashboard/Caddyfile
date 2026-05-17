@@ -18,7 +18,7 @@
 	# Proxy API calls to the FastAPI server (strips /api prefix)
 	handle /api/* {
 		uri strip_prefix /api
-		reverse_proxy {env.API_BASE_URL}
+		reverse_proxy http://qc-server:8000
 	}
 
 	# SPA fallback — always serve index.html for unknown paths
