@@ -131,7 +131,7 @@ function CategorySection({
   onArchiveType: (t: DefectType) => void;
 }) {
   const [open, setOpen] = useState(true);
-  const count = types.length;
+  const count = category.defect_count;
   const atCap = count >= CAP;
 
   return (
