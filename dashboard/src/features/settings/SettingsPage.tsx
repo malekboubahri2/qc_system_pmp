@@ -4,7 +4,7 @@ import { config } from '@/config';
 import type { FeatureFlag } from '@/types';
 
 async function listFlags(): Promise<FeatureFlag[]> {
-  const { data } = await client.get<FeatureFlag[]>('/feature-flags');
+  const { data } = await client.get<FeatureFlag[]>('/flags');
   return data;
 }
 
