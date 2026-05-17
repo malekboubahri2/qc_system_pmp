@@ -9,7 +9,7 @@
 	handle /config.js {
 		header Content-Type "application/javascript"
 		respond `window.__APP_CONFIG__ = {
-  "apiBaseUrl": "{env.API_BASE_URL}",
+  "apiBaseUrl": "/api",
   "plantName": "{env.PLANT_NAME}",
   "locale": "{env.LOCALE}"
 };`
