@@ -17,9 +17,9 @@ const DAYS_OPTIONS = [
   { label: '90 jours', value: 90 },
 ] as const;
 
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+function ChartCard({ title, children, testId }: { title: string; children: React.ReactNode; testId?: string }) {
   return (
-    <div className="bg-white rounded-lg p-5" style={{ boxShadow: '0 1px 3px rgba(26,85,96,0.08)' }}>
+    <div data-testid={testId} className="bg-white rounded-lg p-5" style={{ boxShadow: '0 1px 3px rgba(26,85,96,0.08)' }}>
       <h2 className="text-sm font-semibold text-ink-heading mb-4 uppercase tracking-wide">{title}</h2>
       {children}
     </div>
@@ -108,7 +108,7 @@ export function AnalyticsPage() {
       </div>
 
       {/* Daily trend — full width */}
-      <ChartCard title="Défauts par jour">
+      <ChartCard title="Défauts par jour" testId="analytics-chart">
         {summary.length === 0 ? <Empty /> : (
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={summary} margin={{ top: 4, right: 12, bottom: 0, left: -16 }}>
