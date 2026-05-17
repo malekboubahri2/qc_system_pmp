@@ -10,18 +10,36 @@ networks:
     driver: bridge
 
 volumes:
-  qc-data:       # SQLite database
-  mosquitto-data: # Mosquitto persistence (retained messages)
+  qc-data:         # SQLite database
+  mosquitto-data:  # Mosquitto persistence (retained messages)
+  mosquitto-cfg:   # Writable config dir — populated by entrypoint from bind-mounts
 
 services:
 
   # ── MQTT broker ───────────────────────────────────────────────
   mosquitto:
     image: eclipse-mosquitto:2
+    # On Docker Desktop / Windows, bind-mounted files land as root:root 600,
+    # which mosquitto (running as the mosquitto user) cannot read.
+    # Workaround: mount source files to a staging path, then use an entrypoint
+    # that copies them into a writable named volume with correct ownership
+    # before handing off to the real mosquitto process.
+    entrypoint:
+      - sh
+      - -c
+      - |
+        cp /etc/mosquitto-src/mosquitto.conf /mosquitto/config/mosquitto.conf
+        cp /etc/mosquitto-src/acl.conf /mosquitto/config/acl.conf
+        cp /etc/mosquitto-src/passwd /mosquitto/config/passwd
+        chown -R mosquitto:mosquitto /mosquitto/config
+        chmod 640 /mosquitto/config/passwd
+        mkdir -p /mosquitto/log
+        exec mosquitto -c /mosquitto/config/mosquitto.conf
     volumes:
-      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
-      - ./mosquitto/acl.conf:/mosquitto/config/acl.conf:ro
-      - ./mosquitto/passwd:/mosquitto/config/passwd:ro
+      - ./mosquitto/mosquitto.conf:/etc/mosquitto-src/mosquitto.conf:ro
+      - ./mosquitto/acl.conf:/etc/mosquitto-src/acl.conf:ro
+      - ./mosquitto/passwd:/etc/mosquitto-src/passwd:ro
+      - mosquitto-cfg:/mosquitto/config
       - mosquitto-data:/mosquitto/data
     ports:
       - "1883:1883"

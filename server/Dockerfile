@@ -30,6 +30,10 @@ RUN groupadd --system app && useradd --system --gid app app
 WORKDIR /app
 
 COPY --from=builder /build/.venv /app/.venv
+# Scripts in the venv have shebangs pointing to /build/.venv/bin/python (the
+# builder path). Symlink /build/.venv → /app/.venv so they resolve correctly
+# without rewriting every shebang.
+RUN mkdir -p /build && ln -s /app/.venv /build/.venv
 COPY app/      ./app/
 COPY alembic/  ./alembic/
 COPY alembic.ini .
