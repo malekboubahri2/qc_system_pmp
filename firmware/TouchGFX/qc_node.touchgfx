@@ -1,0 +1,754 @@
+{
+  "Application": {
+    "Screens": [
+      {
+        "Name": "login",
+        "CanvasBufferSize": 4080,
+        "Components": [
+          {
+            "Type": "Image",
+            "Name": "image1",
+            "Width": 272,
+            "Height": 480,
+            "RelativeFilename": "login.png"
+          },
+          {
+            "Type": "Circle",
+            "Name": "PIN_1",
+            "X": 36,
+            "Y": 160,
+            "Width": 80,
+            "Height": 80,
+            "Color": {
+              "Red": 26,
+              "Green": 85,
+              "Blue": 96
+            },
+            "CenterX": 40.0,
+            "CenterY": 40.0,
+            "Radius": 12.6,
+            "EndAngle": 360.0,
+            "CapPrecision": "Butt"
+          },
+          {
+            "Type": "Circle",
+            "Name": "PIN_2",
+            "X": 76,
+            "Y": 160,
+            "Width": 80,
+            "Height": 80,
+            "Color": {
+              "Red": 26,
+              "Green": 85,
+              "Blue": 96
+            },
+            "CenterX": 40.0,
+            "CenterY": 40.0,
+            "Radius": 12.6,
+            "EndAngle": 360.0,
+            "CapPrecision": "Butt"
+          },
+          {
+            "Type": "Circle",
+            "Name": "PIN_3",
+            "X": 116,
+            "Y": 160,
+            "Width": 80,
+            "Height": 80,
+            "Color": {
+              "Red": 26,
+              "Green": 85,
+              "Blue": 96
+            },
+            "CenterX": 40.0,
+            "CenterY": 40.0,
+            "Radius": 12.6,
+            "EndAngle": 360.0,
+            "CapPrecision": "Butt"
+          },
+          {
+            "Type": "Circle",
+            "Name": "PIN_4",
+            "X": 156,
+            "Y": 160,
+            "Width": 80,
+            "Height": 80,
+            "Color": {
+              "Red": 26,
+              "Green": 85,
+              "Blue": 96
+            },
+            "CenterX": 40.0,
+            "CenterY": 40.0,
+            "Radius": 12.6,
+            "EndAngle": 360.0,
+            "CapPrecision": "Butt"
+          },
+          {
+            "Type": "FlexButton",
+            "Name": "keypad_1",
+            "X": 12,
+            "Y": 316,
+            "Width": 83,
+            "Height": 49,
+            "ButtonTrigger": {
+              "Type": "ClickButtonTrigger"
+            },
+            "ButtonStyles": [
+              {
+                "Type": "TextButtonStyle",
+                "Y": 12,
+                "TextId": "keypad_num_3",
+                "TextRotation": "0",
+                "ColorReleased": {
+                  "Red": 255,
+                  "Green": 255,
+                  "Blue": 255
+                },
+                "ColorPressed": {
+                  "Red": 10,
+                  "Green": 10,
+                  "Blue": 10
+                }
+              },
+              {
+                "Type": "BoxWithBorderButtonStyle",
+                "Width": 83,
+                "Height": 49,
+                "LockToFlexButtonSize": true,
+                "BorderSize": 5,
+                "ColorReleased": {
+                  "Red": 26,
+                  "Green": 85,
+                  "Blue": 96
+                },
+                "ColorPressed": {
+                  "Red": 212,
+                  "Green": 183,
+                  "Blue": 101
+                },
+                "ColorBorderReleased": {
+                  "Red": 250,
+                  "Green": 238,
+                  "Blue": 227
+                },
+                "ColorBorderPressed": {
+                  "Red": 250,
+                  "Green": 238,
+                  "Blue": 227
+                }
+              }
+            ],
+            "Clickable": true
+          },
+          {
+            "Type": "FlexButton",
+            "Name": "keypad_2",
+            "X": 95,
+            "Y": 316,
+            "Width": 83,
+            "Height": 49,
+            "ButtonTrigger": {
+              "Type": "ClickButtonTrigger"
+            },
+            "ButtonStyles": [
+              {
+                "Type": "TextButtonStyle",
+                "Y": 12,
+                "TextId": "keypad_num_3",
+                "TextRotation": "0",
+                "ColorReleased": {
+                  "Red": 255,
+                  "Green": 255,
+                  "Blue": 255
+                },
+                "ColorPressed": {
+                  "Red": 10,
+                  "Green": 10,
+                  "Blue": 10
+                }
+              },
+              {
+                "Type": "BoxWithBorderButtonStyle",
+                "Width": 83,
+                "Height": 49,
+                "LockToFlexButtonSize": true,
+                "BorderSize": 5,
+                "ColorReleased": {
+                  "Red": 26,
+                  "Green": 85,
+                  "Blue": 96
+                },
+                "ColorPressed": {
+                  "Red": 212,
+                  "Green": 183,
+                  "Blue": 101
+                },
+                "ColorBorderReleased": {
+                  "Red": 250,
+                  "Green": 238,
+                  "Blue": 227
+                },
+                "ColorBorderPressed": {
+                  "Red": 250,
+                  "Green": 238,
+                  "Blue": 227
+                }
+              }
+            ],
+            "Clickable": true
+          },
+          {
+            "Type": "FlexButton",
+            "Name": "keypad_3",
+            "X": 178,
+            "Y": 316,
+            "Width": 83,
+            "Height": 49,
+            "ButtonTrigger": {
+              "Type": "ClickButtonTrigger"
+            },
+            "ButtonStyles": [
+              {
+                "Type": "TextButtonStyle",
+                "Y": 12,
+                "TextId": "keypad_num_3",
+                "TextRotation": "0",
+                "ColorReleased": {
+                  "Red": 255,
+                  "Green": 255,
+                  "Blue": 255
+                },
+                "ColorPressed": {
+                  "Red": 10,
+                  "Green": 10,
+                  "Blue": 10
+                }
+              },
+              {
+                "Type": "BoxWithBorderButtonStyle",
+                "Width": 83,
+                "Height": 49,
+                "LockToFlexButtonSize": true,
+                "BorderSize": 5,
+                "ColorReleased": {
+                  "Red": 26,
+                  "Green": 85,
+                  "Blue": 96
+                },
+                "ColorPressed": {
+                  "Red": 212,
+                  "Green": 183,
+                  "Blue": 101
+                },
+                "ColorBorderReleased": {
+                  "Red": 250,
+                  "Green": 238,
+                  "Blue": 227
+                },
+                "ColorBorderPressed": {
+                  "Red": 250,
+                  "Green": 238,
+                  "Blue": 227
+                }
+              }
+            ],
+            "Clickable": true
+          },
+          {
+            "Type": "FlexButton",
+            "Name": "keypad_4",
+            "X": 12,
+            "Y": 365,
+            "Width": 83,
+            "Height": 49,
+            "ButtonTrigger": {
+              "Type": "ClickButtonTrigger"
+            },
+            "ButtonStyles": [
+              {
+                "Type": "TextButtonStyle",
+                "Y": 12,
+                "TextId": "keypad_num_3",
+                "TextRotation": "0",
+                "ColorReleased": {
+                  "Red": 255,
+                  "Green": 255,
+                  "Blue": 255
+                },
+                "ColorPressed": {
+                  "Red": 10,
+                  "Green": 10,
+                  "Blue": 10
+                }
+              },
+              {
+                "Type": "BoxWithBorderButtonStyle",
+                "Width": 83,
+                "Height": 49,
+                "LockToFlexButtonSize": true,
+                "BorderSize": 5,
+                "ColorReleased": {
+                  "Red": 26,
+                  "Green": 85,
+                  "Blue": 96
+                },
+                "ColorPressed": {
+                  "Red": 212,
+                  "Green": 183,
+                  "Blue": 101
+                },
+                "ColorBorderReleased": {
+                  "Red": 250,
+                  "Green": 238,
+                  "Blue": 227
+                },
+                "ColorBorderPressed": {
+                  "Red": 250,
+                  "Green": 238,
+                  "Blue": 227
+                }
+              }
+            ],
+            "Clickable": true
+          },
+          {
+            "Type": "FlexButton",
+            "Name": "keypad_5",
+            "X": 95,
+            "Y": 365,
+            "Width": 83,
+            "Height": 49,
+            "ButtonTrigger": {
+              "Type": "ClickButtonTrigger"
+            },
+            "ButtonStyles": [
+              {
+                "Type": "TextButtonStyle",
+                "Y": 12,
+                "TextId": "keypad_num_3",
+                "TextRotation": "0",
+                "ColorReleased": {
+                  "Red": 255,
+                  "Green": 255,
+                  "Blue": 255
+                },
+                "ColorPressed": {
+                  "Red": 10,
+                  "Green": 10,
+                  "Blue": 10
+                }
+              },
+              {
+                "Type": "BoxWithBorderButtonStyle",
+                "Width": 83,
+                "Height": 49,
+                "LockToFlexButtonSize": true,
+                "BorderSize": 5,
+                "ColorReleased": {
+                  "Red": 26,
+                  "Green": 85,
+                  "Blue": 96
+                },
+                "ColorPressed": {
+                  "Red": 212,
+                  "Green": 183,
+                  "Blue": 101
+                },
+                "ColorBorderReleased": {
+                  "Red": 250,
+                  "Green": 238,
+                  "Blue": 227
+                },
+                "ColorBorderPressed": {
+                  "Red": 250,
+                  "Green": 238,
+                  "Blue": 227
+                }
+              }
+            ],
+            "Clickable": true
+          },
+          {
+            "Type": "FlexButton",
+            "Name": "keypad_6",
+            "X": 178,
+            "Y": 365,
+            "Width": 83,
+            "Height": 49,
+            "ButtonTrigger": {
+              "Type": "ClickButtonTrigger"
+            },
+            "ButtonStyles": [
+              {
+                "Type": "TextButtonStyle",
+                "Y": 12,
+                "TextId": "keypad_num_3",
+                "TextRotation": "0",
+                "ColorReleased": {
+                  "Red": 255,
+                  "Green": 255,
+                  "Blue": 255
+                },
+                "ColorPressed": {
+                  "Red": 10,
+                  "Green": 10,
+                  "Blue": 10
+                }
+              },
+              {
+                "Type": "BoxWithBorderButtonStyle",
+                "Width": 83,
+                "Height": 49,
+                "LockToFlexButtonSize": true,
+                "BorderSize": 5,
+                "ColorReleased": {
+                  "Red": 26,
+                  "Green": 85,
+                  "Blue": 96
+                },
+                "ColorPressed": {
+                  "Red": 212,
+                  "Green": 183,
+                  "Blue": 101
+                },
+                "ColorBorderReleased": {
+                  "Red": 250,
+                  "Green": 238,
+                  "Blue": 227
+                },
+                "ColorBorderPressed": {
+                  "Red": 250,
+                  "Green": 238,
+                  "Blue": 227
+                }
+              }
+            ],
+            "Clickable": true
+          },
+          {
+            "Type": "FlexButton",
+            "Name": "keypad_7",
+            "X": 12,
+            "Y": 414,
+            "Width": 83,
+            "Height": 49,
+            "ButtonTrigger": {
+              "Type": "ClickButtonTrigger"
+            },
+            "ButtonStyles": [
+              {
+                "Type": "TextButtonStyle",
+                "Y": 12,
+                "TextId": "keypad_num_3",
+                "TextRotation": "0",
+                "ColorReleased": {
+                  "Red": 255,
+                  "Green": 255,
+                  "Blue": 255
+                },
+                "ColorPressed": {
+                  "Red": 10,
+                  "Green": 10,
+                  "Blue": 10
+                }
+              },
+              {
+                "Type": "BoxWithBorderButtonStyle",
+                "Width": 83,
+                "Height": 49,
+                "LockToFlexButtonSize": true,
+                "BorderSize": 5,
+                "ColorReleased": {
+                  "Red": 26,
+                  "Green": 85,
+                  "Blue": 96
+                },
+                "ColorPressed": {
+                  "Red": 212,
+                  "Green": 183,
+                  "Blue": 101
+                },
+                "ColorBorderReleased": {
+                  "Red": 250,
+                  "Green": 238,
+                  "Blue": 227
+                },
+                "ColorBorderPressed": {
+                  "Red": 250,
+                  "Green": 238,
+                  "Blue": 227
+                }
+              }
+            ],
+            "Clickable": true
+          },
+          {
+            "Type": "FlexButton",
+            "Name": "keypad_8",
+            "X": 95,
+            "Y": 414,
+            "Width": 83,
+            "Height": 49,
+            "ButtonTrigger": {
+              "Type": "ClickButtonTrigger"
+            },
+            "ButtonStyles": [
+              {
+                "Type": "TextButtonStyle",
+                "Y": 12,
+                "TextId": "keypad_num_3",
+                "TextRotation": "0",
+                "ColorReleased": {
+                  "Red": 255,
+                  "Green": 255,
+                  "Blue": 255
+                },
+                "ColorPressed": {
+                  "Red": 10,
+                  "Green": 10,
+                  "Blue": 10
+                }
+              },
+              {
+                "Type": "BoxWithBorderButtonStyle",
+                "Width": 83,
+                "Height": 49,
+                "LockToFlexButtonSize": true,
+                "BorderSize": 5,
+                "ColorReleased": {
+                  "Red": 26,
+                  "Green": 85,
+                  "Blue": 96
+                },
+                "ColorPressed": {
+                  "Red": 212,
+                  "Green": 183,
+                  "Blue": 101
+                },
+                "ColorBorderReleased": {
+                  "Red": 250,
+                  "Green": 238,
+                  "Blue": 227
+                },
+                "ColorBorderPressed": {
+                  "Red": 250,
+                  "Green": 238,
+                  "Blue": 227
+                }
+              }
+            ],
+            "Clickable": true
+          },
+          {
+            "Type": "FlexButton",
+            "Name": "keypad_9",
+            "X": 178,
+            "Y": 414,
+            "Width": 83,
+            "Height": 49,
+            "ButtonTrigger": {
+              "Type": "ClickButtonTrigger"
+            },
+            "ButtonStyles": [
+              {
+                "Type": "TextButtonStyle",
+                "Y": 12,
+                "TextId": "keypad_num_3",
+                "TextRotation": "0",
+                "ColorReleased": {
+                  "Red": 255,
+                  "Green": 255,
+                  "Blue": 255
+                },
+                "ColorPressed": {
+                  "Red": 10,
+                  "Green": 10,
+                  "Blue": 10
+                }
+              },
+              {
+                "Type": "BoxWithBorderButtonStyle",
+                "Width": 83,
+                "Height": 49,
+                "LockToFlexButtonSize": true,
+                "BorderSize": 5,
+                "ColorReleased": {
+                  "Red": 26,
+                  "Green": 85,
+                  "Blue": 96
+                },
+                "ColorPressed": {
+                  "Red": 212,
+                  "Green": 183,
+                  "Blue": 101
+                },
+                "ColorBorderReleased": {
+                  "Red": 250,
+                  "Green": 238,
+                  "Blue": 227
+                },
+                "ColorBorderPressed": {
+                  "Red": 250,
+                  "Green": 238,
+                  "Blue": 227
+                }
+              }
+            ],
+            "Clickable": true
+          }
+        ],
+        "Interactions": [
+          {
+            "InteractionName": "goProductRef",
+            "Trigger": {
+              "Type": "TriggerScreenTransitionBegins"
+            },
+            "Action": {
+              "Type": "ActionGotoScreen",
+              "ScreenTransitionType": "ScreenTransitionNone",
+              "ActionComponent": "productRef"
+            }
+          }
+        ]
+      },
+      {
+        "Name": "splash",
+        "Components": [
+          {
+            "Type": "Image",
+            "Name": "image1",
+            "Width": 272,
+            "Height": 480,
+            "RelativeFilename": "splash.png"
+          }
+        ],
+        "Interactions": [
+          {
+            "InteractionName": "goLogin",
+            "Trigger": {
+              "Type": "TriggerScreenTransitionBegins"
+            },
+            "Action": {
+              "Type": "ActionGotoScreen",
+              "ScreenTransitionType": "ScreenTransitionNone",
+              "ActionComponent": "login"
+            }
+          }
+        ]
+      },
+      {
+        "Name": "productRef",
+        "Components": [],
+        "Interactions": [
+          {
+            "InteractionName": "goDefects",
+            "Trigger": {
+              "Type": "TriggerScreenTransitionBegins"
+            },
+            "Action": {
+              "Type": "ActionGotoScreen",
+              "ScreenTransitionType": "ScreenTransitionNone",
+              "ActionComponent": "defects"
+            }
+          }
+        ]
+      },
+      {
+        "Name": "defects",
+        "Components": [],
+        "Interactions": [
+          {
+            "InteractionName": "goSummary",
+            "Trigger": {
+              "Type": "TriggerScreenTransitionBegins"
+            },
+            "Action": {
+              "Type": "ActionGotoScreen",
+              "ScreenTransitionType": "ScreenTransitionNone",
+              "ActionComponent": "summary"
+            }
+          }
+        ]
+      },
+      {
+        "Name": "summary",
+        "Components": [],
+        "Interactions": [
+          {
+            "InteractionName": "goSplash",
+            "Trigger": {
+              "Type": "TriggerScreenTransitionBegins"
+            },
+            "Action": {
+              "Type": "ActionGotoScreen",
+              "ScreenTransitionType": "ScreenTransitionNone",
+              "ActionComponent": "splash"
+            }
+          }
+        ]
+      }
+    ],
+    "CustomContainerDefinitions": [],
+    "Name": "qc_node",
+    "Resolution": {
+      "Width": 480,
+      "Height": 272
+    },
+    "SelectedColorDepth": 24,
+    "StartupScreenName": "login",
+    "SelectedStartupLanguage": "GB",
+    "TouchGfxPath": "../Middlewares/ST/touchgfx",
+    "UIPath": ".",
+    "AvailableColorDepths": [
+      24
+    ],
+    "AvailableLCDs": {
+      "24": "LCD24bpp"
+    },
+    "AvailableSections": [
+      "ExtFlashSection",
+      "IntFlashSection"
+    ],
+    "AvailableResolutions": [
+      {
+        "Width": 480,
+        "Height": 272
+      }
+    ],
+    "PhysicalButtons": [],
+    "FrameworkFeatures": {
+      "LCD24bpp": {
+        "Id": "LCD24bpp",
+        "IsEnabled": true
+      }
+    },
+    "GenerateAssetsCommand": "make -f simulator/gcc/Makefile assets -j8",
+    "PostGenerateCommand": "touchgfx update_project --project-file=simulator/msvs/Application.vcxproj",
+    "PostGenerateTargetCommand": "touchgfx update_project",
+    "CompileSimulatorCommand": "make -f simulator/gcc/Makefile -j8",
+    "RunSimulatorCommand": "build\\bin\\simulator.exe",
+    "CompileTargetCommandOverride": "make -f ../gcc/Makefile -j8",
+    "FlashTargetCommandOverride": "make -f ../gcc/Makefile flash",
+    "FlashTargetIntCommandOverride": "make -f ../gcc/Makefile intflash",
+    "LandscapeSkinX": 0,
+    "LandscapeSkinY": 0,
+    "PortraitSkinX": 0,
+    "PortraitSkinY": 0,
+    "DisplayOrientation": "Portrait",
+    "Family": "STM32H7",
+    "SubFamily": "STM32H7A3/7B3",
+    "Toolchain": "STM32CubeIDE",
+    "Platform": "m7",
+    "ProjectFile": "../STM32H7B3I-DK.ioc",
+    "OptionalComponentsRoot": "../Middlewares/ST/touchgfx_components",
+    "OptionalComponents": [],
+    "AdditionalFeatures": [
+      "CWRVector",
+      "VectorFonts",
+      "Video"
+    ]
+  },
+  "Version": "4.26.1",
+  "CreatedBy": "4.26.1"
+}
