@@ -1,7 +1,7 @@
 #include <gui/login_screen/loginView.hpp>
 #include <gui/common/FrontendApplication.hpp>
 
-static const touchgfx::colortype COLOR_DOT   = touchgfx::Color::getColorFromRGB(0xFF, 0xFF, 0xFF);
+static const touchgfx::colortype COLOR_DOT   = touchgfx::Color::getColorFromRGB(0xD4, 0xB7, 0x65);
 static const touchgfx::colortype COLOR_ERROR = touchgfx::Color::getColorFromRGB(0xE5, 0x3E, 0x3E);
 
 loginView::loginView()
