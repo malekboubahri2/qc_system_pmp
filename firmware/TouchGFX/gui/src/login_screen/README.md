@@ -19,9 +19,9 @@
 
 ## Circle rendering
 
-`Circle::setLineWidth(0)` → filled disc (digit entered)  
-`Circle::setLineWidth(2)` → outline ring (slot empty)  
-Error state: painter color set to red, `setLineWidth(0)`, 36-tick countdown (~600 ms at 60 fps) then reset.
+`Circle::setLineWidth(0)` → filled disc, PMP gold `#D4B765` (digit entered)  
+`Circle::setLineWidth(2)` → outline ring, PMP gold (slot empty)  
+Error state: painter color set to red `#E53E3E`, `setLineWidth(0)`, 36-tick countdown (~600 ms at 60 fps) then reset.
 
 ## PoC operators (hard-coded in `Model.cpp`)
 
