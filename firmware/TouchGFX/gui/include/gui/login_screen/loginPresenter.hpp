@@ -13,24 +13,23 @@ class loginPresenter : public touchgfx::Presenter, public ModelListener
 public:
     loginPresenter(loginView& v);
 
-    /**
-     * The activate function is called automatically when this screen is "switched in"
-     * (ie. made active). Initialization logic can be placed here.
-     */
     virtual void activate();
-
-    /**
-     * The deactivate function is called automatically when this screen is "switched out"
-     * (ie. made inactive). Teardown functionality can be placed here.
-     */
     virtual void deactivate();
-
     virtual ~loginPresenter() {}
+
+    /* Called by the View when a digit key is tapped. */
+    void digitPressed(int digit);
 
 private:
     loginPresenter();
 
     loginView& view;
+
+    char m_pin[Model::PIN_MAX_LEN + 1];
+    int  m_digit_count;
+
+    void submitPin();
+    void clearPin();
 };
 
 #endif // LOGINPRESENTER_HPP
