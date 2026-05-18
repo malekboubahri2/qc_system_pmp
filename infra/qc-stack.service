@@ -1,0 +1,19 @@
+[Unit]
+Description=Painting QC stack (docker compose)
+Documentation=https://github.com/malekboubahri2/qc_system_pmp
+After=docker.service docker.socket network-online.target
+Requires=docker.service docker.socket
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/home/user/qc-deploy
+ExecStart=/usr/bin/docker compose -f infra/docker-compose.dev.yml up -d --remove-orphans
+ExecStop=/usr/bin/docker compose -f infra/docker-compose.dev.yml down
+ExecReload=/usr/bin/docker compose -f infra/docker-compose.dev.yml restart
+TimeoutStartSec=300
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target

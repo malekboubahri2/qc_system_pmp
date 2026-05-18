@@ -97,6 +97,17 @@ if [[ "$ON_RPI" == "0" ]]; then
     fi
 fi
 
+# ── Install systemd service (BUILD_LOCAL only, requires sudo on target) ──────
+if [[ "$BUILD_LOCAL" == "1" && "$ON_RPI" == "0" ]]; then
+    SERVICE_DEST="/etc/systemd/system/qc-stack.service"
+    if run_on_target "test -f $SERVICE_DEST" 2>/dev/null; then
+        echo "==> systemd service already installed — skipping"
+    else
+        echo "==> NOTE: install the systemd service for auto-start on boot:"
+        echo "    ssh $SSH_TARGET 'sudo cp ~/qc-deploy/infra/qc-stack.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl enable qc-stack'"
+    fi
+fi
+
 # ── Build / pull images and restart the stack ─────────────────────────────────
 if [[ "$BUILD_LOCAL" == "1" ]]; then
     echo "==> Building images and restarting (this takes a few minutes on RPi)"
