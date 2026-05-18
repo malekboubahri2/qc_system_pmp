@@ -55,7 +55,7 @@ void loginView::setDigitCount(int n)
     {
         painters[i]->setColor(COLOR_DOT);
         circles[i]->setPainter(*painters[i]);
-        circles[i]->setFilled(i < n);
+        /* lineWidth 0 = filled disc; lineWidth 2 = outline ring */
         circles[i]->setLineWidth(i < n ? 0 : 2);
         circles[i]->invalidate();
     }
@@ -72,8 +72,7 @@ void loginView::showError()
     {
         painters[i]->setColor(COLOR_ERROR);
         circles[i]->setPainter(*painters[i]);
-        circles[i]->setFilled(true);
-        circles[i]->setLineWidth(0);
+        circles[i]->setLineWidth(0); // filled
         circles[i]->invalidate();
     }
 
@@ -85,18 +84,21 @@ void loginView::gotoProductRefScreen()
     application().gotoproductRefScreenNoTransition();
 }
 
-void loginView::onKeyClicked(const touchgfx::AbstractButton& src)
+void loginView::onKeyClicked(const KeypadButton& src, const touchgfx::ClickEvent& evt)
 {
+    if (evt.getType() != touchgfx::ClickEvent::RELEASED)
+        return;
+
     int digit = 0;
-    if      (&src == &keypad_1) digit = 1;
-    else if (&src == &keypad_2) digit = 2;
-    else if (&src == &keypad_3) digit = 3;
-    else if (&src == &keypad_4) digit = 4;
-    else if (&src == &keypad_5) digit = 5;
-    else if (&src == &keypad_6) digit = 6;
-    else if (&src == &keypad_7) digit = 7;
-    else if (&src == &keypad_8) digit = 8;
-    else if (&src == &keypad_9) digit = 9;
+    if      (&src == static_cast<const KeypadButton*>(&keypad_1)) digit = 1;
+    else if (&src == static_cast<const KeypadButton*>(&keypad_2)) digit = 2;
+    else if (&src == static_cast<const KeypadButton*>(&keypad_3)) digit = 3;
+    else if (&src == static_cast<const KeypadButton*>(&keypad_4)) digit = 4;
+    else if (&src == static_cast<const KeypadButton*>(&keypad_5)) digit = 5;
+    else if (&src == static_cast<const KeypadButton*>(&keypad_6)) digit = 6;
+    else if (&src == static_cast<const KeypadButton*>(&keypad_7)) digit = 7;
+    else if (&src == static_cast<const KeypadButton*>(&keypad_8)) digit = 8;
+    else if (&src == static_cast<const KeypadButton*>(&keypad_9)) digit = 9;
 
     if (digit > 0)
         presenter->digitPressed(digit);

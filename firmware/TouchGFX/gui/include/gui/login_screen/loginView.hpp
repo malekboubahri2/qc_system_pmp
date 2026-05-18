@@ -4,7 +4,10 @@
 #include <gui_generated/login_screen/loginViewBase.hpp>
 #include <gui/login_screen/loginPresenter.hpp>
 #include <touchgfx/Callback.hpp>
-#include <touchgfx/widgets/AbstractButton.hpp>
+#include <touchgfx/events/ClickEvent.hpp>
+#include <touchgfx/containers/buttons/BoxWithBorderButtonStyle.hpp>
+#include <touchgfx/containers/buttons/ClickButtonTrigger.hpp>
+#include <touchgfx/containers/buttons/TextButtonStyle.hpp>
 
 class loginView : public loginViewBase
 {
@@ -21,9 +24,12 @@ public:
     void gotoProductRefScreen();
 
 private:
-    void onKeyClicked(const touchgfx::AbstractButton& src);
+    typedef touchgfx::TextButtonStyle<
+        touchgfx::BoxWithBorderButtonStyle<touchgfx::ClickButtonTrigger>> KeypadButton;
 
-    touchgfx::Callback<loginView, const touchgfx::AbstractButton&> m_keyCallback;
+    void onKeyClicked(const KeypadButton& src, const touchgfx::ClickEvent& evt);
+
+    touchgfx::Callback<loginView, const KeypadButton&, const touchgfx::ClickEvent&> m_keyCallback;
     int m_error_ticks;
 };
 
