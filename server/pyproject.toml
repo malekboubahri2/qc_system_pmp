@@ -11,7 +11,7 @@ dependencies = [
     "paho-mqtt>=2.1.0",
     "argon2-cffi>=23.1.0",
     "pyjwt>=2.8.0",
-    "loguru>=0.7.0",
+    "loguru>=0.7.3",
     "python-multipart>=0.0.9",
 ]
 
