@@ -9,7 +9,7 @@ interface FormFieldProps extends InputHTMLAttributes<HTMLInputElement> {
 
 export const FormField = forwardRef<HTMLInputElement, FormFieldProps>(
   ({ label, error, hint, required, className, ...props }, ref) => (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-2">
       <label className="text-sm font-medium text-ink-heading">
         {label}
         {required && <span className="text-danger ml-1">*</span>}
@@ -17,15 +17,15 @@ export const FormField = forwardRef<HTMLInputElement, FormFieldProps>(
       <input
         ref={ref}
         className={cn(
-          'bg-white border rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-muted',
+          'bg-white border rounded-lg px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted',
           'transition-colors focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent',
           error ? 'border-danger' : 'border-cream-subtle',
           className,
         )}
         {...props}
       />
-      {hint && !error && <p className="text-xs text-ink-muted">{hint}</p>}
-      {error && <p className="text-xs text-danger">{error}</p>}
+      {hint && !error && <p className="text-sm text-ink-muted">{hint}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
     </div>
   ),
 );
@@ -39,7 +39,7 @@ interface SelectFieldProps extends React.SelectHTMLAttributes<HTMLSelectElement>
 
 export const SelectField = forwardRef<HTMLSelectElement, SelectFieldProps>(
   ({ label, error, required, className, children, ...props }, ref) => (
-    <div className="flex flex-col gap-1">
+    <div className="flex flex-col gap-2">
       <label className="text-sm font-medium text-ink-heading">
         {label}
         {required && <span className="text-danger ml-1">*</span>}
@@ -47,7 +47,7 @@ export const SelectField = forwardRef<HTMLSelectElement, SelectFieldProps>(
       <select
         ref={ref}
         className={cn(
-          'bg-white border rounded-lg px-3 py-2 text-sm text-ink',
+          'bg-white border rounded-lg px-3 py-2.5 text-sm text-ink',
           'transition-colors focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent',
           error ? 'border-danger' : 'border-cream-subtle',
           className,
@@ -56,7 +56,7 @@ export const SelectField = forwardRef<HTMLSelectElement, SelectFieldProps>(
       >
         {children}
       </select>
-      {error && <p className="text-xs text-danger">{error}</p>}
+      {error && <p className="text-sm text-danger">{error}</p>}
     </div>
   ),
 );

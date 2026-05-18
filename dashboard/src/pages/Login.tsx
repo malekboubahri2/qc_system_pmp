@@ -68,9 +68,9 @@ export function LoginPage() {
 
         {/* Form body */}
         <div className="bg-white px-8 py-8">
-          <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-5">
+          <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-6">
             {/* Email */}
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-2">
               <label htmlFor="email" className="text-sm font-medium text-ink-heading">
                 Adresse e-mail
               </label>
@@ -80,17 +80,16 @@ export function LoginPage() {
                 autoComplete="email"
                 autoFocus
                 {...register('email')}
-                className="bg-white border border-cream-subtle rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-muted transition-colors focus:outline-none focus:ring-2 focus:border-accent"
-                style={{ '--tw-ring-color': 'rgba(212, 183, 101, 0.4)' } as React.CSSProperties}
+                className="bg-white border border-cream-subtle rounded-lg px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted transition-colors focus:outline-none focus:ring-2 focus:border-accent"
                 placeholder="responsable@pmp.tn"
               />
               {errors.email && (
-                <p className="text-xs text-danger mt-0.5">{errors.email.message}</p>
+                <p className="text-sm text-danger">{errors.email.message}</p>
               )}
             </div>
 
             {/* Password */}
-            <div className="flex flex-col gap-1">
+            <div className="flex flex-col gap-2">
               <label htmlFor="password" className="text-sm font-medium text-ink-heading">
                 Mot de passe
               </label>
@@ -100,8 +99,7 @@ export function LoginPage() {
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
                   {...register('password')}
-                  className="w-full bg-white border border-cream-subtle rounded-lg px-3 py-2 pr-10 text-sm text-ink placeholder:text-ink-muted transition-colors focus:outline-none focus:ring-2 focus:border-accent"
-                  style={{ '--tw-ring-color': 'rgba(212, 183, 101, 0.4)' } as React.CSSProperties}
+                  className="w-full bg-white border border-cream-subtle rounded-lg px-3 py-2.5 pr-10 text-sm text-ink placeholder:text-ink-muted transition-colors focus:outline-none focus:ring-2 focus:border-accent"
                   placeholder="••••••••"
                 />
                 <button
@@ -114,13 +112,13 @@ export function LoginPage() {
                 </button>
               </div>
               {errors.password && (
-                <p className="text-xs text-danger mt-0.5">{errors.password.message}</p>
+                <p className="text-sm text-danger">{errors.password.message}</p>
               )}
             </div>
 
             {/* API error */}
             {apiError && (
-              <p className="text-xs text-danger text-center bg-danger/5 rounded px-3 py-2">
+              <p className="text-sm text-danger text-center bg-danger/5 rounded px-3 py-2.5">
                 {apiError}
               </p>
             )}

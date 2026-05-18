@@ -76,7 +76,7 @@ function PinModal({
         <p className="text-sm text-ink-muted">
           {operator?.pin_set ? 'Modifier le PIN de cet opérateur.' : 'Définir un PIN pour cet opérateur.'}
         </p>
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-2">
           <label className="text-sm font-medium text-ink-heading">
             Nouveau PIN <span className="text-danger">*</span>
           </label>
@@ -86,7 +86,7 @@ function PinModal({
               inputMode="numeric"
               maxLength={8}
               placeholder="4 à 8 chiffres"
-              className={`w-full bg-white border rounded-lg px-3 py-2 pr-10 text-sm font-mono tracking-widest
+              className={`w-full bg-white border rounded-lg px-3 py-2.5 pr-10 text-sm font-mono tracking-widest
                 transition-colors focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent
                 ${errors.pin ? 'border-danger' : 'border-cream-subtle'}`}
               {...register('pin')}
@@ -96,7 +96,7 @@ function PinModal({
               <Icon icon={show ? EyeOff : Eye} size={16} />
             </button>
           </div>
-          {errors.pin && <p className="text-xs text-danger">{errors.pin.message}</p>}
+          {errors.pin && <p className="text-sm text-danger">{errors.pin.message}</p>}
         </div>
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" size="sm" onClick={() => { onClose(); reset(); setShow(false); }}>Annuler</Button>
@@ -141,12 +141,12 @@ export function OperatorsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-ink-heading">Opérateurs</h1>
-          <p className="text-sm text-ink-muted mt-1">Chaque opérateur doit avoir un PIN pour utiliser le terminal</p>
+          <p className="text-base text-ink-muted mt-1.5">Chaque opérateur doit avoir un PIN pour utiliser le terminal</p>
         </div>
         <Button onClick={() => setOpModal({ open: true })}>
           <Icon icon={Plus} size={16} />
@@ -168,27 +168,27 @@ export function OperatorsPage() {
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-cream-subtle text-xs font-medium uppercase tracking-wide text-ink-muted">
-                <th className="px-5 py-3 text-left">Nom</th>
-                <th className="px-5 py-3 text-left">PIN</th>
-                <th className="px-5 py-3 text-left">Statut</th>
-                <th className="px-5 py-3 text-right">Actions</th>
+              <tr className="bg-cream-subtle text-xs font-semibold uppercase tracking-wider text-ink-muted">
+                <th className="px-5 py-4 text-left">Nom</th>
+                <th className="px-5 py-4 text-left">PIN</th>
+                <th className="px-5 py-4 text-left">Statut</th>
+                <th className="px-5 py-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {operators.map((op, i) => (
                 <tr key={op.id} className={i % 2 === 0 ? 'bg-white' : 'bg-cream/30'}>
-                  <td className="px-5 py-3 font-medium text-ink">{op.name}</td>
-                  <td className="px-5 py-3">
+                  <td className="px-5 py-4 font-medium text-sm text-ink">{op.name}</td>
+                  <td className="px-5 py-4">
                     <StatusBadge
                       status={op.pin_set ? 'success' : 'warning'}
                       label={op.pin_set ? 'Défini' : 'Non défini'}
                     />
                   </td>
-                  <td className="px-5 py-3">
+                  <td className="px-5 py-4">
                     <StatusBadge status={op.active ? 'success' : 'danger'} label={op.active ? 'Actif' : 'Archivé'} />
                   </td>
-                  <td className="px-5 py-3">
+                  <td className="px-5 py-4">
                     <div className="flex items-center gap-2 justify-end">
                       <button onClick={() => setPinModal({ open: true, operator: op })}
                         className="text-ink-muted hover:text-brand transition-colors" title="Définir PIN">

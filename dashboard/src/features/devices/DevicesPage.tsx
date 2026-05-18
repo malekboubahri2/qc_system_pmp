@@ -31,18 +31,18 @@ export function DevicesPage() {
     : '—';
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-ink-heading">Appareils</h1>
-          <p className="text-sm text-ink-muted mt-1">
+          <p className="text-base text-ink-muted mt-1.5">
             {devices.length > 0
               ? `${onlineCount} / ${devices.length} en ligne`
               : 'Aucun appareil enregistré'}
           </p>
         </div>
-        <div className="flex items-center gap-2 text-xs text-ink-muted">
+        <div className="flex items-center gap-2 text-sm text-ink-muted">
           <Icon icon={RefreshCw} size={13} />
           Actualisation auto · {lastRefresh}
         </div>
@@ -66,27 +66,29 @@ export function DevicesPage() {
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-cream-subtle text-xs font-medium uppercase tracking-wide text-ink-muted">
-                <th className="px-5 py-3 text-left">Identifiant</th>
-                <th className="px-5 py-3 text-left">Statut</th>
-                <th className="px-5 py-3 text-left">Dernière connexion</th>
-                <th className="px-5 py-3 text-left">Version config</th>
+              <tr className="bg-cream-subtle text-xs font-semibold uppercase tracking-wider text-ink-muted">
+                <th className="px-5 py-4 text-left">Identifiant</th>
+                <th className="px-5 py-4 text-left">Statut</th>
+                <th className="px-5 py-4 text-left">Dernière connexion</th>
+                <th className="px-5 py-4 text-left">Version config</th>
               </tr>
             </thead>
             <tbody>
               {devices.map((device, i) => (
                 <tr key={device.id} className={i % 2 === 0 ? 'bg-white' : 'bg-cream/30'}>
-                  <td className="px-5 py-3 font-mono text-xs text-ink flex items-center gap-2 pt-[14px]">
-                    <Icon icon={device.online ? Wifi : WifiOff} size={14} className={device.online ? 'text-success' : 'text-ink-muted/40'} />
-                    {device.id}
+                  <td className="px-5 py-4 font-mono text-sm text-ink">
+                    <span className="flex items-center gap-2">
+                      <Icon icon={device.online ? Wifi : WifiOff} size={15} className={device.online ? 'text-success' : 'text-ink-muted/40'} />
+                      {device.id}
+                    </span>
                   </td>
-                  <td className="px-5 py-3 text-sm">
+                  <td className="px-5 py-4 text-sm">
                     <OnlineDot online={device.online} />
                   </td>
-                  <td className="px-5 py-3 font-mono text-xs text-ink-muted">
+                  <td className="px-5 py-4 font-mono text-sm text-ink-muted">
                     {device.last_seen ? formatDateTime(device.last_seen) : '—'}
                   </td>
-                  <td className="px-5 py-3 font-mono text-xs text-ink">
+                  <td className="px-5 py-4 font-mono text-sm text-ink">
                     {device.config_version != null ? `v${device.config_version}` : '—'}
                   </td>
                 </tr>

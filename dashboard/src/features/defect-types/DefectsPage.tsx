@@ -137,7 +137,7 @@ function CategorySection({
   return (
     <div className="bg-white rounded-lg" style={{ boxShadow: '0 1px 3px rgba(26,85,96,0.08)' }}>
       {/* Category header */}
-      <div className="flex items-center gap-3 px-5 py-4 border-b border-cream-subtle">
+      <div className="flex items-center gap-3 px-5 py-5 border-b border-cream-subtle">
         <button onClick={() => setOpen((v) => !v)} className="text-ink-muted hover:text-ink transition-colors">
           <Icon icon={open ? ChevronDown : ChevronRight} size={18} />
         </button>
@@ -164,7 +164,7 @@ function CategorySection({
             <p className="px-5 py-4 text-sm text-ink-muted">Aucun type dans cette catégorie.</p>
           )}
           {types.map((t) => (
-            <div key={t.id} className="flex items-center gap-3 px-5 py-3 hover:bg-cream/40 transition-colors">
+            <div key={t.id} className="flex items-center gap-3 px-5 py-4 hover:bg-cream/40 transition-colors">
               <span className="text-sm text-ink flex-1">{t.label}</span>
               <button onClick={() => onEditType(t)} className="text-ink-muted hover:text-brand transition-colors" title="Modifier">
                 <Icon icon={Pencil} size={14} />
@@ -176,7 +176,7 @@ function CategorySection({
           ))}
 
           {/* Add type row */}
-          <div className="px-5 py-3">
+          <div className="px-5 py-4">
             <Button
               variant="ghost"
               size="sm"
@@ -248,12 +248,12 @@ export function DefectsPage() {
   const isLoading = catLoading || typeLoading;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-ink-heading">Défauts</h1>
-          <p className="text-sm text-ink-muted mt-1">Catégories et types affichés sur le terminal opérateur</p>
+          <p className="text-base text-ink-muted mt-1.5">Catégories et types affichés sur le terminal opérateur</p>
         </div>
         <Button onClick={() => setCatModal({ open: true })}>
           <Icon icon={Plus} size={16} />

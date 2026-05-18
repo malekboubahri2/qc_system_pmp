@@ -48,12 +48,12 @@ export function LogsPage() {
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-ink-heading">Journaux</h1>
-          <p className="text-sm text-ink-muted mt-1">
+          <p className="text-base text-ink-muted mt-1.5">
             {total > 0 ? `${total} entrée${total > 1 ? 's' : ''}` : 'Aucune entrée'}
           </p>
         </div>
@@ -64,7 +64,7 @@ export function LogsPage() {
       </div>
 
       {/* Filters bar */}
-      <div className="bg-cream-subtle/60 rounded-lg px-5 py-4 flex flex-wrap items-end gap-4">
+      <div className="bg-cream-subtle/60 rounded-lg px-5 py-5 flex flex-wrap items-end gap-4">
         <DateRangePicker
           from={filters.from ?? ''}
           to={filters.to ?? ''}
@@ -73,10 +73,10 @@ export function LogsPage() {
         />
 
         {/* Operator filter */}
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-ink-muted">Opérateur</label>
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-ink-muted">Opérateur</label>
           <select
-            className="bg-white border border-cream-subtle rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent/40"
+            className="bg-white border border-cream-subtle rounded-lg px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent/40"
             value={filters.operator_id ?? ''}
             onChange={(e) => setFilter('operator_id', e.target.value ? Number(e.target.value) : undefined)}
           >
@@ -86,10 +86,10 @@ export function LogsPage() {
         </div>
 
         {/* Category + type filter */}
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-ink-muted">Type de défaut</label>
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-ink-muted">Type de défaut</label>
           <select
-            className="bg-white border border-cream-subtle rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent/40"
+            className="bg-white border border-cream-subtle rounded-lg px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent/40"
             value={filters.defect_type_id ?? ''}
             onChange={(e) => setFilter('defect_type_id', e.target.value ? Number(e.target.value) : undefined)}
           >
@@ -119,26 +119,26 @@ export function LogsPage() {
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-cream-subtle text-xs font-medium uppercase tracking-wide text-ink-muted">
-                <th className="px-4 py-3 text-left">Date / Heure</th>
-                <th className="px-4 py-3 text-left">Opérateur</th>
-                <th className="px-4 py-3 text-left">Catégorie</th>
-                <th className="px-4 py-3 text-left">Défaut</th>
-                <th className="px-4 py-3 text-left">Référence</th>
-                <th className="px-4 py-3 text-left font-mono text-xs">Appareil</th>
+              <tr className="bg-cream-subtle text-xs font-semibold uppercase tracking-wider text-ink-muted">
+                <th className="px-4 py-4 text-left">Date / Heure</th>
+                <th className="px-4 py-4 text-left">Opérateur</th>
+                <th className="px-4 py-4 text-left">Catégorie</th>
+                <th className="px-4 py-4 text-left">Défaut</th>
+                <th className="px-4 py-4 text-left">Référence</th>
+                <th className="px-4 py-4 text-left">Appareil</th>
               </tr>
             </thead>
             <tbody>
               {logs.map((log, i) => (
                 <tr key={log.id} className={i % 2 === 0 ? 'bg-white' : 'bg-cream/30'}>
-                  <td className="px-4 py-3 font-mono text-xs text-ink-muted whitespace-nowrap">
+                  <td className="px-4 py-4 font-mono text-sm text-ink-muted whitespace-nowrap">
                     {formatDateTime(log.logged_at)}
                   </td>
-                  <td className="px-4 py-3 text-ink">{log.operator_name}</td>
-                  <td className="px-4 py-3 text-ink-muted">{log.category_name}</td>
-                  <td className="px-4 py-3 font-medium text-ink">{log.defect_label}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-ink">{log.product_ref || '—'}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-ink-muted">{log.device_id}</td>
+                  <td className="px-4 py-4 text-sm text-ink">{log.operator_name}</td>
+                  <td className="px-4 py-4 text-sm text-ink-muted">{log.category_name}</td>
+                  <td className="px-4 py-4 text-sm font-medium text-ink">{log.defect_label}</td>
+                  <td className="px-4 py-4 font-mono text-sm text-ink">{log.product_ref || '—'}</td>
+                  <td className="px-4 py-4 font-mono text-sm text-ink-muted">{log.device_id}</td>
                 </tr>
               ))}
             </tbody>

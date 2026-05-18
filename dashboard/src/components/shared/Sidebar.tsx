@@ -39,7 +39,7 @@ function NavItem({
       end={end}
       className={({ isActive }) =>
         cn(
-          'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150',
+          'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
           isActive
             ? 'text-accent bg-white/10'
             : 'text-ink-inverse/70 hover:text-ink-inverse hover:bg-white/5',
@@ -56,24 +56,21 @@ export function Sidebar() {
   const { user, logout } = useAuth();
 
   return (
-    <aside
-      className="w-56 flex-shrink-0 flex flex-col"
-      style={{ background: '#0E353C' }}
-    >
+    <aside className="w-60 flex-shrink-0 flex flex-col bg-brand-deep">
       {/* Logo */}
-      <div className="px-5 py-5 border-b border-white/10 flex-shrink-0">
+      <div className="px-5 py-6 border-b border-white/10 flex-shrink-0">
         <img src="/logo.png" alt="PMP" className="h-14 w-auto" />
       </div>
 
       {/* Main nav */}
-      <nav className="flex-1 px-3 py-4 flex flex-col gap-0.5 overflow-y-auto">
+      <nav className="flex-1 px-3 py-5 flex flex-col gap-1 overflow-y-auto">
         {mainNav.map((item) => (
           <NavItem key={item.to} {...item} />
         ))}
       </nav>
 
       {/* Bottom section */}
-      <div className="px-3 py-3 border-t border-white/10 flex-shrink-0 flex flex-col gap-0.5">
+      <div className="px-3 py-4 border-t border-white/10 flex-shrink-0 flex flex-col gap-1">
         <NavItem to="/settings" label="Paramètres" icon={Settings} />
 
         {/* User + logout */}

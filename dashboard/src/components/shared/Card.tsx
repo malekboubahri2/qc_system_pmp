@@ -27,7 +27,7 @@ export function Card({ elevated, className, children, ...props }: CardProps) {
 
 export function CardHeader({ className, children, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn('px-6 py-4 border-b border-cream-subtle', className)} {...props}>
+    <div className={cn('px-6 py-5 border-b border-cream-subtle', className)} {...props}>
       {children}
     </div>
   );

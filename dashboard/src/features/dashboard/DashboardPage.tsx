@@ -26,7 +26,7 @@ function StatTile({ label, value, icon, color }: StatTileProps) {
   const c = COLOR_MAP[color];
   return (
     <div
-      className="bg-white rounded-lg px-5 py-4 flex items-center gap-4"
+      className="bg-white rounded-lg px-5 py-5 flex items-center gap-5"
       style={{ boxShadow: '0 1px 3px rgba(26,85,96,0.08)' }}
     >
       <div className={`${c.bg} rounded-lg p-3 flex-shrink-0`}>
@@ -70,10 +70,10 @@ export function DashboardPage() {
   const logs = recentLogs?.items ?? [];
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <div>
         <h1 className="text-3xl font-bold text-ink-heading">Tableau de bord</h1>
-        <p className="text-sm text-ink-muted mt-1">Vue d'ensemble du système QC</p>
+        <p className="text-base text-ink-muted mt-1.5">Vue d'ensemble du système QC</p>
       </div>
 
       {/* Stat tiles */}
@@ -86,9 +86,9 @@ export function DashboardPage() {
 
       {/* Recent activity */}
       <div className="bg-white rounded-lg overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(26,85,96,0.08)' }}>
-        <div className="px-5 py-4 border-b border-cream-subtle flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-ink-heading uppercase tracking-wide">Activité récente</h2>
-          <span className="text-xs text-ink-muted">7 derniers jours · 15 entrées</span>
+        <div className="px-5 py-5 border-b border-cream-subtle flex items-center justify-between">
+          <h2 className="text-base font-semibold text-ink-heading">Activité récente</h2>
+          <span className="text-sm text-ink-muted">7 derniers jours · 15 entrées</span>
         </div>
 
         {logs.length === 0 ? (
@@ -99,15 +99,15 @@ export function DashboardPage() {
         ) : (
           <ul className="divide-y divide-cream/60">
             {logs.map((log) => (
-              <li key={log.id} className="px-5 py-3 flex items-center gap-3 hover:bg-cream/20 transition-colors">
-                <span className="font-mono text-xs text-ink-muted w-36 flex-shrink-0 whitespace-nowrap">
+              <li key={log.id} className="px-5 py-4 flex items-center gap-3 hover:bg-cream/20 transition-colors">
+                <span className="font-mono text-sm text-ink-muted w-40 flex-shrink-0 whitespace-nowrap">
                   {formatDateTime(log.logged_at)}
                 </span>
-                <span className="text-xs text-ink-muted flex-shrink-0 w-28 truncate">{log.operator_name}</span>
-                <span className="text-xs text-ink-muted flex-shrink-0 hidden md:block w-28 truncate">{log.category_name}</span>
+                <span className="text-sm text-ink-muted flex-shrink-0 w-32 truncate">{log.operator_name}</span>
+                <span className="text-sm text-ink-muted flex-shrink-0 hidden md:block w-28 truncate">{log.category_name}</span>
                 <span className="text-sm font-medium text-ink truncate">{log.defect_label}</span>
                 {log.product_ref && (
-                  <span className="ml-auto font-mono text-xs text-ink-muted flex-shrink-0">{log.product_ref}</span>
+                  <span className="ml-auto font-mono text-sm text-ink-muted flex-shrink-0">{log.product_ref}</span>
                 )}
               </li>
             ))}

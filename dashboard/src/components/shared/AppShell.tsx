@@ -7,10 +7,10 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   return (
-    <div className="h-screen flex overflow-hidden" style={{ background: '#FAEEE3' }}>
+    <div className="h-screen flex overflow-hidden bg-cream">
       <Sidebar />
       <main className="flex-1 overflow-y-auto">
-        <div className="px-6 md:px-8 lg:px-10 py-8 min-h-full">
+        <div className="px-8 md:px-10 lg:px-12 py-10 min-h-full">
           {children}
         </div>
       </main>
