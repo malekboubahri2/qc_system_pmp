@@ -13,6 +13,7 @@ import { LogsPage } from '@/features/logs';
 import { AnalyticsPage } from '@/features/analytics';
 import { DevicesPage } from '@/features/devices';
 import { SettingsPage } from '@/features/settings';
+import { StyleguidePage } from '@/pages/StyleguidePage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -38,6 +39,10 @@ export default function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
+
+            {import.meta.env.DEV && (
+              <Route path="/__styleguide" element={<StyleguidePage />} />
+            )}
 
             <Route
               path="/"
