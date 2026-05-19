@@ -24,7 +24,7 @@ function SummaryBand({ session }: { session: StationSession }) {
               {session.operatorName}
             </p>
             <p className="text-xs text-ink-muted mt-0.5 leading-none">
-              Connecté·e à <span className="mono">{session.connectedAt}</span>
+              Session depuis <span className="mono">{session.connectedAt}</span>
             </p>
           </div>
         </div>

@@ -125,6 +125,22 @@ h1, h2, h3, h4, h5, h6 {
   animation: livepulse 2.2s ease-in-out infinite;
 }
 
+/* ── Card-flash animation (new defect arrival, wired in Week 2) ─ */
+@keyframes card-flash {
+  0% {
+    background-color: #FFF6E8;
+    box-shadow: 0 0 0 1px rgba(212, 183, 101, 0.30);
+  }
+  100% {
+    background-color: var(--color-white, #FFFFFF);
+    box-shadow: 0 1px 3px rgba(26, 85, 96, 0.08), 0 1px 2px rgba(26, 85, 96, 0.04);
+  }
+}
+
+@utility animate-card-flash {
+  animation: card-flash 1000ms ease-out;
+}
+
 /* ── Deterministic glyph background palette (12 muted tones) ── */
 /* Hash function selects by: charCode(first-letter) % 12        */
 @utility glyph-bg-0  { background-color: #5e7d8a; }

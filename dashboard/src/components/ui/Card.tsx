@@ -20,6 +20,9 @@ interface CardProps {
  *
  * Expected children: <CardGlyph>, <CardBody>, <CardRight>
  */
+// To trigger the "new defect arrived" flash, add the
+// `animate-card-flash` class for ~1.2s, then remove it.
+// Wired in Week 2 when real-time data lands.
 export function Card({ variant = 'default', repeatBadge, children, className }: CardProps) {
   return (
     <article
