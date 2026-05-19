@@ -1,39 +1,52 @@
+import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard,
-  Activity,
-  Layers,
-  Users,
-  FileText,
-  BarChart2,
-  Cpu,
-  Settings,
-  LogOut,
+  LayoutDashboard, Radio, Package, Users, ScrollText,
+  LineChart, MonitorSmartphone, Settings, LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { Icon } from '@/components/Icon';
 
+// ── Hover/focus expand logic ─────────────────────────────────────────────────
+
+function useSidebarHover() {
+  const [isExpanded, setIsExpanded] = useState(false);
+  return {
+    isExpanded,
+    onMouseEnter: () => setIsExpanded(true),
+    onMouseLeave: () => setIsExpanded(false),
+    onFocus: () => setIsExpanded(true),
+    onBlur: (e: React.FocusEvent<HTMLElement>) => {
+      if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+        setIsExpanded(false);
+      }
+    },
+  };
+}
+
+// ── Nav config ────────────────────────────────────────────────────────────────
+
 const mainNav = [
   { to: '/', label: 'Tableau de bord', icon: LayoutDashboard, end: true },
-  { to: '/stations/en-direct', label: 'Stations en direct', icon: Activity, end: false },
-  { to: '/products', label: 'Produits', icon: Layers, end: false },
+  { to: '/stations/en-direct', label: 'Stations en direct', icon: Radio, end: false },
+  { to: '/products', label: 'Produits', icon: Package, end: false },
   { to: '/operators', label: 'Opérateurs', icon: Users, end: false },
-  { to: '/logs', label: 'Journaux', icon: FileText, end: false },
-  { to: '/analytics', label: 'Analytique', icon: BarChart2, end: false },
-  { to: '/devices', label: 'Appareils', icon: Cpu, end: false },
+  { to: '/logs', label: 'Journaux', icon: ScrollText, end: false },
+  { to: '/analytics', label: 'Analytique', icon: LineChart, end: false },
+  { to: '/devices', label: 'Appareils', icon: MonitorSmartphone, end: false },
 ];
 
+// ── NavItem ───────────────────────────────────────────────────────────────────
+
 function NavItem({
-  to,
-  label,
-  icon,
-  end,
+  to, label, icon, end, isExpanded,
 }: {
   to: string;
   label: string;
   icon: typeof LayoutDashboard;
   end?: boolean;
+  isExpanded: boolean;
 }) {
   return (
     <NavLink
@@ -41,52 +54,93 @@ function NavItem({
       end={end}
       className={({ isActive }) =>
         cn(
-          'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150',
+          'flex items-center gap-3 py-2.5 pl-[22px] pr-3 text-sm font-medium w-full',
+          'transition-colors duration-150 border-l-2',
+          'focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/60',
           isActive
-            ? 'text-accent bg-white/10'
-            : 'text-ink-inverse/70 hover:text-ink-inverse hover:bg-white/5',
+            ? 'border-accent bg-brand/30 text-cream'
+            : 'border-transparent text-cream/60 hover:text-cream hover:bg-brand/50',
         )
       }
     >
-      <Icon icon={icon} size={18} />
-      {label}
+      <Icon icon={icon} size={20} className="flex-shrink-0" />
+      <span
+        className={cn(
+          'whitespace-nowrap overflow-hidden transition-[opacity,max-width] duration-200',
+          isExpanded ? 'opacity-100 max-w-[160px]' : 'opacity-0 max-w-0',
+        )}
+      >
+        {label}
+      </span>
     </NavLink>
   );
 }
 
+// ── Sidebar ───────────────────────────────────────────────────────────────────
+
 export function Sidebar() {
   const { user, logout } = useAuth();
+  const { isExpanded, onMouseEnter, onMouseLeave, onFocus, onBlur } = useSidebarHover();
 
   return (
-    <aside className="w-60 flex-shrink-0 flex flex-col bg-brand-deep">
+    <aside
+      className={cn(
+        'fixed top-0 left-0 h-full z-30 flex flex-col bg-brand-deep overflow-hidden',
+        'transition-[width] duration-200 ease-out',
+        isExpanded ? 'w-[220px]' : 'w-16',
+      )}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      onFocus={onFocus}
+      onBlur={onBlur}
+    >
       {/* Logo */}
-      <div className="px-5 py-6 border-b border-white/10 flex-shrink-0">
-        <img src="/logo.png" alt="PMP" className="h-14 w-auto" />
+      <div className="h-16 flex items-center px-3 flex-shrink-0 border-b border-white/10">
+        <img src="/logo.png" alt="PMP" className="w-10 h-10 object-contain flex-shrink-0" />
+        <div
+          className={cn(
+            'ml-3 overflow-hidden transition-[opacity,max-width] duration-200',
+            isExpanded ? 'opacity-100 max-w-[140px]' : 'opacity-0 max-w-0',
+          )}
+        >
+          <p className="text-sm font-semibold text-cream leading-tight whitespace-nowrap">PMP</p>
+          <p className="text-[10px] text-cream/60 leading-tight whitespace-nowrap">
+            Peinture et Métallisation<br />sur Plastique
+          </p>
+        </div>
       </div>
 
       {/* Main nav */}
-      <nav className="flex-1 px-3 py-5 flex flex-col gap-1 overflow-y-auto">
+      <nav className="flex-1 py-3 flex flex-col overflow-y-auto">
         {mainNav.map((item) => (
-          <NavItem key={item.to} {...item} />
+          <NavItem key={item.to} {...item} isExpanded={isExpanded} />
         ))}
       </nav>
 
-      {/* Bottom section */}
-      <div className="px-3 py-4 border-t border-white/10 flex-shrink-0 flex flex-col gap-1">
-        <NavItem to="/settings" label="Paramètres" icon={Settings} />
+      {/* Footer — Paramètres + logout */}
+      <div className="py-3 flex flex-col border-t border-white/10 flex-shrink-0">
+        <NavItem to="/settings" label="Paramètres" icon={Settings} isExpanded={isExpanded} />
 
-        {/* User + logout */}
         {user && (
-          <div className="px-3 pt-2 pb-1 flex items-center justify-between">
-            <span className="text-xs text-ink-inverse/50 truncate">{user.email}</span>
-            <button
-              onClick={logout}
-              title="Déconnexion"
-              className="text-ink-inverse/50 hover:text-ink-inverse transition-colors ml-2 flex-shrink-0"
+          <button
+            onClick={logout}
+            title="Déconnexion"
+            className={cn(
+              'flex items-center gap-3 py-2.5 pl-[22px] pr-3 text-sm w-full',
+              'text-cream/60 hover:text-cream hover:bg-brand/50 transition-colors duration-150',
+              'border-l-2 border-transparent focus:outline-none',
+            )}
+          >
+            <Icon icon={LogOut} size={20} className="flex-shrink-0" />
+            <span
+              className={cn(
+                'whitespace-nowrap overflow-hidden transition-[opacity,max-width] duration-200 text-left',
+                isExpanded ? 'opacity-100 max-w-[160px]' : 'opacity-0 max-w-0',
+              )}
             >
-              <Icon icon={LogOut} size={15} />
-            </button>
-          </div>
+              {user.email}
+            </span>
+          </button>
         )}
       </div>
     </aside>
