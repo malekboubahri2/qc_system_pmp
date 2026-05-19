@@ -6,6 +6,7 @@ import { RequireAuth } from '@/components/RequireAuth';
 import { AppShell } from '@/components/shared/AppShell';
 import { LoginPage } from '@/pages/Login';
 import { DashboardPage } from '@/features/dashboard';
+import { HomePage } from '@/features/home';
 import { ProductsPage } from '@/features/products';
 import { ProductDetailPage } from '@/features/product-detail';
 import { OperatorsPage } from '@/features/operators';
@@ -47,7 +48,7 @@ export default function App() {
 
             <Route
               path="/"
-              element={<ProtectedShell><DashboardPage /></ProtectedShell>}
+              element={<ProtectedShell><HomePage /></ProtectedShell>}
             />
             <Route
               path="/stations/en-direct"

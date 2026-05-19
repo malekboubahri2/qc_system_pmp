@@ -5,6 +5,7 @@ import {
   FIXTURE_TYPE, FIXTURE_TYPE_FALLBACK,
   FIXTURE_DEVICE, FIXTURE_LOGS, FIXTURE_FLAG,
   FIXTURE_SUMMARY, FIXTURE_BY_DEFECT, FIXTURE_BY_OPERATOR, FIXTURE_HEATMAP,
+  FIXTURE_HOURLY_REPORT,
 } from './fixtures';
 
 // In vitest/Node.js, axios uses the fetch adapter with baseURL='/api'.
@@ -44,6 +45,11 @@ export const handlers = [
 
   // Logs
   http.get(`${BASE}/logs`, () => HttpResponse.json(FIXTURE_LOGS)),
+
+  // Inspection logs
+  http.get(`${BASE}/inspection-logs/reports/hourly`, () =>
+    HttpResponse.json(FIXTURE_HOURLY_REPORT),
+  ),
 
   // Stats
   http.get(`${BASE}/stats/summary`, () => HttpResponse.json(FIXTURE_SUMMARY)),

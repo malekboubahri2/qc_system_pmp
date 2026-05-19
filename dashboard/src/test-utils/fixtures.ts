@@ -2,6 +2,7 @@ import type {
   User, Operator, Product, CategoryConstant, DefectType, DefectLog,
   Device, FeatureFlag, PaginatedLogs,
   SummaryPoint, ByDefectPoint, ByOperatorPoint, HeatmapPoint,
+  HourlyReport,
 } from '@/types';
 
 export const FIXTURE_USER: User = {
@@ -65,9 +66,24 @@ export const FIXTURE_LOG: DefectLog = {
   operator: { id: 1, name: 'Mohammed' },
   defect_type: { id: 1, label: 'Coulure', category_kind: 'PMP' },
   product: { id: 1, name: 'Capot moteur' },
+  outcome: 'DEFECT',
   note: null,
   logged_at: '2026-05-17T09:00:00Z',
   received_at: '2026-05-17T09:00:01Z',
+};
+
+// 24-row stub — hours 7 and 8 have realistic data, rest are zero
+const _EMPTY_ROW = (h: number) => ({
+  hour: h, pmp_total: 0, pmp_defects: 0, pmp_rate: 0,
+  inj_total: 0, inj_defects: 0, inj_rate: 0,
+});
+export const FIXTURE_HOURLY_REPORT: HourlyReport = {
+  date: '2026-05-19',
+  rows: Array.from({ length: 24 }, (_, h) => {
+    if (h === 7) return { hour: 7, pmp_total: 12, pmp_defects: 2, pmp_rate: 0.1667, inj_total: 12, inj_defects: 1, inj_rate: 0.0833 };
+    if (h === 8) return { hour: 8, pmp_total: 18, pmp_defects: 4, pmp_rate: 0.2222, inj_total: 18, inj_defects: 2, inj_rate: 0.1111 };
+    return _EMPTY_ROW(h);
+  }),
 };
 
 export const FIXTURE_LOGS: PaginatedLogs = {

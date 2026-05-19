@@ -45,11 +45,27 @@ export interface DefectLog {
   id: number;
   device_id: string;
   operator: { id: number; name: string };
-  defect_type: { id: number; label: string; category_kind: string };
+  defect_type: { id: number; label: string; category_kind: string } | null;
   product: { id: number; name: string };
+  outcome: 'DEFECT' | 'OK';
   note: string | null;
   logged_at: string;
   received_at: string;
+}
+
+export interface HourlyRow {
+  hour: number;
+  pmp_total: number;
+  pmp_defects: number;
+  pmp_rate: number;
+  inj_total: number;
+  inj_defects: number;
+  inj_rate: number;
+}
+
+export interface HourlyReport {
+  date: string;
+  rows: HourlyRow[];
 }
 
 export interface Device {
