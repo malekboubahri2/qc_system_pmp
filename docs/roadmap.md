@@ -869,3 +869,49 @@ Never cut:
 - The Phase 6 Day 32 shadow day
 - The Phase 6 Day 41 pattern analysis
 - **The Day 31 site survey** — added for the Wi-Fi path
+
+---
+
+## Demo sprint (4 weeks from 2026-05-19)
+
+Following ADR-013 (product-scoped model). Concrete sub-plan for the
+1-month live demo. Supersedes the day-by-day roadmap above for active
+work; the day-by-day roadmap remains as reference for tasks not yet done.
+
+### Week 1 (Days 1–5) — Model rework
+
+- Documentation updates (committed alongside this roadmap entry)
+- Alembic migration: drop `defect_categories`, add `products`,
+  reshape `defect_types` (product_id + category_kind), add `note`
+  and `product_id` to `defect_logs`
+- Server: new routers (`products`, `constants`), update
+  `defect_types` router to product-scoped paths, update MQTT
+  publisher to emit `qc/config/products` (schema_version 2),
+  update MQTT handler to accept defect payloads with `product_id`
+- Dashboard: adapt existing pages to new model (no redesign);
+  add `ProductsPage` and `ProductDetailPage`
+- Seed script regenerated for new model
+
+### Week 2 (Days 6–12) — Firmware integration
+
+- MQTT subscription updated: `qc/config/defects` → `qc/config/products`
+- Defect publish updated: schema_version 2, `product_id` + `note`
+- Session topic: publish `qc/device/{id}/session` on product selection
+- TouchGFX screens: splash, login, product selection, defect grid,
+  summary (product selection is the new screen vs. old flow)
+- First end-to-end: operator selects product, taps defect →
+  log row appears in dashboard with correct `product_id`
+
+### Week 3 (Days 13–18) — Rich dashboard
+
+- Hourly real-time stat tiles
+- Live defect feed with auto-refresh
+- Drill-down: stat tile → filtered logs
+- Product detail with sync indicator
+- Charts: hourly trends, per-product, per-defect type, percentages
+
+### Week 4 (Days 19–25) — Integration, dry runs, buffer
+
+- Three full demo dry runs minimum (operator + QC responsable roles)
+- Polish issues discovered during dry runs
+- Buffer days for surprises

@@ -137,16 +137,19 @@ one onto another.
 ## Architecture (one-paragraph summary)
 
 The STM32 is a thin client connected to the plant Wi-Fi via the on-board
-Inventek ISM43340 module. It renders a TouchGFX UI whose content is driven
-by a `DefectConfig` model received over MQTT. The QC responsable edits
-defects in the React dashboard, which calls FastAPI, which writes to
-SQLite and publishes a retained MQTT message on `qc/config/defects`.
-Mosquitto pushes that message to every connected STM32; the firmware
-parses the JSON, persists it to Octo-SPI flash, and rebinds the UI.
-Defect logs flow the other direction: operator taps a button → STM32
-publishes on `qc/device/{id}/defect` (QoS 1) → MQTT bridge writes the
-row to SQLite → dashboard sees it on next query. Offline: STM32 queues
-to Octo-SPI flash and drains on reconnect.
+Inventek ISM43340 module. It renders a TouchGFX UI driven by a
+per-product defect config received over MQTT. The QC responsable manages
+products and their defect types in the React dashboard, which calls
+FastAPI, which writes to SQLite and publishes a retained MQTT message on
+`qc/config/products`. Mosquitto pushes that message to every connected
+STM32; the firmware parses the JSON, persists it to Octo-SPI flash, and
+rebinds the product-selection and defect-grid screens. Before logging
+defects, the operator completes: login → product selection → defect grid
+(see ADR-013). Defect logs flow the other direction: operator taps a
+button → STM32 publishes on `qc/device/{id}/defect` (QoS 1, carrying
+`product_id`) → MQTT bridge writes the row to SQLite → dashboard sees it
+on next query. Offline: STM32 queues to Octo-SPI flash and drains on
+reconnect.
 
 ---
 
@@ -179,10 +182,11 @@ a contained change: only `platform_net.c` and a few build flags.
 
 | Topic | Direction | QoS | Retained | Purpose |
 |---|---|---|---|---|
-| `qc/config/defects` | server→device | 1 | yes | Full defect/category config |
+| `qc/config/products` | server→device | 1 | yes | Product list with per-product defect types |
 | `qc/config/operators` | server→device | 1 | yes | Operator list with PIN hashes |
 | `qc/device/{id}/cmd` | server→device | 1 | no | Reboot, reload, etc. |
 | `qc/device/{id}/status` | device→server | 0 | no | Heartbeat every 30s |
+| `qc/device/{id}/session` | device→server | 1 | no | Session start (operator + product) |
 | `qc/device/{id}/defect` | device→server | 1 | no | A defect log entry |
 
 `{id}` is the STM32's hardware UID, lowercase hex, e.g. `qc-stm32-001a2b3c`.
@@ -194,14 +198,18 @@ Server and firmware both validate it and refuse unknown versions.
 
 ## Data Model (full spec in `docs/data-model.md`)
 
-Tables: `operators`, `defect_categories`, `defect_types`, `defect_logs`,
+Tables: `products`, `defect_types`, `defect_logs`, `operators`,
 `devices`, `users` (for dashboard auth).
+`defect_categories` replaced by plant-wide constants in `app/constants.py`
+(see ADR-013).
 
 Hard rules:
 - Never hard-delete rows. Use `active` (bool) and `archived_at` (timestamp).
-- Every `defect_logs` row carries `device_id`, `operator_id`, `defect_type_id`,
-  `product_ref` (string), `logged_at` (device time), `received_at` (server time).
-- Cap: 12 defects per category, enforced server-side. Label ≤ 24 chars.
+- Every `defect_logs` row carries `device_id`, `operator_id`, `product_id`,
+  `defect_type_id`, `note` (nullable), `logged_at` (device time),
+  `received_at` (server time).
+- Cap: 12 defects per `(product_id, category_kind)`, enforced server-side.
+  Label ≤ 24 chars. One auto-managed "Other" fallback per pair.
 
 ---
 
@@ -322,7 +330,8 @@ See per-component `CLAUDE.md`.
 
 ## Status
 
-Currently in: **Phase 3 — Firmware integration** (Phase 2 dashboard
-complete, audited in `docs/audits/phase-2-audit.md`, Batch 1 blockers
-remediated; remaining findings parked in `docs/post-poc-todo.md` per
-PoC scope discipline). See `docs/roadmap.md`.
+Currently in: **Defect model rework + dashboard polish (4-week demo sprint).**
+Data model, API contracts, and MQTT topics updated per ADR-013
+(product-scoped defect types, fixed plant-wide categories `PMP` /
+`INJECTION`). See `docs/decisions.md` ADR-013 and
+`docs/roadmap.md` → Demo sprint.

@@ -131,3 +131,18 @@ See `.env.example`. Required:
 - `LOG_LEVEL`, `LOG_FORMAT` (json|text)
 - `CORS_ALLOWED_ORIGINS` (comma-separated)
 - `FEATURE_FLAGS_REFRESH_SECS` (default 30)
+
+## DO NOT
+
+- Do not hardcode the category display names (`"PMP Défauts"`,
+  `"Injection Défauts"`) anywhere in code. They live in
+  `app/constants.py` (`CATEGORY_DISPLAY_NAMES`) and are exposed via
+  `GET /constants/categories`. If the names ever change, only
+  `constants.py` is touched.
+- Do not reference `defect_categories` — the table no longer exists.
+  Categories are the enum `CATEGORY_KIND_VALUES` in `app/constants.py`.
+- Do not create defect types outside a product context. Every
+  `defect_types` row requires a `product_id`.
+- Do not allow archiving a defect type whose `is_other_fallback=true`.
+  The service layer must enforce this (HTTP 409).
+- Do not count `is_other_fallback` types toward the 12-per-category cap.

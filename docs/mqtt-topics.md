@@ -1,8 +1,9 @@
 # MQTT Topics
 
 Mosquitto broker on the RPi, port 1883 (cleartext for PoC).
-See `docs/decisions.md` ADR-002 for why MQTT instead of HTTP for device comms,
-and ADR-003 for the retained-message pattern.
+See `docs/decisions.md` ADR-002 for why MQTT instead of HTTP for device
+comms, ADR-003 for the retained-message pattern, and ADR-013 for the
+product-scoped payload schema introduced in `qc/config/products`.
 
 ---
 
@@ -22,10 +23,11 @@ and ADR-003 for the retained-message pattern.
 
 | Topic | Direction | QoS | Retained | Publisher | Subscribers |
 |---|---|---|---|---|---|
-| `qc/config/defects` | server → device | 1 | yes | server | all STM32 |
+| `qc/config/products` | server → device | 1 | yes | server | all STM32 |
 | `qc/config/operators` | server → device | 1 | yes | server | all STM32 |
 | `qc/device/{id}/cmd` | server → device | 1 | no | server | one STM32 |
 | `qc/device/{id}/status` | device → server | 0 | no | one STM32 | server |
+| `qc/device/{id}/session` | device → server | 1 | no | one STM32 | server |
 | `qc/device/{id}/defect` | device → server | 1 | no | one STM32 | server |
 
 `{id}` is the STM32 hardware UID, lowercase hex, e.g. `qc-stm32-001a2b3c`.
@@ -33,14 +35,15 @@ See `docs/data-model.md` → `devices` table for how IDs are formed.
 
 ---
 
-## `qc/config/defects`
+## `qc/config/products`
 
 **Direction:** server → all devices  
 **QoS:** 1 | **Retained:** yes
 
-Published by the server after any change to `defect_types` or
-`defect_categories`. Contains only active records, sorted by
-`display_order`. Firmware persists this to Octo-SPI and rebinds the UI.
+Published by the server after any change to `products` or `defect_types`.
+Contains only active products that have at least one non-fallback defect
+type, sorted by product `id`. Firmware persists this to Octo-SPI and
+rebinds the product-selection and defect-grid screens.
 
 New subscribers receive the retained message immediately on connect —
 this is how a cold-booted STM32 gets its config before any dashboard
@@ -48,35 +51,43 @@ interaction.
 
 ```json
 {
-  "schema_version": 1,
-  "categories": [
+  "schema_version": 2,
+  "products": [
     {
       "id": 1,
-      "name": "Surface Defects",
-      "display_order": 0,
-      "defects": [
-        { "id": 1, "label": "Scratch",    "display_order": 0 },
-        { "id": 2, "label": "Bubble",     "display_order": 1 },
-        { "id": 3, "label": "Run",        "display_order": 2 }
-      ]
-    },
-    {
-      "id": 2,
-      "name": "Assembly Defects",
-      "display_order": 1,
-      "defects": [
-        { "id": 10, "label": "Wrong Part", "display_order": 0 }
-      ]
+      "name": "Capot moteur",
+      "reference": "PROD-001",
+      "categories": {
+        "PMP": {
+          "display_name": "PMP Défauts",
+          "defect_types": [
+            { "id": 5, "label": "Coulure",         "is_other": false, "display_order": 0 },
+            { "id": 6, "label": "Bullage",          "is_other": false, "display_order": 1 },
+            { "id": 7, "label": "Autre — préciser", "is_other": true,  "display_order": 99 }
+          ]
+        },
+        "INJECTION": {
+          "display_name": "Injection Défauts",
+          "defect_types": [
+            { "id": 8, "label": "Crique",           "is_other": false, "display_order": 0 },
+            { "id": 9, "label": "Autre — préciser", "is_other": true,  "display_order": 99 }
+          ]
+        }
+      }
     }
   ]
 }
 ```
 
 **Field constraints (validated by both server and firmware):**
-- `categories`: 1–2 entries (UI has two columns)
-- `defects` per category: 0–12 entries (4×3 button grid)
+- `products`: 0–N entries (firmware has `APP_PRODUCT_LIST_MAX` —
+  see `docs/build-flags.md`)
+- `defect_types` per category: 0–13 (0–12 user-defined + 1 fallback)
 - `label`: 1–24 characters, UTF-8
 - `schema_version`: integer; reject if > current supported version
+
+**Schema version:** 2. Bumped from the old `qc/config/defects`
+schema_version 1 due to restructuring the payload around products.
 
 ---
 
@@ -162,7 +173,7 @@ upserts the `devices` row on receipt. A device is "online" if
   "schema_version": 1,
   "device_id": "qc-stm32-001a2b3c",
   "uptime_ms": 3612000,
-  "config_version": 1,
+  "config_version": 2,
   "operator_version": 1,
   "queue_depth": 0,
   "wifi_rssi": -52,
@@ -171,6 +182,8 @@ upserts the `devices` row on receipt. A device is "online" if
 ```
 
 **Field notes:**
+- `config_version` — the `schema_version` of the last accepted
+  `qc/config/products` message (2 after the ADR-013 migration).
 - `queue_depth` — entries waiting in the offline defect queue (max 1000,
   see `docs/build-flags.md` → `APP_DEFECT_QUEUE_DEPTH`)
 - `wifi_rssi` — dBm, from ISM43340 module. Useful for plant-floor
@@ -180,6 +193,36 @@ upserts the `devices` row on receipt. A device is "online" if
 
 QoS 0 is intentional: status messages are ephemeral. A dropped heartbeat
 is acceptable; only a sustained gap matters.
+
+---
+
+## `qc/device/{id}/session`
+
+**Direction:** device → server  
+**QoS:** 1 | **Retained:** no
+
+Published when an operator completes login + product selection. Signals
+the start of an inspection session on this device.
+
+```json
+{
+  "schema_version": 1,
+  "device_id": "qc-stm32-001a2b3c",
+  "operator_id": 1,
+  "product_id": 1,
+  "started_at": "2026-05-19T08:14:00Z"
+}
+```
+
+**Field notes:**
+- `product_id` — the product the operator selected. All subsequent
+  `defect` messages in this session carry the same `product_id`.
+- `started_at` — STM32 RTC time (UTC) when the operator confirmed
+  product selection.
+
+A new session message is published each time the operator logs in again
+(shift change, different product selection). QoS 1 ensures the server
+knows which product the device is inspecting even across reconnects.
 
 ---
 
@@ -199,21 +242,28 @@ a known limitation).
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "device_id": "qc-stm32-001a2b3c",
   "operator_id": 1,
-  "defect_type_id": 2,
-  "product_ref": "BODY-2024-0042",
-  "logged_at": "2024-01-15T08:23:01Z"
+  "product_id": 1,
+  "defect_type_id": 5,
+  "note": null,
+  "logged_at": "2026-05-19T08:23:01Z"
 }
 ```
 
 **Field notes:**
+- `product_id` — the product selected at session start. The server
+  validates that `defect_type_id` belongs to this product.
+- `note` — free-text annotation, max 200 chars. Non-null only when
+  the selected defect type has `is_other_fallback=true`. The STM32
+  prompts for this before publishing.
 - `logged_at` — STM32 RTC time (UTC). Synced via SNTP on connect.
   If SNTP has never succeeded, firmware uses `0` and the server records
   `received_at` as a fallback.
-- `product_ref` — free text entered by the operator on the productRef
-  screen before the inspection session. Max 32 chars.
+- `schema_version` bumped to 2 (old schema_version 1 carried a
+  free-text `product_ref` field instead of `product_id`, and had no
+  `note` field).
 
 ---
 
@@ -238,7 +288,8 @@ Two account types:
 
 **Server** (`qc-server`):
 - Publishes: `qc/config/#`, `qc/device/+/cmd`
-- Subscribes: `qc/device/+/status`, `qc/device/+/defect`
+- Subscribes: `qc/device/+/status`, `qc/device/+/session`,
+  `qc/device/+/defect`
 
 **Device** (one account per device, e.g. `qc-device-001a2b3c`):
 - Publishes: `qc/device/qc-stm32-001a2b3c/#`

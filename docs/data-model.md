@@ -10,13 +10,18 @@ for how this data reaches the STM32.
 
 | Table | Purpose |
 |---|---|
-| `operators` | Plant floor operators with PIN credentials |
-| `defect_categories` | Top-level groupings shown as columns on the device |
-| `defect_types` | Individual defect buttons within a category |
+| `products` | Products inspected at the plant |
+| `defect_types` | Defect buttons scoped to a product and category |
 | `defect_logs` | Immutable log of every defect tap |
+| `operators` | Plant floor operators with PIN credentials |
 | `devices` | Known STM32 terminals (auto-registered on first heartbeat) |
 | `users` | Dashboard accounts (QC responsable and admin) |
 | `feature_flags` | Live-toggleable server-side flags |
+
+`defect_categories` no longer exists as a table. The two categories
+(`PMP`, `INJECTION`) are plant-wide constants defined in
+`server/app/constants.py` and exposed via `GET /constants/categories`.
+See ADR-013 in `docs/decisions.md`.
 
 ---
 
@@ -24,13 +29,196 @@ for how this data reaches the STM32.
 
 - **No hard deletes.** Set `active = 0` and `archived_at = <UTC timestamp>`.
   The one exception is `defect_logs`: logs are append-only and immutable.
-- **12 defects per category maximum.** Enforced server-side in
-  `services.defect_types` before insert/update. Violation → HTTP 409.
+- **12 defects per (product_id, category_kind) maximum.** Enforced
+  server-side in `services.defect_types` before insert/update.
+  Violation → HTTP 409. The `is_other_fallback` type does NOT count
+  toward this cap.
+- **Exactly one "Other" fallback per (product_id, category_kind).** Label
+  fixed at `"Autre — préciser"`. Auto-created by `POST /products`.
+  Cannot be archived from the UI.
 - **Label ≤ 24 chars.** Enforced at the Pydantic schema layer. The
   firmware allocates a fixed 25-byte buffer per label.
 - **UTC everywhere on the wire.** Timestamps stored as ISO 8601 strings
   (`YYYY-MM-DDTHH:MM:SSZ`). Display conversion to `Europe/Paris` is a
   dashboard concern only.
+- **Every defect log carries product_id.** The device reports the product
+  in the defect payload; the server validates the FK and stores it.
+
+---
+
+## Entity Relationships
+
+```mermaid
+erDiagram
+    Product ||--o{ DefectType : "has"
+    Product ||--o{ DefectLog : "logged against"
+    DefectType ||--o{ DefectLog : "identifies"
+    Operator ||--o{ DefectLog : "logged by"
+    Device ||--o{ DefectLog : "received from"
+```
+
+---
+
+## products
+
+```sql
+CREATE TABLE products (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT    NOT NULL UNIQUE,
+    reference   TEXT    NOT NULL UNIQUE,   -- e.g. "PROD-001"
+    description TEXT,
+    active      INTEGER NOT NULL DEFAULT 1,
+    archived_at TEXT,
+    created_at  TEXT    NOT NULL
+                DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    updated_at  TEXT    NOT NULL
+                DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+
+CREATE INDEX idx_products_active    ON products (active);
+CREATE INDEX idx_products_reference ON products (reference);
+```
+
+**Column notes:**
+- `reference` — short identifier shown on the STM32 product-selection
+  screen (e.g. `"PROD-001"`, `"CAPOT-A"`). Must be unique.
+- `name` — human-readable name shown in the dashboard
+  (e.g. `"Capot moteur"`). Must be unique.
+- Creating a product via `POST /products` auto-creates two
+  `defect_types` rows with `is_other_fallback=true`, one per
+  `category_kind`. These seed the "Autre — préciser" fallback for each
+  category.
+
+**Example:**
+```sql
+INSERT INTO products (name, reference) VALUES
+    ('Capot moteur', 'PROD-001');
+```
+
+---
+
+## Category constants (not a table)
+
+The two defect categories are a plant-wide enum, not a database table.
+They are defined in `server/app/constants.py`:
+
+```python
+CATEGORY_KIND_PMP       = "PMP"
+CATEGORY_KIND_INJECTION = "INJECTION"
+CATEGORY_KIND_VALUES    = (CATEGORY_KIND_PMP, CATEGORY_KIND_INJECTION)
+CATEGORY_DISPLAY_NAMES  = {
+    CATEGORY_KIND_PMP:       "PMP Défauts",
+    CATEGORY_KIND_INJECTION: "Injection Défauts",
+}
+```
+
+`PMP` maps to defects in PMP's own paint work. `INJECTION` maps to
+defects in upstream injection-moulded parts. This distinction is
+plant-wide and fixed; it cannot be renamed or extended from the
+dashboard (see ADR-013).
+
+The dashboard fetches display names from `GET /constants/categories`.
+Do not hardcode them in component source.
+
+---
+
+## defect_types
+
+```sql
+CREATE TABLE defect_types (
+    id                INTEGER PRIMARY KEY AUTOINCREMENT,
+    product_id        INTEGER NOT NULL REFERENCES products (id),
+    category_kind     TEXT    NOT NULL
+                      CHECK (category_kind IN ('PMP', 'INJECTION')),
+    label             TEXT    NOT NULL,        -- max 24 chars
+    is_other_fallback INTEGER NOT NULL DEFAULT 0,  -- 1 = "Autre — préciser"
+    display_order     INTEGER NOT NULL DEFAULT 0,
+    active            INTEGER NOT NULL DEFAULT 1,
+    archived_at       TEXT,
+    created_at        TEXT    NOT NULL
+                      DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    updated_at        TEXT    NOT NULL
+                      DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+
+CREATE INDEX idx_defect_types_product ON defect_types (product_id, category_kind, active);
+CREATE UNIQUE INDEX idx_defect_types_other
+    ON defect_types (product_id, category_kind)
+    WHERE is_other_fallback = 1;
+```
+
+**Column notes:**
+- `product_id` — the product this defect type belongs to. A defect type
+  has no meaning outside its product context.
+- `category_kind` — `"PMP"` or `"INJECTION"`. Replaces the old
+  `category_id` foreign key.
+- `label` — rendered verbatim on the STM32 button. Max 24 chars;
+  12–16 is comfortable for the 100×60 px slot.
+- `is_other_fallback` — exactly one row per `(product_id, category_kind)`
+  pair may have this set to `1`. Auto-created; never archivable from the
+  UI. Label is always `"Autre — préciser"`.
+- `display_order` — slot 0–11 within the category's 4×3 button grid.
+  The fallback type uses `display_order=99` so it sorts last.
+
+**Example:**
+```sql
+-- Auto-created when product 1 is created:
+INSERT INTO defect_types (product_id, category_kind, label, is_other_fallback, display_order)
+VALUES (1, 'PMP',       'Autre — préciser', 1, 99),
+       (1, 'INJECTION', 'Autre — préciser', 1, 99);
+
+-- User-created defect:
+INSERT INTO defect_types (product_id, category_kind, label, display_order)
+VALUES (1, 'PMP', 'Coulure', 0);
+```
+
+---
+
+## defect_logs
+
+```sql
+CREATE TABLE defect_logs (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    device_id      TEXT    NOT NULL REFERENCES devices (id),
+    operator_id    INTEGER NOT NULL REFERENCES operators (id),
+    product_id     INTEGER NOT NULL REFERENCES products (id),
+    defect_type_id INTEGER NOT NULL REFERENCES defect_types (id),
+    note           TEXT,              -- max 200 chars; set only when
+                                     -- defect_type.is_other_fallback = 1
+    logged_at      TEXT    NOT NULL, -- device clock time (ISO 8601 UTC)
+    received_at    TEXT    NOT NULL
+                   DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+);
+
+CREATE INDEX idx_defect_logs_received_at  ON defect_logs (received_at);
+CREATE INDEX idx_defect_logs_logged_at    ON defect_logs (logged_at);
+CREATE INDEX idx_defect_logs_operator     ON defect_logs (operator_id);
+CREATE INDEX idx_defect_logs_defect_type  ON defect_logs (defect_type_id);
+CREATE INDEX idx_defect_logs_device       ON defect_logs (device_id);
+CREATE INDEX idx_defect_logs_product      ON defect_logs (product_id);
+```
+
+**Column notes:**
+- `product_id` — the product the operator was inspecting. Reported by
+  the device; stored as received. Enables per-product analytics.
+- `note` — free-text annotation, max 200 chars. The STM32 prompts for
+  this only when `defect_type.is_other_fallback = 1`. `null` for all
+  other defect types.
+- `logged_at` — set by the STM32 RTC at tap time. Can differ from
+  `received_at` if the device was offline and replayed from queue.
+  Use `received_at` for aggregation; use `logged_at` for timeline display.
+- `product_ref` (old free-text field) is removed; the product is now
+  the FK `product_id`.
+- No `active`/`archived_at` — logs are immutable records. Never deleted.
+
+**Example:**
+```sql
+INSERT INTO defect_logs
+    (device_id, operator_id, product_id, defect_type_id, note, logged_at)
+VALUES
+    ('qc-stm32-001a2b3c', 1, 1, 5, null,
+     '2026-05-19T08:23:01Z');
+```
 
 ---
 
@@ -64,119 +252,18 @@ INSERT INTO operators (name, pin_hash) VALUES
 
 ---
 
-## defect_categories
-
-```sql
-CREATE TABLE defect_categories (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    name          TEXT    NOT NULL,
-    display_order INTEGER NOT NULL DEFAULT 0,  -- controls column order on device
-    active        INTEGER NOT NULL DEFAULT 1,
-    archived_at   TEXT,
-    created_at    TEXT    NOT NULL
-                  DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
-);
-
-CREATE INDEX idx_defect_categories_active ON defect_categories (active);
-```
-
-**Column notes:**
-- `display_order` — lower value appears first. The device UI has two
-  columns; the first two active categories fill them. Third category
-  onwards is silently ignored by the firmware (max 2, enforced by UI
-  design, not a DB constraint).
-
-**Example:**
-```sql
-INSERT INTO defect_categories (name, display_order) VALUES
-    ('Surface Defects', 0),
-    ('Assembly Defects', 1);
-```
-
----
-
-## defect_types
-
-```sql
-CREATE TABLE defect_types (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    category_id   INTEGER NOT NULL REFERENCES defect_categories (id),
-    label         TEXT    NOT NULL,   -- max 24 chars
-    display_order INTEGER NOT NULL DEFAULT 0,  -- slot position within category
-    active        INTEGER NOT NULL DEFAULT 1,
-    archived_at   TEXT,
-    created_at    TEXT    NOT NULL
-                  DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
-);
-
-CREATE INDEX idx_defect_types_category ON defect_types (category_id, active);
-```
-
-**Column notes:**
-- `label` — rendered verbatim on the STM32 button. Keep short: the
-  button is 100×60 px. 24 chars is the hard limit, 12–16 is comfortable.
-- `display_order` — slot 0–11 within the category's 4×3 grid.
-
-**Example:**
-```sql
-INSERT INTO defect_types (category_id, label, display_order) VALUES
-    (1, 'Scratch', 0),
-    (1, 'Bubble', 1),
-    (1, 'Run', 2);
-```
-
----
-
-## defect_logs
-
-```sql
-CREATE TABLE defect_logs (
-    id             INTEGER PRIMARY KEY AUTOINCREMENT,
-    device_id      TEXT    NOT NULL REFERENCES devices (id),
-    operator_id    INTEGER NOT NULL REFERENCES operators (id),
-    defect_type_id INTEGER NOT NULL REFERENCES defect_types (id),
-    product_ref    TEXT    NOT NULL,   -- free-form reference entered by operator
-    logged_at      TEXT    NOT NULL,   -- device clock time (ISO 8601 UTC)
-    received_at    TEXT    NOT NULL
-                   DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
-);
-
-CREATE INDEX idx_defect_logs_received_at  ON defect_logs (received_at);
-CREATE INDEX idx_defect_logs_logged_at    ON defect_logs (logged_at);
-CREATE INDEX idx_defect_logs_operator     ON defect_logs (operator_id);
-CREATE INDEX idx_defect_logs_defect_type  ON defect_logs (defect_type_id);
-CREATE INDEX idx_defect_logs_device       ON defect_logs (device_id);
-```
-
-**Column notes:**
-- `logged_at` — set by the STM32 RTC at tap time. Can differ from
-  `received_at` if the device was offline and replayed from queue.
-  Use `received_at` for aggregation; use `logged_at` for timeline display.
-- No `active`/`archived_at` — logs are immutable records. Never deleted.
-
-**Example:**
-```sql
-INSERT INTO defect_logs
-    (device_id, operator_id, defect_type_id, product_ref, logged_at)
-VALUES
-    ('qc-stm32-001a2b3c', 1, 2, 'BODY-2024-0042',
-     '2024-01-15T08:23:01Z');
-```
-
----
-
 ## devices
 
 ```sql
 CREATE TABLE devices (
-    id             TEXT    PRIMARY KEY,  -- STM32 UID, e.g. qc-stm32-001a2b3c
-    last_seen      TEXT,                 -- set on every status heartbeat
-    config_version INTEGER,              -- schema_version of last defect config
-    operator_version INTEGER,            -- schema_version of last operator list
-    active         INTEGER NOT NULL DEFAULT 1,
-    archived_at    TEXT,
-    first_seen     TEXT    NOT NULL
-                   DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+    id               TEXT    PRIMARY KEY,  -- STM32 UID, e.g. qc-stm32-001a2b3c
+    last_seen        TEXT,                 -- set on every status heartbeat
+    config_version   INTEGER,              -- schema_version of last product config
+    operator_version INTEGER,              -- schema_version of last operator list
+    active           INTEGER NOT NULL DEFAULT 1,
+    archived_at      TEXT,
+    first_seen       TEXT    NOT NULL
+                     DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );
 ```
 
@@ -184,12 +271,14 @@ CREATE TABLE devices (
 - `id` — derived from the STM32's 96-bit unique ID, formatted as
   `qc-stm32-<lower8hexchars>`. Generated by the firmware; the server
   auto-inserts on first heartbeat receipt (upsert).
+- `config_version` — tracks the `schema_version` of the last
+  `qc/config/products` message the device acknowledged.
 - A device is "online" if `last_seen` is within the last 90 seconds.
 
 **Example:**
 ```sql
 INSERT INTO devices (id, last_seen, config_version, operator_version)
-VALUES ('qc-stm32-001a2b3c', '2024-01-15T08:23:00Z', 1, 1)
+VALUES ('qc-stm32-001a2b3c', '2026-05-19T08:23:00Z', 2, 1)
 ON CONFLICT (id) DO UPDATE SET
     last_seen        = excluded.last_seen,
     config_version   = excluded.config_version,
@@ -246,3 +335,21 @@ CREATE TABLE feature_flags (
 INSERT INTO feature_flags (name, enabled, description) VALUES
     ('new_analytics_view', 0, 'Experimental redesigned analytics page');
 ```
+
+---
+
+## Migration from old model
+
+The `defect_categories` table is dropped; the two category names are
+now plant-wide constants in `app/constants.py`. The `defect_types`
+table is migrated: `category_id` is replaced by `category_kind`
+(`'PMP'` | `'INJECTION'`) and a `product_id` FK is added;
+`is_other_fallback` and `updated_at` columns are new. The old
+`product_ref` free-text field on `defect_logs` is removed; every log
+now carries a `product_id` FK and a nullable `note` column.
+
+Because the existing seed logs referenced the old schema,
+`defect_logs` is truncated and re-seeded alongside the new product
+and defect-type fixtures. See `scripts/seed_dev.py` for the updated
+seed data. Alembic revision:
+`alembic/versions/*_adr013_product_scoped_model.py`.

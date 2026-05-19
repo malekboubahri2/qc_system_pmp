@@ -90,6 +90,10 @@ firmware/
   decide; Models hold state. Domain logic in `Application/domain/`.
 - **No HAL calls from Views, Presenters, or domain.** If they need
   persistence, they call `config_store_*`, which calls the platform layer.
+- **TouchGFX screen flow (ADR-013):** splash → login → product selection
+  → defect grid → summary. Product selection is mandatory before defect
+  logging. The firmware must not allow reaching the defect grid without
+  a valid `product_id` in the session context.
 
 ## Network abstraction (critical for portability)
 
@@ -335,6 +339,14 @@ cannot. Modules in between have partial coverage.
 - Do not use the ST Network Library's API directly from anywhere except
   `Application/net/net_wifi_ism43340.c`. The rest of the codebase calls
   `net.h`. This keeps the Network Library swappable.
+- Do not subscribe to `qc/config/defects` — that topic no longer exists.
+  The correct topic is `qc/config/products` (schema_version 2,
+  product-scoped payload). See ADR-013 in `docs/decisions.md` and the
+  full schema in `docs/mqtt-topics.md`.
+- Do not publish `qc/device/{id}/defect` with a free-text `product_ref`
+  field. schema_version 2 carries `product_id` (integer) and `note`
+  (nullable string). Reject cached queue entries with schema_version 1
+  on firmware upgrade.
 
 ## Useful debug commands
 

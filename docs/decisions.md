@@ -321,3 +321,64 @@ Firmware CI deferred to a later phase.
   Rejected.
 - Single unified workflow: mixes fast test feedback with slow image
   builds; harder to triage. Rejected.
+
+---
+
+## ADR-013 — Product-scoped defect types with fixed plant-wide categories
+
+**Date:** 2026-05-19
+**Status:** Accepted
+
+**Context:** The original model treated defect types as a flat plant-wide
+list grouped into two free-form categories. Talking through the actual
+plant workflow with the responsable revealed: (a) defects are
+intrinsically product-specific — a paint defect on an engine hood
+differs in nature and frequency from one on a cosmetic case, so
+averaging across products hides signal; (b) the two categories are NOT
+free-form — they map to a fixed business distinction: defects in PMP's
+own paint work (`PMP`) vs. defects in upstream injection-moulded parts
+(`INJECTION`). Making categories configurable added complexity with zero
+business value.
+
+**Decision:**
+1. Add `Product` entity. Defect types carry a `product_id` FK.
+2. The two categories become a plant-wide enum (`PMP`, `INJECTION`)
+   with fixed display names (`"PMP Défauts"`, `"Injection Défauts"`),
+   defined in `server/app/constants.py`. Not a DB table.
+3. Each `(product_id, category_kind)` pair has its own cap of 12
+   user-defined defect types.
+4. Each `(product_id, category_kind)` has exactly one auto-created
+   `is_other_fallback=true` defect type, label fixed at
+   `"Autre — préciser"`, not counted toward the cap, undeletable
+   from the UI.
+5. Operators select a product at session start. Every defect log
+   carries `product_id`. The old free-text `product_ref` field is
+   removed.
+6. Existing seed logs are truncated and regenerated.
+7. MQTT config topic renamed `qc/config/products` (schema_version 2).
+   A new `qc/device/{id}/session` topic records session start with
+   `operator_id` + `product_id`.
+
+**Consequences:**
+- Cleaner separation of "our defects" vs "supplier defects" in
+  analytics. Per-product trend charts become meaningful.
+- STM32 firmware must include a product-selection screen between login
+  and defect grid. TouchGFX flow: splash → login → product selection
+  → defect grid → summary. One additional screen — minor cost.
+- MQTT payload schemas bumped: `qc/config/products` (was
+  `qc/config/defects`), `qc/device/{id}/defect` schema_version → 2.
+- Devices use ephemeral session state (operator + product), not a
+  persistent device→product mapping. Aligns with reality: a station
+  inspects different products throughout the day.
+- `server/app/constants.py` is the single source of truth for
+  category display names. Dashboard fetches them from
+  `GET /constants/categories`.
+
+**Alternatives considered:**
+- Free-form categories per product: rejected. PMP's business needs the
+  PMP-vs-INJECTION distinction stable across products for cross-product
+  trend analysis.
+- Device-fixed product mapping: rejected. Real plants run multiple
+  products through the same inspection station.
+- Keep flat global defect types: rejected. Loses the per-product
+  signal that is the core value of the system.

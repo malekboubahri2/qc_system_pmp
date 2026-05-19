@@ -18,11 +18,16 @@ dashboard/
 │   │   └── stats.ts
 │   ├── hooks/               # React-Query hooks wrapping api/, one file per resource
 │   ├── features/            # Feature-sliced: each feature owns its UI + state
-│   │   ├── defect-types/
-│   │   │   ├── DefectTypesPage.tsx
+│   │   ├── products/        # Product list (top-level config entity)
+│   │   │   ├── ProductsPage.tsx
+│   │   │   ├── ProductCard.tsx
+│   │   │   ├── ProductForm.tsx
+│   │   │   └── index.ts
+│   │   ├── product-detail/  # One product: defect types in both categories
+│   │   │   ├── ProductDetailPage.tsx
 │   │   │   ├── DefectTypeCard.tsx
 │   │   │   ├── DefectTypeForm.tsx
-│   │   │   └── index.ts     # public surface of the feature
+│   │   │   └── index.ts
 │   │   ├── operators/
 │   │   ├── logs/
 │   │   ├── analytics/
@@ -87,13 +92,34 @@ deploys to dev, staging, and prod with no rebuild.
 - `useFlag("flag_name")` hook in `lib/feature-flags.ts` returns bool
 - Use to hide unfinished UI from production or A/B test new flows
 
+## Data model notes (ADR-013)
+
+Products are the top-level configuration entity. Defect types only exist
+inside a product context — there is no global defect-type list. The two
+categories (`PMP`, `INJECTION`) are plant-wide constants; their display
+names (`"PMP Défauts"`, `"Injection Défauts"`) are fetched from
+`GET /constants/categories` and must never be hardcoded in component
+source. New pages needed (not yet built):
+
+- `ProductsPage` — list all products, create/archive
+- `ProductDetailPage` — manage one product's defect types in both
+  categories, showing the 12-cap counter per category
+
+The `defect-types/` feature folder is replaced by `products/` and
+`product-detail/`. There is no standalone defect-types page.
+
 ## UI rules
 
-- Defect type editor must show the 12-per-category cap as a visible counter
-  and disable the "Add" button at 12
-- After a defect mutation, show a "syncing to devices" indicator that resolves
-  when the server confirms the MQTT publish (server returns config version,
-  device status endpoint shows which devices have that version)
+- Defect type editor must show the 12-per-category cap as a visible
+  counter per `(product, category)` and disable "Add" at 12.
+  The `is_other_fallback` type does not count toward the cap and must
+  be rendered as undeletable (no delete button or button is greyed out).
+- Category labels come from `GET /constants/categories` via a hook —
+  never hardcode `"PMP Défauts"` or `"Injection Défauts"` in JSX.
+- After a defect mutation, show a "syncing to devices" indicator that
+  resolves when the server confirms the MQTT publish (server returns
+  config version, device status endpoint shows which devices have that
+  version)
 - Default filter on Logs page = last 7 days
 - Devices page polls every 10s for live online/offline status
 - All forms use `react-hook-form` + `zodResolver`. Schemas in `lib/schemas/`

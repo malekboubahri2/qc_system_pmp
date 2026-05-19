@@ -2,7 +2,8 @@
 
 FastAPI server running inside Docker on the RPi. All endpoints are v1
 (implicit). A v2 would live at `/api/v2/...`, not as an in-place change.
-See `docs/data-model.md` for underlying schemas.
+See `docs/data-model.md` for underlying schemas and `docs/decisions.md`
+ADR-013 for the product-scoped model decision.
 
 ---
 
@@ -35,16 +36,17 @@ All endpoints require a valid JWT except:
 | PATCH | `/operators/{id}` | ✓ | Update operator |
 | DELETE | `/operators/{id}` | ✓ | Soft-delete operator |
 | POST | `/operators/{id}/pin` | ✓ | Set operator PIN |
-| GET | `/defect-categories` | ✓ | List categories (active by default) |
-| POST | `/defect-categories` | ✓ | Create category |
-| GET | `/defect-categories/{category_id}` | ✓ | Get category |
-| PATCH | `/defect-categories/{category_id}` | ✓ | Update category |
-| DELETE | `/defect-categories/{category_id}` | ✓ | Soft-delete category |
-| GET | `/defect-types` | ✓ | List defect types (filter by category_id) |
-| POST | `/defect-types` | ✓ | Create defect type |
+| GET | `/products` | ✓ | List products (active by default) |
+| POST | `/products` | ✓ | Create product (auto-creates Other fallbacks) |
+| GET | `/products/{product_id}` | ✓ | Get product |
+| PATCH | `/products/{product_id}` | ✓ | Update product |
+| DELETE | `/products/{product_id}` | ✓ | Soft-delete product |
+| GET | `/products/{product_id}/defect-types` | ✓ | List defect types for a product |
+| POST | `/products/{product_id}/defect-types` | ✓ | Create defect type |
 | GET | `/defect-types/{type_id}` | ✓ | Get defect type |
 | PATCH | `/defect-types/{type_id}` | ✓ | Update defect type |
 | DELETE | `/defect-types/{type_id}` | ✓ | Soft-delete defect type |
+| GET | `/constants/categories` | ✓ | Plant-wide category display names |
 | GET | `/devices` | ✓ | List known devices |
 | GET | `/devices/{device_id}` | ✓ | Get device detail |
 | GET | `/logs` | ✓ | List defect logs (filtered) |
@@ -105,7 +107,7 @@ to include archived operators.
     "name": "Mohammed",
     "pin_set": true,
     "active": true,
-    "created_at": "2024-01-10T09:00:00Z",
+    "created_at": "2026-05-19T09:00:00Z",
     "archived_at": null
   }
 ]
@@ -129,7 +131,7 @@ separately via `POST /operators/{id}/pin`.
   "name": "Aïcha",
   "pin_set": false,
   "active": true,
-  "created_at": "2024-01-10T09:05:00Z",
+  "created_at": "2026-05-19T09:05:00Z",
   "archived_at": null
 }
 ```
@@ -163,116 +165,192 @@ is published with updated hashes. See `docs/mqtt-topics.md`.
 
 ---
 
-## Defect Categories
+## Products
 
-### `GET /defect-categories`
+Products are the top-level configuration entity. A product groups its
+defect types into the two plant-wide categories (`PMP`, `INJECTION`).
+Creating a product auto-creates the two "Other" fallback defect types
+(one per category). A product with only fallback types is valid (useful
+during setup); the STM32 omits such products from the published config.
 
-Returns active categories only by default. Add `?include_archived=true`
-to include archived categories.
+See ADR-013 and `docs/data-model.md` → products for full schema.
+
+### `GET /products`
+
+Query params: `include_archived` (default `false`).
 
 ```json
 // Response 200
 [
   {
     "id": 1,
-    "name": "Surface Defects",
-    "display_order": 0,
+    "name": "Capot moteur",
+    "reference": "PROD-001",
+    "description": null,
     "active": true,
-    "created_at": "2024-01-10T09:00:00Z",
-    "defect_count": 8
+    "created_at": "2026-05-19T09:00:00Z",
+    "archived_at": null
   }
 ]
 ```
 
-`defect_count` is the number of active (non-archived) defect types in
-the category. Max is 12.
-
-### `POST /defect-categories`
+### `POST /products`
 
 ```json
 // Request
-{ "name": "Assembly Defects", "display_order": 1 }
+{ "name": "Capot moteur", "reference": "PROD-001", "description": null }
 
 // Response 201
 {
-  "id": 2,
-  "name": "Assembly Defects",
-  "display_order": 1,
+  "id": 1,
+  "name": "Capot moteur",
+  "reference": "PROD-001",
+  "description": null,
   "active": true,
-  "created_at": "2024-01-10T09:05:00Z",
-  "defect_count": 0
+  "created_at": "2026-05-19T09:00:00Z",
+  "archived_at": null
 }
 ```
 
-### `PATCH /defect-categories/{category_id}`
+Side effect: auto-creates two `defect_types` rows with
+`is_other_fallback=true`, one for `"PMP"` and one for `"INJECTION"`.
+Publishes a new `qc/config/products` MQTT message.
+
+### `GET /products/{product_id}`
+
+Same shape as list item. Returns 404 if product is unknown.
+
+### `PATCH /products/{product_id}`
 
 ```json
-// Request
-{ "name": "Paint Defects", "display_order": 0 }
+// Request (partial — only provided fields updated)
+{ "name": "Capot moteur v2", "description": "Revised part geometry" }
 
-// Response 200 — updated category object
+// Response 200 — updated product object
 ```
 
-### `DELETE /defect-categories/{category_id}`
+### `DELETE /products/{product_id}`
 
-Soft-delete. Also soft-deletes all `defect_types` in this category.
-Returns 204. Triggers `qc/config/defects` MQTT publish.
+Soft-delete: sets `active=false` and `archived_at`. Returns 204.
+Cascades to all `defect_types` for this product (also soft-deleted).
+Triggers `qc/config/products` MQTT publish.
 
 ---
 
 ## Defect Types
 
-### `GET /defect-types`
+Defect types are always accessed in the context of their product.
+The `is_other_fallback` type is auto-managed and cannot be archived
+from the UI.
 
-Query params: `category_id` (filter by category), `include_archived`
-(default `false`).
+**Cap rule:** max 12 active, non-fallback defect types per
+`(product_id, category_kind)`. The `is_other_fallback` type does not
+count toward the cap. Violation → HTTP 409.
+
+**Other fallback:** exactly one `is_other_fallback=true` defect type
+per `(product_id, category_kind)`. Label fixed at `"Autre — préciser"`.
+Auto-created by `POST /products`. `DELETE` on a fallback type
+returns 409.
+
+### `GET /products/{product_id}/defect-types`
+
+Query params:
+- `category_kind` — filter by `"PMP"` or `"INJECTION"` (optional)
+- `include_archived` — default `false`
 
 ```json
-// GET /defect-types?category_id=1
+// GET /products/1/defect-types?category_kind=PMP
 // Response 200
 [
   {
-    "id": 1,
-    "category_id": 1,
-    "label": "Scratch",
+    "id": 5,
+    "product_id": 1,
+    "category_kind": "PMP",
+    "label": "Coulure",
+    "is_other_fallback": false,
     "display_order": 0,
     "active": true,
-    "created_at": "2024-01-10T09:00:00Z"
+    "created_at": "2026-05-19T09:00:00Z"
+  },
+  {
+    "id": 7,
+    "product_id": 1,
+    "category_kind": "PMP",
+    "label": "Autre — préciser",
+    "is_other_fallback": true,
+    "display_order": 99,
+    "active": true,
+    "created_at": "2026-05-19T09:00:00Z"
   }
 ]
 ```
 
-### `POST /defect-types`
+### `POST /products/{product_id}/defect-types`
 
 ```json
 // Request
-{ "category_id": 1, "label": "Scratch", "display_order": 0 }
+{ "category_kind": "PMP", "label": "Coulure", "display_order": 0 }
 
 // Response 201
-{ "id": 1, "category_id": 1, "label": "Scratch", "display_order": 0, "active": true, "created_at": "..." }
+{
+  "id": 5,
+  "product_id": 1,
+  "category_kind": "PMP",
+  "label": "Coulure",
+  "is_other_fallback": false,
+  "display_order": 0,
+  "active": true,
+  "created_at": "2026-05-19T09:00:00Z"
+}
 
-// Response 409 — if category already has 12 active types
-{ "detail": "Category already has 12 active defect types" }
+// Response 409 — cap exceeded
+{ "detail": "Category PMP already has 12 active defect types for this product" }
 ```
 
-After a successful create or update, the server publishes a new
-`qc/config/defects` retained MQTT message. See `docs/mqtt-topics.md`.
+After a successful create, the server publishes a new
+`qc/config/products` retained MQTT message. See `docs/mqtt-topics.md`.
+
+### `GET /defect-types/{type_id}`
+
+```json
+// Response 200 — same shape as list item above
+```
 
 ### `PATCH /defect-types/{type_id}`
 
 ```json
-// Request
-{ "label": "Deep Scratch", "display_order": 0 }
+// Request (partial)
+{ "label": "Coulure longue", "display_order": 1 }
 
 // Response 200 — updated defect type object
 ```
 
-Moving a defect type to a different category is not supported. Archive
-and recreate instead.
+Cannot update `product_id`, `category_kind`, or `is_other_fallback`.
+To move a defect type to a different product or category, archive and
+recreate.
 
 ### `DELETE /defect-types/{type_id}`
 
-Soft-delete. Returns 204. Triggers `qc/config/defects` MQTT publish.
+Soft-delete. Returns 204. Triggers `qc/config/products` MQTT publish.
+Returns 409 if the type has `is_other_fallback=true`.
+
+---
+
+## Constants
+
+### `GET /constants/categories`
+
+Returns the plant-wide category list with display names. The dashboard
+uses this to render category labels rather than hardcoding them.
+Values come from `app/constants.py`, not the database.
+
+```json
+// Response 200
+[
+  { "kind": "PMP",       "display_name": "PMP Défauts" },
+  { "kind": "INJECTION", "display_name": "Injection Défauts" }
+]
+```
 
 ---
 
@@ -287,18 +365,20 @@ Read-only. Devices are auto-registered on first heartbeat.
 [
   {
     "id": "qc-stm32-001a2b3c",
-    "last_seen": "2024-01-15T08:23:00Z",
+    "last_seen": "2026-05-19T08:23:00Z",
     "online": true,
-    "config_version": 1,
+    "config_version": 2,
     "operator_version": 1,
     "active": true,
-    "first_seen": "2024-01-10T07:00:00Z"
+    "first_seen": "2026-05-19T07:00:00Z"
   }
 ]
 ```
 
 `online` is `true` if `last_seen` is within the last 90 seconds (3
 missed 30-second heartbeats from the STM32 firmware).
+`config_version` corresponds to the `schema_version` of the last
+`qc/config/products` message the device acknowledged.
 
 ### `GET /devices/{device_id}`
 
@@ -311,7 +391,8 @@ Same shape as list item. Returns 404 if device is unknown.
 ### `GET /logs`
 
 Query params: `from`, `to` (ISO 8601), `operator_id`, `defect_type_id`,
-`device_id`, `page` (default 1), `per_page` (default 50, max 200).
+`device_id`, `product_id`, `page` (default 1), `per_page`
+(default 50, max 200).
 
 ```json
 // Response 200
@@ -324,14 +405,23 @@ Query params: `from`, `to` (ISO 8601), `operator_id`, `defect_type_id`,
       "id": 101,
       "device_id": "qc-stm32-001a2b3c",
       "operator": { "id": 1, "name": "Mohammed" },
-      "defect_type": { "id": 2, "label": "Bubble", "category": "Surface" },
-      "product_ref": "BODY-2024-0042",
-      "logged_at": "2024-01-15T08:23:01Z",
-      "received_at": "2024-01-15T08:23:01Z"
+      "product": { "id": 1, "name": "Capot moteur", "reference": "PROD-001" },
+      "defect_type": {
+        "id": 5,
+        "label": "Coulure",
+        "category_kind": "PMP",
+        "is_other_fallback": false
+      },
+      "note": null,
+      "logged_at": "2026-05-19T08:23:01Z",
+      "received_at": "2026-05-19T08:23:01Z"
     }
   ]
 }
 ```
+
+`note` is non-null only for logs where `defect_type.is_other_fallback`
+is `true`. Use `product_id` to filter logs to a single product.
 
 ### `GET /logs/export.csv`
 
@@ -346,37 +436,51 @@ Content-Disposition: attachment; filename="defect-logs-<date>.csv"
 
 ## Stats
 
-All endpoints accept a `days` query param (default 7, max 365).
+All endpoints accept a `days` query param (default 7, max 365) and an
+optional `product_id` query param for per-product filtering.
+Omit `product_id` to aggregate across all products.
 All timestamps in response are UTC.
 
-### `GET /stats/summary?days=7`
+### `GET /stats/summary?days=7&product_id=1`
 
 ```json
 [
-  { "date": "2024-01-15", "count": 42 },
-  { "date": "2024-01-14", "count": 38 }
+  { "date": "2026-05-19", "count": 42 },
+  { "date": "2026-05-18", "count": 38 }
 ]
 ```
 
-### `GET /stats/by-defect?days=30`
+### `GET /stats/by-defect?days=30&product_id=1`
 
 ```json
 [
-  { "defect_type_id": 2, "label": "Bubble", "category": "Surface", "count": 120 },
-  { "defect_type_id": 1, "label": "Scratch", "category": "Surface", "count": 95 }
+  {
+    "defect_type_id": 5,
+    "label": "Coulure",
+    "category_kind": "PMP",
+    "product": { "id": 1, "name": "Capot moteur" },
+    "count": 120
+  },
+  {
+    "defect_type_id": 6,
+    "label": "Bullage",
+    "category_kind": "PMP",
+    "product": { "id": 1, "name": "Capot moteur" },
+    "count": 95
+  }
 ]
 ```
 
-### `GET /stats/by-operator?days=30`
+### `GET /stats/by-operator?days=30&product_id=1`
 
 ```json
 [
   { "operator_id": 1, "name": "Mohammed", "count": 200 },
-  { "operator_id": 2, "name": "Aïcha", "count": 185 }
+  { "operator_id": 2, "name": "Aïcha",    "count": 185 }
 ]
 ```
 
-### `GET /stats/heatmap?days=30`
+### `GET /stats/heatmap?days=30&product_id=1`
 
 Hour-of-day (0–23) × defect count. Useful for spotting shift patterns.
 
@@ -429,13 +533,13 @@ Liveness only. Returns 200 if the process is alive.
   "status": "ok",
   "db": "ok",
   "mqtt_broker": "ok",
-  "config_version": 1,
+  "config_version": 2,
   "devices": [
     {
       "id": "qc-stm32-001a2b3c",
       "online": true,
-      "last_seen": "2024-01-15T08:23:00Z",
-      "config_version": 1
+      "last_seen": "2026-05-19T08:23:00Z",
+      "config_version": 2
     }
   ]
 }
@@ -459,6 +563,6 @@ All errors follow:
 | 400 | Validation error (Pydantic) |
 | 401 | Missing or invalid JWT |
 | 404 | Resource not found |
-| 409 | Business rule violation (e.g. 12-defect cap) |
+| 409 | Business rule violation (cap exceeded, archiving a fallback type) |
 | 422 | Unprocessable entity (schema mismatch) |
 | 500 | Unexpected server error |
