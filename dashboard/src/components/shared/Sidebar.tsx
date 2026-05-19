@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
+  Activity,
   Layers,
   Users,
   FileText,
@@ -15,6 +16,7 @@ import { Icon } from '@/components/Icon';
 
 const mainNav = [
   { to: '/', label: 'Tableau de bord', icon: LayoutDashboard, end: true },
+  { to: '/stations/en-direct', label: 'Stations en direct', icon: Activity, end: false },
   { to: '/products', label: 'Produits', icon: Layers, end: false },
   { to: '/operators', label: 'Opérateurs', icon: Users, end: false },
   { to: '/logs', label: 'Journaux', icon: FileText, end: false },

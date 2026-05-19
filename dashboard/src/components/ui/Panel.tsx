@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react';
+import { type ReactNode, type CSSProperties } from 'react';
 import { cn } from '@/lib/utils';
 
 interface PanelProps {
@@ -24,8 +24,20 @@ export function Panel({ children, className, minHeight }: PanelProps) {
   );
 }
 
-export function PanelBody({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn('flex-1 overflow-y-auto', className)}>{children}</div>;
+export function PanelBody({
+  children,
+  className,
+  style,
+}: {
+  children: ReactNode;
+  className?: string;
+  style?: CSSProperties;
+}) {
+  return (
+    <div className={cn('flex-1 overflow-y-auto', className)} style={style}>
+      {children}
+    </div>
+  );
 }
 
 export function PanelFooter({ children, className }: { children: ReactNode; className?: string }) {
