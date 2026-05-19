@@ -5,6 +5,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { getSummary, getByDefect, getByOperator, getHeatmap } from '@/api/stats';
+import { PageHeader } from '@/components/ui';
 
 const BRAND = '#1A5560';
 const ACCENT = '#D4B765';
@@ -19,8 +20,12 @@ const DAYS_OPTIONS = [
 
 function ChartCard({ title, children, testId }: { title: string; children: React.ReactNode; testId?: string }) {
   return (
-    <div data-testid={testId} className="bg-white rounded-lg p-5" style={{ boxShadow: '0 1px 3px rgba(26,85,96,0.08)' }}>
-      <h2 className="text-sm font-semibold text-ink-heading mb-4 uppercase tracking-wide">{title}</h2>
+    <div
+      data-testid={testId}
+      className="bg-white rounded-lg p-6"
+      style={{ boxShadow: '0 1px 3px rgba(26,85,96,0.08),0 1px 2px rgba(26,85,96,0.04)' }}
+    >
+      <h2 className="text-sm font-semibold text-ink-head mb-4 uppercase tracking-wider">{title}</h2>
       {children}
     </div>
   );
@@ -82,30 +87,28 @@ export function AnalyticsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-ink-heading">Analytiques</h1>
-          <p className="text-sm text-ink-muted mt-1">Tendances et répartition des défauts</p>
-        </div>
-
-        {/* Range picker */}
-        <div className="flex gap-1 bg-cream-subtle/60 rounded-lg p-1">
-          {DAYS_OPTIONS.map((o) => (
-            <button
-              key={o.value}
-              onClick={() => setDays(o.value)}
-              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                days === o.value
-                  ? 'bg-white text-brand shadow-sm'
-                  : 'text-ink-muted hover:text-ink'
-              }`}
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <PageHeader
+        breadcrumb={[{ label: 'Analytiques' }]}
+        title="Analytiques"
+        subtitle="Tendances et répartition des défauts"
+        right={
+          <div className="flex gap-1 bg-cream-sub/60 rounded-lg p-1">
+            {DAYS_OPTIONS.map((o) => (
+              <button
+                key={o.value}
+                onClick={() => setDays(o.value)}
+                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                  days === o.value
+                    ? 'bg-white text-brand shadow-sm'
+                    : 'text-ink-muted hover:text-ink'
+                }`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        }
+      />
 
       {/* Daily trend — full width */}
       <ChartCard title="Défauts par jour" testId="analytics-chart">

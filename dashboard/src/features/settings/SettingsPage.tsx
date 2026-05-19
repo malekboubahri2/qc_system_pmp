@@ -3,6 +3,7 @@ import { toast } from 'sonner';
 import { useFlags, useUpdateFlag } from '@/hooks/useFlags';
 import { config } from '@/config';
 import type { FeatureFlag } from '@/types';
+import { PageHeader, Section } from '@/components/ui';
 
 function FlagRow({ flag, pending }: { flag: FeatureFlag; pending: boolean }) {
   const updateFlag = useUpdateFlag();
@@ -43,16 +44,13 @@ export function SettingsPage() {
 
   return (
     <div className="flex flex-col gap-6 max-w-2xl">
-      <div>
-        <h1 className="text-3xl font-bold text-ink-heading">Paramètres</h1>
-        <p className="text-sm text-ink-muted mt-1">Configuration du système</p>
-      </div>
+      <PageHeader
+        breadcrumb={[{ label: 'Paramètres' }]}
+        title="Paramètres"
+        subtitle="Configuration du système"
+      />
 
-      {/* Deployment info */}
-      <div className="bg-white rounded-lg p-5" style={{ boxShadow: '0 1px 3px rgba(26,85,96,0.08)' }}>
-        <h2 className="text-sm font-semibold text-ink-heading uppercase tracking-wide mb-4">
-          Informations de déploiement
-        </h2>
+      <Section title="Informations de déploiement">
         <dl className="flex flex-col gap-2 text-sm">
           <div className="flex gap-3">
             <dt className="w-32 text-ink-muted flex-shrink-0">Installation</dt>
@@ -67,13 +65,9 @@ export function SettingsPage() {
             <dd className="font-mono text-xs text-ink pt-0.5">{config.apiBaseUrl}</dd>
           </div>
         </dl>
-      </div>
+      </Section>
 
-      {/* Feature flags */}
-      <div className="bg-white rounded-lg p-5" style={{ boxShadow: '0 1px 3px rgba(26,85,96,0.08)' }}>
-        <h2 className="text-sm font-semibold text-ink-heading uppercase tracking-wide mb-4">
-          Indicateurs de fonctionnalité
-        </h2>
+      <Section title="Indicateurs de fonctionnalité">
 
         {!isPending && flags.length === 0 ? (
           <div className="text-sm text-ink-muted">
@@ -90,7 +84,7 @@ export function SettingsPage() {
             ))}
           </ul>
         )}
-      </div>
+      </Section>
     </div>
   );
 }

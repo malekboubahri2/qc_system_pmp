@@ -3,19 +3,7 @@ import { Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { listDevices } from '@/api/devices';
 import { Icon } from '@/components/Icon';
 import { formatDateTime } from '@/lib/format';
-
-function OnlineDot({ online }: { online: boolean }) {
-  return (
-    <span className="flex items-center gap-1.5">
-      <span
-        className={`inline-block w-2 h-2 rounded-full ${online ? 'bg-success' : 'bg-ink-muted/30'}`}
-      />
-      <span className={online ? 'text-success font-medium' : 'text-ink-muted'}>
-        {online ? 'En ligne' : 'Hors ligne'}
-      </span>
-    </span>
-  );
-}
+import { PageHeader, EmptyState, Pill } from '@/components/ui';
 
 export function DevicesPage() {
   const { data: devices = [], isLoading, dataUpdatedAt } = useQuery({
@@ -32,21 +20,17 @@ export function DevicesPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-ink-heading">Appareils</h1>
-          <p className="text-base text-ink-muted mt-1.5">
-            {devices.length > 0
-              ? `${onlineCount} / ${devices.length} en ligne`
-              : 'Aucun appareil enregistré'}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-ink-muted">
-          <Icon icon={RefreshCw} size={13} />
-          Actualisation auto · {lastRefresh}
-        </div>
-      </div>
+      <PageHeader
+        breadcrumb={[{ label: 'Appareils' }]}
+        title="Appareils"
+        subtitle={devices.length > 0 ? `${onlineCount} / ${devices.length} en ligne` : 'Aucun appareil enregistré'}
+        right={
+          <span className="flex items-center gap-2 text-sm text-ink-muted">
+            <Icon icon={RefreshCw} size={13} />
+            Actualisation auto · {lastRefresh}
+          </span>
+        }
+      />
 
       {/* Table */}
       <div className="bg-white rounded-lg overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(26,85,96,0.08)' }}>
@@ -56,13 +40,12 @@ export function DevicesPage() {
             Chargement…
           </div>
         ) : devices.length === 0 ? (
-          <div className="text-center py-16">
-            <Icon icon={WifiOff} size={32} className="mx-auto text-ink-muted/40 mb-3" />
-            <p className="text-ink-muted">Aucun appareil n'a encore contacté le serveur.</p>
-            <p className="text-xs text-ink-muted mt-1">
-              Les terminaux STM32 apparaissent ici dès leur première connexion MQTT.
-            </p>
-          </div>
+          <EmptyState
+            icon={WifiOff}
+            title="Aucun appareil enregistré"
+            description="Les terminaux STM32 apparaissent ici dès leur première connexion MQTT."
+            className="py-16"
+          />
         ) : (
           <table className="w-full text-sm">
             <thead>
@@ -83,7 +66,9 @@ export function DevicesPage() {
                     </span>
                   </td>
                   <td className="px-5 py-4 text-sm">
-                    <OnlineDot online={device.online} />
+                    <Pill variant={device.online ? 'success' : 'idle'} dot>
+                      {device.online ? 'En ligne' : 'Hors ligne'}
+                    </Pill>
                   </td>
                   <td className="px-5 py-4 font-mono text-sm text-ink-muted">
                     {device.last_seen ? formatDateTime(device.last_seen) : '—'}

@@ -34,7 +34,7 @@ export function Modal({ open, onClose, title, children, size = 'md' }: ModalProp
         style={{ boxShadow: '0 8px 24px rgba(26, 85, 96, 0.2)' }}
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-cream-subtle">
-          <h2 className="text-lg font-semibold text-ink-heading">{title}</h2>
+          <h2 className="text-lg font-semibold text-ink-head">{title}</h2>
           <button
             onClick={onClose}
             className="text-ink-muted hover:text-ink rounded p-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/40"

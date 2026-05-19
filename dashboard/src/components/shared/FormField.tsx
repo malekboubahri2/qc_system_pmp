@@ -10,7 +10,7 @@ interface FormFieldProps extends InputHTMLAttributes<HTMLInputElement> {
 export const FormField = forwardRef<HTMLInputElement, FormFieldProps>(
   ({ label, error, hint, required, className, ...props }, ref) => (
     <div className="flex flex-col gap-2">
-      <label className="text-sm font-medium text-ink-heading">
+      <label className="text-sm font-medium text-ink-head">
         {label}
         {required && <span className="text-danger ml-1">*</span>}
       </label>
@@ -40,7 +40,7 @@ interface SelectFieldProps extends React.SelectHTMLAttributes<HTMLSelectElement>
 export const SelectField = forwardRef<HTMLSelectElement, SelectFieldProps>(
   ({ label, error, required, className, children, ...props }, ref) => (
     <div className="flex flex-col gap-2">
-      <label className="text-sm font-medium text-ink-heading">
+      <label className="text-sm font-medium text-ink-head">
         {label}
         {required && <span className="text-danger ml-1">*</span>}
       </label>

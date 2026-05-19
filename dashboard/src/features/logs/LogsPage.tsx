@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { Download, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Download, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 import { listLogs, downloadCsv } from '@/api/logs';
 import { useOperators } from '@/hooks/useOperators';
 import { useProducts } from '@/hooks/useProducts';
@@ -10,6 +10,7 @@ import { Button } from '@/components/shared/Button';
 import { Icon } from '@/components/Icon';
 import { formatDateTime } from '@/lib/format';
 import type { LogFilters } from '@/api/logs';
+import { PageHeader, EmptyState } from '@/components/ui';
 
 const PAGE_SIZE = 50;
 
@@ -48,19 +49,17 @@ export function LogsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-ink-heading">Journaux</h1>
-          <p className="text-base text-ink-muted mt-1.5">
-            {total > 0 ? `${total} entrée${total > 1 ? 's' : ''}` : 'Aucune entrée'}
-          </p>
-        </div>
-        <Button variant="secondary" onClick={handleExport} loading={exporting}>
-          <Icon icon={Download} size={15} />
-          Exporter CSV
-        </Button>
-      </div>
+      <PageHeader
+        breadcrumb={[{ label: 'Journaux' }]}
+        title="Journaux"
+        subtitle={total > 0 ? `${total} entrée${total > 1 ? 's' : ''}` : 'Aucune entrée'}
+        right={
+          <Button variant="secondary" onClick={handleExport} loading={exporting}>
+            <Icon icon={Download} size={15} />
+            Exporter CSV
+          </Button>
+        }
+      />
 
       {/* Filters bar */}
       <div className="bg-cream-subtle/60 rounded-lg px-5 py-5 flex flex-wrap items-end gap-4">
@@ -106,9 +105,11 @@ export function LogsPage() {
             Chargement…
           </div>
         ) : logs.length === 0 ? (
-          <div className="text-center py-12 text-ink-muted">
-            <p>Aucun journal pour les critères sélectionnés.</p>
-          </div>
+          <EmptyState
+            icon={FileText}
+            title="Aucun résultat"
+            description="Aucun journal pour les critères sélectionnés."
+          />
         ) : (
           <table className="w-full text-sm">
             <thead>

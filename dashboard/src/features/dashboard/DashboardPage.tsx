@@ -7,6 +7,7 @@ import { useOperators } from '@/hooks/useOperators';
 import { daysAgo, today } from '@/components/shared/DateRangePicker';
 import { Icon } from '@/components/Icon';
 import { formatDateTime } from '@/lib/format';
+import { PageHeader, Section, EmptyState } from '@/components/ui';
 
 interface StatTileProps {
   label: string;
@@ -71,10 +72,11 @@ export function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="text-3xl font-bold text-ink-heading">Tableau de bord</h1>
-        <p className="text-base text-ink-muted mt-1.5">Vue d'ensemble du système QC</p>
-      </div>
+      <PageHeader
+        breadcrumb={[{ label: 'Tableau de bord' }]}
+        title="Tableau de bord"
+        subtitle="Vue d'ensemble du système QC"
+      />
 
       {/* Stat tiles */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -85,21 +87,21 @@ export function DashboardPage() {
       </div>
 
       {/* Recent activity */}
-      <div className="bg-white rounded-lg overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(26,85,96,0.08)' }}>
-        <div className="px-5 py-5 border-b border-cream-subtle flex items-center justify-between">
-          <h2 className="text-base font-semibold text-ink-heading">Activité récente</h2>
+      <Section className="overflow-hidden p-0">
+        <div className="px-6 py-5 flex items-center justify-between border-b border-cream-sub">
+          <h2 className="text-xl font-semibold text-ink-head">Activité récente</h2>
           <span className="text-sm text-ink-muted">7 derniers jours · 15 entrées</span>
         </div>
-
         {logs.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-12 text-ink-muted">
-            <Icon icon={Layers} size={28} className="opacity-30" />
-            <p className="text-sm">Aucune activité sur les 7 derniers jours.</p>
-          </div>
+          <EmptyState
+            icon={Layers}
+            title="Aucune activité"
+            description="Aucun défaut enregistré sur les 7 derniers jours."
+          />
         ) : (
           <ul className="divide-y divide-cream/60">
             {logs.map((log) => (
-              <li key={log.id} className="px-5 py-4 flex items-center gap-3 hover:bg-cream/20 transition-colors">
+              <li key={log.id} className="px-6 py-4 flex items-center gap-3 hover:bg-cream/20 transition-colors">
                 <span className="font-mono text-sm text-ink-muted w-40 flex-shrink-0 whitespace-nowrap">
                   {formatDateTime(log.logged_at)}
                 </span>
@@ -113,7 +115,7 @@ export function DashboardPage() {
             ))}
           </ul>
         )}
-      </div>
+      </Section>
     </div>
   );
 }

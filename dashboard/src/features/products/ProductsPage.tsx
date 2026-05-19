@@ -4,12 +4,13 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Plus, ChevronRight, Archive } from 'lucide-react';
+import { Plus, ChevronRight, Archive, Layers } from 'lucide-react';
 import { useProducts, useCreateProduct, useArchiveProduct } from '@/hooks/useProducts';
 import { Button } from '@/components/shared/Button';
 import { Modal } from '@/components/shared/Modal';
 import { FormField } from '@/components/shared/FormField';
 import { Icon } from '@/components/Icon';
+import { PageHeader, Section, EmptyState } from '@/components/ui';
 
 const productSchema = z.object({
   name: z.string().min(1, 'Nom requis').max(64, '64 caractères max'),
@@ -40,18 +41,17 @@ export function ProductsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-ink-heading">Produits</h1>
-          <p className="text-base text-ink-muted mt-1.5">
-            Gérez les produits et leurs types de défauts
-          </p>
-        </div>
-        <Button onClick={() => setModalOpen(true)}>
-          <Icon icon={Plus} size={16} />
-          Nouveau produit
-        </Button>
-      </div>
+      <PageHeader
+        breadcrumb={[{ label: 'Produits' }]}
+        title="Produits"
+        subtitle="Gérez les produits et leurs types de défauts"
+        right={
+          <Button onClick={() => setModalOpen(true)}>
+            <Icon icon={Plus} size={16} />
+            Nouveau produit
+          </Button>
+        }
+      />
 
       {isLoading && (
         <div className="flex items-center gap-3 text-ink-muted py-8 justify-center">
@@ -61,16 +61,19 @@ export function ProductsPage() {
       )}
 
       {!isLoading && products.length === 0 && (
-        <div className="bg-white rounded-lg p-12 text-center" style={{ boxShadow: '0 1px 3px rgba(26,85,96,0.08)' }}>
-          <h3 className="text-lg font-semibold text-ink-heading mb-1">Aucun produit</h3>
-          <p className="text-sm text-ink-muted mb-4">
-            Créez votre premier produit pour configurer les types de défauts.
-          </p>
-          <Button onClick={() => setModalOpen(true)}>
-            <Icon icon={Plus} size={16} />
-            Nouveau produit
-          </Button>
-        </div>
+        <Section>
+          <EmptyState
+            icon={Layers}
+            title="Aucun produit"
+            description="Créez votre premier produit pour configurer les types de défauts."
+          />
+          <div className="flex justify-center mt-4">
+            <Button onClick={() => setModalOpen(true)}>
+              <Icon icon={Plus} size={16} />
+              Nouveau produit
+            </Button>
+          </div>
+        </Section>
       )}
 
       {!isLoading && products.length > 0 && (

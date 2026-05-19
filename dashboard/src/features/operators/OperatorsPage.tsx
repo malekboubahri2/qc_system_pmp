@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { Plus, Pencil, Archive, KeyRound, Eye, EyeOff } from 'lucide-react';
+import { Plus, Pencil, Archive, KeyRound, Eye, EyeOff, Users } from 'lucide-react';
 import {
   useOperators, useCreateOperator, useUpdateOperator,
   useSetPin, useArchiveOperator,
@@ -11,8 +11,8 @@ import { operatorSchema, pinSchema, type OperatorForm, type PinForm } from '@/li
 import { Button } from '@/components/shared/Button';
 import { Modal } from '@/components/shared/Modal';
 import { FormField } from '@/components/shared/FormField';
-import { StatusBadge } from '@/components/shared/StatusBadge';
 import { Icon } from '@/components/Icon';
+import { PageHeader, EmptyState, Pill } from '@/components/ui';
 import type { Operator } from '@/types';
 
 // ── Operator form modal ──────────────────────────────────────────
@@ -77,7 +77,7 @@ function PinModal({
           {operator?.pin_set ? 'Modifier le PIN de cet opérateur.' : 'Définir un PIN pour cet opérateur.'}
         </p>
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-ink-heading">
+          <label className="text-sm font-medium text-ink-head">
             Nouveau PIN <span className="text-danger">*</span>
           </label>
           <div className="relative">
@@ -142,17 +142,17 @@ export function OperatorsPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-ink-heading">Opérateurs</h1>
-          <p className="text-base text-ink-muted mt-1.5">Chaque opérateur doit avoir un PIN pour utiliser le terminal</p>
-        </div>
-        <Button onClick={() => setOpModal({ open: true })}>
-          <Icon icon={Plus} size={16} />
-          Nouvel opérateur
-        </Button>
-      </div>
+      <PageHeader
+        breadcrumb={[{ label: 'Opérateurs' }]}
+        title="Opérateurs"
+        subtitle="Chaque opérateur doit avoir un PIN pour utiliser le terminal"
+        right={
+          <Button onClick={() => setOpModal({ open: true })}>
+            <Icon icon={Plus} size={16} />
+            Nouvel opérateur
+          </Button>
+        }
+      />
 
       {/* Table */}
       <div className="bg-white rounded-lg overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(26,85,96,0.08)' }}>
@@ -162,9 +162,11 @@ export function OperatorsPage() {
             Chargement…
           </div>
         ) : operators.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-ink-muted">Aucun opérateur. Créez-en un pour commencer.</p>
-          </div>
+          <EmptyState
+            icon={Users}
+            title="Aucun opérateur"
+            description="Créez votre premier opérateur pour commencer."
+          />
         ) : (
           <table className="w-full text-sm">
             <thead>
@@ -180,13 +182,14 @@ export function OperatorsPage() {
                 <tr key={op.id} className={i % 2 === 0 ? 'bg-white' : 'bg-cream/30'}>
                   <td className="px-5 py-4 font-medium text-sm text-ink">{op.name}</td>
                   <td className="px-5 py-4">
-                    <StatusBadge
-                      status={op.pin_set ? 'success' : 'warning'}
-                      label={op.pin_set ? 'Défini' : 'Non défini'}
-                    />
+                    <Pill variant={op.pin_set ? 'success' : 'warning'} dot>
+                      {op.pin_set ? 'Défini' : 'Non défini'}
+                    </Pill>
                   </td>
                   <td className="px-5 py-4">
-                    <StatusBadge status={op.active ? 'success' : 'danger'} label={op.active ? 'Actif' : 'Archivé'} />
+                    <Pill variant={op.active ? 'success' : 'danger'} dot>
+                      {op.active ? 'Actif' : 'Archivé'}
+                    </Pill>
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-2 justify-end">

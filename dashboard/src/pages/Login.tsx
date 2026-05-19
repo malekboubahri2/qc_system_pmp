@@ -71,7 +71,7 @@ export function LoginPage() {
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-6">
             {/* Email */}
             <div className="flex flex-col gap-2">
-              <label htmlFor="email" className="text-sm font-medium text-ink-heading">
+              <label htmlFor="email" className="text-sm font-medium text-ink-head">
                 Adresse e-mail
               </label>
               <input
@@ -80,7 +80,7 @@ export function LoginPage() {
                 autoComplete="email"
                 autoFocus
                 {...register('email')}
-                className="bg-white border border-cream-subtle rounded-lg px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted transition-colors focus:outline-none focus:ring-2 focus:border-accent"
+                className="bg-white border border-cream-sub rounded-lg px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted transition-colors focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent"
                 placeholder="responsable@pmp.tn"
               />
               {errors.email && (
@@ -90,7 +90,7 @@ export function LoginPage() {
 
             {/* Password */}
             <div className="flex flex-col gap-2">
-              <label htmlFor="password" className="text-sm font-medium text-ink-heading">
+              <label htmlFor="password" className="text-sm font-medium text-ink-head">
                 Mot de passe
               </label>
               <div className="relative">
@@ -99,13 +99,13 @@ export function LoginPage() {
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
                   {...register('password')}
-                  className="w-full bg-white border border-cream-subtle rounded-lg px-3 py-2.5 pr-10 text-sm text-ink placeholder:text-ink-muted transition-colors focus:outline-none focus:ring-2 focus:border-accent"
+                  className="w-full bg-white border border-cream-sub rounded-lg px-3 py-2.5 pr-10 text-sm text-ink placeholder:text-ink-muted transition-colors focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent"
                   placeholder="••••••••"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute inset-y-0 right-0 flex items-center px-3 text-ink-muted hover:text-ink-heading transition-colors"
+                  className="absolute inset-y-0 right-0 flex items-center px-3 text-ink-muted hover:text-ink-head transition-colors"
                   tabIndex={-1}
                 >
                   <Icon icon={showPassword ? EyeOff : Eye} size={16} />

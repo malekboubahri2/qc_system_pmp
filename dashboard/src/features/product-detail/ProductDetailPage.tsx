@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Plus, Pencil, Archive, ArrowLeft } from 'lucide-react';
+import { Plus, Pencil, Archive } from 'lucide-react';
 import {
   useProducts, useDefectTypes, useCategoryConstants,
   useCreateDefectType, useUpdateDefectType, useArchiveDefectType,
@@ -13,6 +13,7 @@ import { Button } from '@/components/shared/Button';
 import { Modal } from '@/components/shared/Modal';
 import { FormField } from '@/components/shared/FormField';
 import { Icon } from '@/components/Icon';
+import { PageHeader } from '@/components/ui';
 import type { DefectType } from '@/types';
 import { DEFECT_TYPES_PER_CATEGORY_CAP } from './constants';
 
@@ -81,7 +82,7 @@ function CategorySection({
   return (
     <div className="bg-white rounded-lg" style={{ boxShadow: '0 1px 3px rgba(26,85,96,0.08)' }}>
       <div className="flex items-center gap-3 px-5 py-4 border-b border-cream-subtle">
-        <h3 className="text-base font-semibold text-ink-heading flex-1">{displayName}</h3>
+        <h3 className="text-base font-semibold text-ink-head flex-1">{displayName}</h3>
         <span className={`text-xs font-medium px-2 py-0.5 rounded ${capBadgeClass(userCount)}`}>
           {userCount}/{DEFECT_TYPES_PER_CATEGORY_CAP} types
         </span>
@@ -190,17 +191,11 @@ export function ProductDetailPage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex items-center gap-4">
-        <Link to="/products" className="text-ink-muted hover:text-brand transition-colors">
-          <Icon icon={ArrowLeft} size={20} />
-        </Link>
-        <div>
-          <h1 className="text-3xl font-bold text-ink-heading">
-            {product?.name ?? '…'}
-          </h1>
-          <p className="text-base text-ink-muted mt-1">Types de défauts par catégorie</p>
-        </div>
-      </div>
+      <PageHeader
+        breadcrumb={[{ label: 'Produits', href: '/products' }, { label: product?.name ?? '…' }]}
+        title={product?.name ?? '…'}
+        subtitle="Types de défauts par catégorie"
+      />
 
       {categories.map((cat) => (
         <CategorySection
