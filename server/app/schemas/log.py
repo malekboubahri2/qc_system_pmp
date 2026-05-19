@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel
 
 
@@ -11,7 +12,14 @@ class _OperatorRef(BaseModel):
 class _DefectTypeRef(BaseModel):
     id: int
     label: str
-    category: str
+    category_kind: str
+
+    model_config = {"from_attributes": True}
+
+
+class _ProductRef(BaseModel):
+    id: int
+    name: str
 
     model_config = {"from_attributes": True}
 
@@ -21,7 +29,8 @@ class LogRead(BaseModel):
     device_id: str
     operator: _OperatorRef
     defect_type: _DefectTypeRef
-    product_ref: str
+    product: _ProductRef
+    note: Optional[str]
     logged_at: str
     received_at: str
 

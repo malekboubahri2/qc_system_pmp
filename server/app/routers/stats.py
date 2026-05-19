@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
@@ -14,34 +16,38 @@ _days_q = Query(7, ge=1, le=365)
 @router.get("/summary", response_model=list[SummaryPoint])
 def get_summary(
     days: int = _days_q,
+    product_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
-    return svc.summary(db, days)
+    return svc.summary(db, days, product_id=product_id)
 
 
 @router.get("/by-defect", response_model=list[ByDefectPoint])
 def get_by_defect(
     days: int = _days_q,
+    product_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
-    return svc.by_defect(db, days)
+    return svc.by_defect(db, days, product_id=product_id)
 
 
 @router.get("/by-operator", response_model=list[ByOperatorPoint])
 def get_by_operator(
     days: int = _days_q,
+    product_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
-    return svc.by_operator(db, days)
+    return svc.by_operator(db, days, product_id=product_id)
 
 
 @router.get("/heatmap", response_model=list[HeatmapPoint])
 def get_heatmap(
     days: int = _days_q,
+    product_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ):
-    return svc.heatmap(db, days)
+    return svc.heatmap(db, days, product_id=product_id)

@@ -1,18 +1,25 @@
 import pytest
-from app.models.defect import DefectCategory, DefectLog, DefectType
+from app.models.defect import DefectLog, DefectType
 from app.models.device import Device
 from app.models.operator import Operator
+from app.models.product import Product
 from app.security import hash_pin
 
 
 @pytest.fixture
 def seed(db):
-    cat = DefectCategory(name="Paint", display_order=0)
-    db.add(cat)
+    product = Product(name="Capot")
+    db.add(product)
     db.flush()
 
-    dt1 = DefectType(category_id=cat.id, label="Run", display_order=0)
-    dt2 = DefectType(category_id=cat.id, label="Sag", display_order=1)
+    dt1 = DefectType(
+        product_id=product.id, category_kind="PMP",
+        label="Run", is_other_fallback=False, display_order=0,
+    )
+    dt2 = DefectType(
+        product_id=product.id, category_kind="INJECTION",
+        label="Sag", is_other_fallback=False, display_order=1,
+    )
     db.add_all([dt1, dt2])
     db.flush()
 
@@ -26,15 +33,22 @@ def seed(db):
     db.flush()
 
     logs = [
-        DefectLog(device_id=dev.id, operator_id=op1.id, defect_type_id=dt1.id,
-                  product_ref="R1", logged_at="2026-05-14T08:15:00Z"),
-        DefectLog(device_id=dev.id, operator_id=op1.id, defect_type_id=dt1.id,
-                  product_ref="R2", logged_at="2026-05-14T09:00:00Z"),
-        DefectLog(device_id=dev.id, operator_id=op2.id, defect_type_id=dt2.id,
-                  product_ref="R3", logged_at="2026-05-15T14:30:00Z"),
+        DefectLog(
+            device_id=dev.id, operator_id=op1.id, defect_type_id=dt1.id,
+            product_id=product.id, logged_at="2026-05-14T08:15:00Z",
+        ),
+        DefectLog(
+            device_id=dev.id, operator_id=op1.id, defect_type_id=dt1.id,
+            product_id=product.id, logged_at="2026-05-14T09:00:00Z",
+        ),
+        DefectLog(
+            device_id=dev.id, operator_id=op2.id, defect_type_id=dt2.id,
+            product_id=product.id, logged_at="2026-05-15T14:30:00Z",
+        ),
     ]
     db.add_all(logs)
     db.commit()
+    return {"product": product}
 
 
 def test_summary_empty(client, auth_headers):
@@ -58,9 +72,37 @@ def test_by_defect_ordered_by_count(client, auth_headers, seed):
     body = resp.json()
     assert body[0]["label"] == "Run"
     assert body[0]["count"] == 2
+    assert body[0]["category_kind"] == "PMP"
+    assert body[0]["product_name"] == "Capot"
     assert body[1]["label"] == "Sag"
     assert body[1]["count"] == 1
-    assert body[0]["category"] == "Paint"
+    assert body[1]["category_kind"] == "INJECTION"
+
+
+def test_by_defect_filter_by_product(client, auth_headers, seed, db):
+    p2 = Product(name="Autre")
+    db.add(p2)
+    db.flush()
+    dt = DefectType(
+        product_id=p2.id, category_kind="PMP",
+        label="Casse", is_other_fallback=False, display_order=0,
+    )
+    db.add(dt)
+    db.flush()
+    dev = Device(id="qc-stm32-other")
+    op = Operator(name="Test", pin_hash=hash_pin("9999"))
+    db.add_all([dev, op])
+    db.flush()
+    db.add(DefectLog(
+        device_id=dev.id, operator_id=op.id,
+        defect_type_id=dt.id, product_id=p2.id,
+        logged_at="2026-05-15T10:00:00Z",
+    ))
+    db.commit()
+    pid = seed["product"].id
+    resp = client.get(f"/stats/by-defect?days=365&product_id={pid}", headers=auth_headers)
+    body = resp.json()
+    assert all(r["product_id"] == pid for r in body)
 
 
 def test_by_operator_ordered_by_count(client, auth_headers, seed):

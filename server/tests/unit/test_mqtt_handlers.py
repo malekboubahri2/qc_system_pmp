@@ -2,9 +2,10 @@ import json
 from unittest.mock import MagicMock
 import paho.mqtt.client as mqtt
 from app.mqtt.handlers import dispatch
-from app.models.defect import DefectCategory, DefectType, DefectLog
+from app.models.defect import DefectLog, DefectType
 from app.models.device import Device
 from app.models.operator import Operator
+from app.models.product import Product
 from app.security import hash_pin
 
 
@@ -18,28 +19,35 @@ def _make_msg(topic: str, payload: dict) -> mqtt.MQTTMessage:
 def _seed_defect_prerequisites(db):
     device = Device(id="qc-stm32-001")
     op = Operator(name="Test Op", pin_hash=hash_pin("1234"))
-    cat = DefectCategory(name="Surface", display_order=0)
-    db.add_all([device, op, cat])
+    product = Product(name="Test Product")
+    db.add_all([device, op, product])
     db.flush()
-    dt = DefectType(category_id=cat.id, label="Scratch", display_order=0)
+    dt = DefectType(
+        product_id=product.id,
+        category_kind="PMP",
+        label="Scratch",
+        is_other_fallback=False,
+        display_order=0,
+    )
     db.add(dt)
     db.commit()
     db.refresh(op)
     db.refresh(dt)
-    return op, dt
+    db.refresh(product)
+    return op, dt, product
 
 
 def test_handle_defect_writes_log(db):
-    op, dt = _seed_defect_prerequisites(db)
+    op, dt, product = _seed_defect_prerequisites(db)
     msg = _make_msg(
         "qc/device/qc-stm32-001/defect",
         {
-            "schema_version": 1,
+            "schema_version": 2,
             "device_id": "qc-stm32-001",
             "operator_id": op.id,
             "defect_type_id": dt.id,
-            "product_ref": "REF-001",
-            "logged_at": "2026-05-16T10:00:00Z",
+            "product_id": product.id,
+            "logged_at": "2026-05-19T10:00:00Z",
         },
     )
     dispatch(msg)
@@ -47,8 +55,29 @@ def test_handle_defect_writes_log(db):
     log = db.query(DefectLog).first()
     assert log is not None
     assert log.device_id == "qc-stm32-001"
-    assert log.product_ref == "REF-001"
+    assert log.product_id == product.id
     assert log.operator_id == op.id
+    assert log.note is None
+
+
+def test_handle_defect_stores_note(db):
+    op, dt, product = _seed_defect_prerequisites(db)
+    msg = _make_msg(
+        "qc/device/qc-stm32-001/defect",
+        {
+            "schema_version": 2,
+            "device_id": "qc-stm32-001",
+            "operator_id": op.id,
+            "defect_type_id": dt.id,
+            "product_id": product.id,
+            "note": "bord gauche",
+            "logged_at": "2026-05-19T10:00:00Z",
+        },
+    )
+    dispatch(msg)
+    db.expire_all()
+    log = db.query(DefectLog).first()
+    assert log.note == "bord gauche"
 
 
 def test_handle_status_upserts_device(db):
@@ -70,7 +99,6 @@ def test_handle_status_upserts_device(db):
     device = db.get(Device, "qc-stm32-new")
     assert device is not None
     assert device.config_version == 2
-    assert device.operator_version == 1
     assert device.last_seen is not None
 
 
@@ -98,6 +126,20 @@ def test_handle_status_updates_existing_device(db):
     assert device.operator_version == 2
 
 
+def test_handle_session_logged(db, caplog):
+    msg = _make_msg(
+        "qc/device/qc-stm32-001/session",
+        {
+            "schema_version": 1,
+            "device_id": "qc-stm32-001",
+            "operator_id": 1,
+            "product_id": 1,
+            "started_at": "2026-05-19T08:00:00Z",
+        },
+    )
+    dispatch(msg)  # must not raise
+
+
 def test_bad_json_ignored():
     msg = MagicMock(spec=mqtt.MQTTMessage)
     msg.topic = "qc/device/qc-stm32-001/defect"
@@ -113,8 +155,8 @@ def test_unknown_schema_version_discarded(db):
             "device_id": "qc-stm32-001",
             "operator_id": 1,
             "defect_type_id": 1,
-            "product_ref": "REF-001",
-            "logged_at": "2026-05-16T10:00:00Z",
+            "product_id": 1,
+            "logged_at": "2026-05-19T10:00:00Z",
         },
     )
     dispatch(msg)

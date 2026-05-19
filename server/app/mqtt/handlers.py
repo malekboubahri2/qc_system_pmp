@@ -108,7 +108,8 @@ def _handle_defect(topic: str, payload: dict) -> None:
             device_id=data.device_id,
             operator_id=data.operator_id,
             defect_type_id=data.defect_type_id,
-            product_ref=data.product_ref,
+            product_id=data.product_id,
+            note=data.note,
             logged_at=data.logged_at,
         ))
         db.commit()
@@ -118,3 +119,22 @@ def _handle_defect(topic: str, payload: dict) -> None:
         raise
     finally:
         db.close()
+
+
+@register("qc/device/+/session")
+def _handle_session(topic: str, payload: dict) -> None:
+    from app.mqtt.schemas import SessionPayload, SCHEMA_VERSION_SESSION
+
+    try:
+        data = SessionPayload.model_validate(payload)
+    except Exception as exc:
+        logger.warning("MQTT session payload invalid topic={} err={}", topic, exc)
+        return
+    if data.schema_version != SCHEMA_VERSION_SESSION:
+        logger.warning("MQTT session unknown schema_version={}", data.schema_version)
+        return
+
+    logger.info(
+        "session started device_id={} operator_id={} product_id={}",
+        data.device_id, data.operator_id, data.product_id,
+    )

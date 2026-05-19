@@ -19,42 +19,68 @@ def _publish(topic: str, payload: dict, *, qos: int = 1, retain: bool = False) -
         logger.debug("MQTT published topic={} retain={}", topic, retain)
 
 
-def publish_defect_config() -> None:
+def publish_products_config() -> None:
     from app.db import SessionLocal
-    from app.models.defect import DefectCategory, DefectType
+    from app.models.product import Product
+    from app.models.defect import DefectType
     from app.mqtt.schemas import SCHEMA_VERSION_CONFIG
 
     db = SessionLocal()
     try:
-        categories = (
-            db.query(DefectCategory)
-            .filter(DefectCategory.active.is_(True))
-            .order_by(DefectCategory.display_order, DefectCategory.id)
+        products = (
+            db.query(Product)
+            .filter(Product.active.is_(True))
+            .order_by(Product.id)
             .all()
         )
-        payload_cats = []
-        for cat in categories:
-            types = (
+        payload_products = []
+        for product in products:
+            pmp_types = (
                 db.query(DefectType)
-                .filter(DefectType.category_id == cat.id, DefectType.active.is_(True))
-                .order_by(DefectType.display_order, DefectType.id)
+                .filter(
+                    DefectType.product_id == product.id,
+                    DefectType.category_kind == "PMP",
+                    DefectType.active.is_(True),
+                )
+                .order_by(DefectType.is_other_fallback, DefectType.display_order, DefectType.id)
                 .all()
             )
-            payload_cats.append({
-                "id": cat.id,
-                "name": cat.name,
-                "display_order": cat.display_order,
-                "defects": [
-                    {"id": t.id, "label": t.label, "display_order": t.display_order}
+            injection_types = (
+                db.query(DefectType)
+                .filter(
+                    DefectType.product_id == product.id,
+                    DefectType.category_kind == "INJECTION",
+                    DefectType.active.is_(True),
+                )
+                .order_by(DefectType.is_other_fallback, DefectType.display_order, DefectType.id)
+                .all()
+            )
+
+            def _type_list(types):
+                return [
+                    {
+                        "id": t.id,
+                        "label": t.label,
+                        "is_other_fallback": t.is_other_fallback,
+                        "display_order": t.display_order,
+                    }
                     for t in types
-                ],
+                ]
+
+            payload_products.append({
+                "id": product.id,
+                "name": product.name,
+                "categories": {
+                    "PMP": _type_list(pmp_types),
+                    "INJECTION": _type_list(injection_types),
+                },
             })
     finally:
         db.close()
 
     _publish(
-        "qc/config/defects",
-        {"schema_version": SCHEMA_VERSION_CONFIG, "categories": payload_cats},
+        "qc/config/products",
+        {"schema_version": SCHEMA_VERSION_CONFIG, "products": payload_products},
         qos=1,
         retain=True,
     )

@@ -1,11 +1,12 @@
-from typing import Literal
+from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 SCHEMA_VERSION_STATUS = 1
-SCHEMA_VERSION_DEFECT = 1
+SCHEMA_VERSION_DEFECT = 2
 SCHEMA_VERSION_CMD = 1
-SCHEMA_VERSION_CONFIG = 1
+SCHEMA_VERSION_CONFIG = 2
 SCHEMA_VERSION_OPERATORS = 1
+SCHEMA_VERSION_SESSION = 1
 
 
 class StatusPayload(BaseModel):
@@ -24,8 +25,17 @@ class DefectPayload(BaseModel):
     device_id: str
     operator_id: int
     defect_type_id: int
-    product_ref: str
+    product_id: int
+    note: Optional[str] = Field(default=None, max_length=140)
     logged_at: str
+
+
+class SessionPayload(BaseModel):
+    schema_version: int
+    device_id: str
+    operator_id: int
+    product_id: int
+    started_at: str
 
 
 class CmdPayload(BaseModel):

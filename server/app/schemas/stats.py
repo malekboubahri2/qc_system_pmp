@@ -9,7 +9,9 @@ class SummaryPoint(BaseModel):
 class ByDefectPoint(BaseModel):
     defect_type_id: int
     label: str
-    category: str
+    category_kind: str
+    product_id: int
+    product_name: str
     count: int
 
 

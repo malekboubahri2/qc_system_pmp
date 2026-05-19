@@ -19,6 +19,7 @@ def _common(
     operator_id: Optional[int] = Query(None),
     defect_type_id: Optional[int] = Query(None),
     device_id: Optional[str] = Query(None),
+    product_id: Optional[int] = Query(None),
 ):
     return dict(
         from_=from_,
@@ -26,6 +27,7 @@ def _common(
         operator_id=operator_id,
         defect_type_id=defect_type_id,
         device_id=device_id,
+        product_id=product_id,
     )
 
 
