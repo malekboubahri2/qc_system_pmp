@@ -15,4 +15,10 @@ describe('LiveStationsPage', () => {
     expect(await screen.findByText('Cratère')).toBeInTheDocument();
     expect(await screen.findByText('Bavure')).toBeInTheDocument();
   });
+
+  it('renders OK inspection counts for each station', async () => {
+    renderWithProviders(<LiveStationsPage />);
+    expect(await screen.findByText('34 OK')).toBeInTheDocument();
+    expect(await screen.findByText('22 OK')).toBeInTheDocument();
+  });
 });

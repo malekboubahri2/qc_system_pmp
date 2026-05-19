@@ -1,4 +1,4 @@
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
   Panel, PanelBody, PanelFooter, PanelHeader,
@@ -51,6 +51,10 @@ function SummaryBand({ session }: { session: StationSession }) {
             {session.defectCount}
           </p>
           <TrendLine direction={session.trendDirection} label={session.trendLabel} />
+          <p className="flex items-center gap-1.5 text-xs text-success mt-1">
+            <Check size={12} strokeWidth={2} className="flex-shrink-0" />
+            {session.okCount} OK
+          </p>
         </div>
       </div>
     </div>

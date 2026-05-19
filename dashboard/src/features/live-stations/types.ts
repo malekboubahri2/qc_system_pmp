@@ -5,6 +5,7 @@ export interface StationSession {
   productName: string;
   productRef: string;
   defectCount: number;
+  okCount: number;
   trendLabel: string;
   trendDirection: 'up' | 'flat' | 'down';
 }
