@@ -27,7 +27,7 @@ os.environ.setdefault("JWT_SECRET", "seed-stub-not-used-for-signing")
 from sqlalchemy import select  # noqa: E402
 
 from app.db import SessionLocal  # noqa: E402
-from app.models.defect import DefectLog, DefectType  # noqa: E402
+from app.models.defect import InspectionLog, DefectType  # noqa: E402
 from app.models.device import Device  # noqa: E402
 from app.models.feature_flag import FeatureFlag  # noqa: E402
 from app.models.operator import Operator  # noqa: E402
@@ -52,80 +52,23 @@ _OPERATORS = [
     {"name": "Youssef Chabbi",  "pin": "9012"},
 ]
 
-# 5 products with French defect catalogs per category.
-# Each list may have at most 12 user-defined types (fallback is auto-added by service,
-# but here we add types directly in the DB for seeding).
+# Paper taxonomy from SVI-PRD-17 (PMP 7 types, INJECTION 10 types).
+# Applied to every product so the demo dashboard shows realistic totals.
+_PMP_TYPES = [
+    "Poussière", "Griffure", "Trace", "Filament",
+    "Manque matière", "Coulure matière", "Pt brillant",
+]
+_INJ_TYPES = [
+    "Givrage", "Trace d'huile", "Rayure", "Brillance", "Tache",
+    "Bavure", "Flux", "Effet de bord", "Ventouse", "Coup",
+]
+
 _PRODUCTS: list[dict] = [
-    {
-        "name": "Capot moteur",
-        "ref": "PROD-001",
-        "types": {
-            CATEGORY_KIND_PMP: [
-                "Coulure", "Peau d'orange", "Bullage",
-                "Manque de brillance", "Séchage insuf.", "Voile",
-            ],
-            CATEGORY_KIND_INJECTION: [
-                "Rayure surface", "Bosse", "Contamination",
-                "Marque d'outil", "Porosité",
-            ],
-        },
-    },
-    {
-        "name": "Cadre miroir",
-        "ref": "PROD-002",
-        "types": {
-            CATEGORY_KIND_PMP: [
-                "Coulure", "Débordement", "Épaisseur insuf.",
-                "Zone non couverte", "Brillance irrégulière",
-            ],
-            CATEGORY_KIND_INJECTION: [
-                "Rayure moulage", "Retrait matière", "Ligne de soudure",
-                "Flash", "Déformation",
-            ],
-        },
-    },
-    {
-        "name": "Boîtier cosmétique",
-        "ref": "PROD-003",
-        "types": {
-            CATEGORY_KIND_PMP: [
-                "Coulure", "Bullage", "Inclusion", "Voile",
-                "Manque de brillance", "Séchage insuf.",
-            ],
-            CATEGORY_KIND_INJECTION: [
-                "Rayure", "Contamination", "Retrait matière",
-                "Marque d'éjecteur", "Brûlure",
-            ],
-        },
-    },
-    {
-        "name": "Poignée de porte",
-        "ref": "PROD-004",
-        "types": {
-            CATEGORY_KIND_PMP: [
-                "Coulure", "Peau d'orange", "Zone non couverte",
-                "Débordement", "Voile",
-            ],
-            CATEGORY_KIND_INJECTION: [
-                "Rayure", "Porosité", "Déformation",
-                "Flash", "Ligne de soudure",
-            ],
-        },
-    },
-    {
-        "name": "Calandre",
-        "ref": "PROD-005",
-        "types": {
-            CATEGORY_KIND_PMP: [
-                "Coulure", "Bullage", "Manque de brillance",
-                "Épaisseur insuf.", "Débordement", "Inclusion",
-            ],
-            CATEGORY_KIND_INJECTION: [
-                "Rayure surface", "Retrait matière", "Contamination",
-                "Marque d'outil", "Brûlure",
-            ],
-        },
-    },
+    {"name": "Capot moteur",      "ref": "PROD-001"},
+    {"name": "Cadre miroir",      "ref": "PROD-002"},
+    {"name": "Boîtier cosmétique","ref": "PROD-003"},
+    {"name": "Poignée de porte",  "ref": "PROD-004"},
+    {"name": "Calandre",          "ref": "PROD-005"},
 ]
 
 _DEVICES = [
@@ -138,7 +81,7 @@ _FLAGS = [
     {"name": "advanced_analytics", "enabled": False, "description": "Graphiques avancés et export CSV"},
 ]
 
-LOG_COUNT = 312
+LOG_COUNT = 420     # ~30% OK, ~70% DEFECT, spread across LOG_DAYS
 LOG_DAYS = 14
 
 # hour weights (index = UTC hour) — biased toward 07:00-17:00 plant time (UTC+1)
@@ -206,7 +149,10 @@ def _seed_products(db) -> list[tuple[Product, list[DefectType]]]:
             print(f"  ~ product '{product.name}' (exists)")
 
         all_types: list[DefectType] = []
-        for category_kind, labels in pdata["types"].items():
+        for category_kind, labels in [
+            (CATEGORY_KIND_PMP, _PMP_TYPES),
+            (CATEGORY_KIND_INJECTION, _INJ_TYPES),
+        ]:
             for order, label in enumerate(labels, start=1):
                 dt = db.scalar(
                     select(DefectType).where(
@@ -297,32 +243,53 @@ def _seed_logs(
     devices: list[Device],
     product_types: list[tuple[Product, list[DefectType]]],
 ) -> None:
-    if db.scalar(select(DefectLog.id).limit(1)) is not None:
-        print("  ~ logs exist, skipping")
+    if db.scalar(select(InspectionLog.id).limit(1)) is not None:
+        print("  ~ inspection logs exist, skipping")
         return
     logs = []
+    defect_count = 0
+    ok_count = 0
     for _ in range(LOG_COUNT):
         product, types = random.choice(product_types)
         op = random.choice([o for o in operators if o.pin_hash is not None])
-        defect_type = random.choice(types)
         ts = _rand_ts()
-        note = None
-        if defect_type.is_other_fallback:
-            note = random.choice([
-                "préciser: bord droit", "préciser: coin inférieur",
-                "préciser: surface centrale", "préciser: à voir avec chef",
-            ])
-        logs.append(DefectLog(
-            device_id=random.choice(devices).id,
-            operator_id=op.id,
-            defect_type_id=defect_type.id,
-            product_id=product.id,
-            note=note,
-            logged_at=ts,
-            received_at=ts,
-        ))
+
+        # ~70% DEFECT, ~30% OK
+        if random.random() < 0.70:
+            defect_type = random.choice(types)
+            note = None
+            if defect_type.is_other_fallback:
+                note = random.choice([
+                    "préciser: bord droit", "préciser: coin inférieur",
+                    "préciser: surface centrale", "préciser: à voir avec chef",
+                ])
+            logs.append(InspectionLog(
+                device_id=random.choice(devices).id,
+                operator_id=op.id,
+                defect_type_id=defect_type.id,
+                product_id=product.id,
+                outcome="DEFECT",
+                note=note,
+                logged_at=ts,
+                received_at=ts,
+            ))
+            defect_count += 1
+        else:
+            logs.append(InspectionLog(
+                device_id=random.choice(devices).id,
+                operator_id=op.id,
+                defect_type_id=None,
+                product_id=product.id,
+                outcome="OK",
+                logged_at=ts,
+                received_at=ts,
+            ))
+            ok_count += 1
     db.add_all(logs)
-    print(f"  + {LOG_COUNT} defect logs over the last {LOG_DAYS} days")
+    print(
+        f"  + {LOG_COUNT} inspection logs over the last {LOG_DAYS} days "
+        f"({defect_count} DEFECT, {ok_count} OK)"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -337,13 +304,13 @@ def seed() -> None:
         _seed_user(db)
         print("Operators:")
         operators = _seed_operators(db)
-        print("Products & defect types:")
+        print("Products & defect types (paper taxonomy SVI-PRD-17):")
         product_types = _seed_products(db)
         print("Devices:")
         devices = _seed_devices(db)
         print("Feature flags:")
         _seed_flags(db)
-        print("Defect logs:")
+        print("Inspection logs:")
         _seed_logs(db, operators, devices, product_types)
         db.commit()
         print("Done.")

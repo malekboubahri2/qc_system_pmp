@@ -12,7 +12,7 @@ for how this data reaches the STM32.
 |---|---|
 | `products` | Products inspected at the plant |
 | `defect_types` | Defect buttons scoped to a product and category |
-| `defect_logs` | Immutable log of every defect tap |
+| `inspection_logs` | Immutable log of every inspection tap (DEFECT or OK) |
 | `operators` | Plant floor operators with PIN credentials |
 | `devices` | Known STM32 terminals (auto-registered on first heartbeat) |
 | `users` | Dashboard accounts (QC responsable and admin) |
@@ -51,10 +51,10 @@ See ADR-013 in `docs/decisions.md`.
 ```mermaid
 erDiagram
     Product ||--o{ DefectType : "has"
-    Product ||--o{ DefectLog : "logged against"
-    DefectType ||--o{ DefectLog : "identifies"
-    Operator ||--o{ DefectLog : "logged by"
-    Device ||--o{ DefectLog : "received from"
+    Product ||--o{ InspectionLog : "logged against"
+    DefectType ||--o{ InspectionLog : "identifies"
+    Operator ||--o{ InspectionLog : "logged by"
+    Device ||--o{ InspectionLog : "received from"
 ```
 
 ---
@@ -174,50 +174,61 @@ VALUES (1, 'PMP', 'Coulure', 0);
 
 ---
 
-## defect_logs
+## inspection_logs
+
+Introduced in ADR-014. Replaces `defect_logs`.
 
 ```sql
-CREATE TABLE defect_logs (
+CREATE TABLE inspection_logs (
     id             INTEGER PRIMARY KEY AUTOINCREMENT,
     device_id      TEXT    NOT NULL REFERENCES devices (id),
     operator_id    INTEGER NOT NULL REFERENCES operators (id),
     product_id     INTEGER NOT NULL REFERENCES products (id),
-    defect_type_id INTEGER NOT NULL REFERENCES defect_types (id),
-    note           TEXT,              -- max 200 chars; set only when
-                                     -- defect_type.is_other_fallback = 1
+    outcome        TEXT    NOT NULL DEFAULT 'DEFECT'
+                   CHECK (outcome IN ('DEFECT', 'OK')),
+    defect_type_id INTEGER REFERENCES defect_types (id),  -- NULL for OK
+    note           TEXT,              -- max 140 chars; set only for
+                                     -- is_other_fallback=1 DEFECTs
     logged_at      TEXT    NOT NULL, -- device clock time (ISO 8601 UTC)
     received_at    TEXT    NOT NULL
-                   DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+                   DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    CONSTRAINT ck_inspection_logs_defect_type_required_for_defect
+        CHECK ((outcome = 'OK') OR (defect_type_id IS NOT NULL))
 );
 
-CREATE INDEX idx_defect_logs_received_at  ON defect_logs (received_at);
-CREATE INDEX idx_defect_logs_logged_at    ON defect_logs (logged_at);
-CREATE INDEX idx_defect_logs_operator     ON defect_logs (operator_id);
-CREATE INDEX idx_defect_logs_defect_type  ON defect_logs (defect_type_id);
-CREATE INDEX idx_defect_logs_device       ON defect_logs (device_id);
-CREATE INDEX idx_defect_logs_product      ON defect_logs (product_id);
+CREATE INDEX idx_inspection_logs_received_at  ON inspection_logs (received_at);
+CREATE INDEX idx_inspection_logs_logged_at    ON inspection_logs (logged_at);
+CREATE INDEX idx_inspection_logs_operator     ON inspection_logs (operator_id);
+CREATE INDEX idx_inspection_logs_defect_type  ON inspection_logs (defect_type_id);
+CREATE INDEX idx_inspection_logs_device       ON inspection_logs (device_id);
+CREATE INDEX idx_inspection_logs_product      ON inspection_logs (product_id);
+CREATE INDEX idx_inspection_logs_outcome      ON inspection_logs (outcome);
 ```
 
 **Column notes:**
-- `product_id` — the product the operator was inspecting. Reported by
-  the device; stored as received. Enables per-product analytics.
-- `note` — free-text annotation, max 200 chars. The STM32 prompts for
-  this only when `defect_type.is_other_fallback = 1`. `null` for all
-  other defect types.
-- `logged_at` — set by the STM32 RTC at tap time. Can differ from
-  `received_at` if the device was offline and replayed from queue.
-  Use `received_at` for aggregation; use `logged_at` for timeline display.
-- `product_ref` (old free-text field) is removed; the product is now
-  the FK `product_id`.
-- No `active`/`archived_at` — logs are immutable records. Never deleted.
+- `outcome` — `'DEFECT'` or `'OK'`. Required. Default is `'DEFECT'` for
+  backward-compat with migrated rows.
+- `defect_type_id` — nullable. NULL for OK inspections; required for DEFECT
+  (enforced by the CHECK constraint).
+- `product_id` — the product the operator was inspecting. Enables per-product
+  Taux NC analytics.
+- `note` — free-text annotation, max 140 chars. Only for `is_other_fallback`
+  DEFECTs.
+- `logged_at` — STM32 RTC time (UTC). Use for timeline display; use
+  `received_at` for server-side aggregation.
+- No `active`/`archived_at` — immutable append-only log.
 
 **Example:**
 ```sql
-INSERT INTO defect_logs
-    (device_id, operator_id, product_id, defect_type_id, note, logged_at)
-VALUES
-    ('qc-stm32-001a2b3c', 1, 1, 5, null,
-     '2026-05-19T08:23:01Z');
+-- DEFECT
+INSERT INTO inspection_logs
+    (device_id, operator_id, product_id, outcome, defect_type_id, note, logged_at)
+VALUES ('qc-stm32-001a2b3c', 1, 1, 'DEFECT', 5, null, '2026-05-19T08:23:01Z');
+
+-- OK (part passes)
+INSERT INTO inspection_logs
+    (device_id, operator_id, product_id, outcome, logged_at)
+VALUES ('qc-stm32-001a2b3c', 1, 1, 'OK', '2026-05-19T08:25:00Z');
 ```
 
 ---

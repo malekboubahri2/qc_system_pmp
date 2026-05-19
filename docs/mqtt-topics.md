@@ -28,7 +28,8 @@ product-scoped payload schema introduced in `qc/config/products`.
 | `qc/device/{id}/cmd` | server → device | 1 | no | server | one STM32 |
 | `qc/device/{id}/status` | device → server | 0 | no | one STM32 | server |
 | `qc/device/{id}/session` | device → server | 1 | no | one STM32 | server |
-| `qc/device/{id}/defect` | device → server | 1 | no | one STM32 | server |
+| `qc/device/{id}/inspection` | device → server | 1 | no | one STM32 | server |
+| `qc/device/{id}/defect` *(legacy)* | device → server | 1 | no | old firmware | server |
 
 `{id}` is the STM32 hardware UID, lowercase hex, e.g. `qc-stm32-001a2b3c`.
 See `docs/data-model.md` → `devices` table for how IDs are formed.
@@ -226,44 +227,65 @@ knows which product the device is inspecting even across reconnects.
 
 ---
 
-## `qc/device/{id}/defect`
+## `qc/device/{id}/inspection`
 
 **Direction:** device → server  
-**QoS:** 1 | **Retained:** no
+**QoS:** 1 | **Retained:** no  
+**schema_version:** 3 (ADR-014)
 
-Published when the operator taps a defect button. QoS 1 guarantees
+Published after every inspection tap — whether the operator found a defect
+(`outcome=DEFECT`) or the part passed (`outcome=OK`). QoS 1 guarantees
 at-least-once delivery. If offline, the firmware queues the entry to
 Octo-SPI and drains on reconnect (see `docs/build-flags.md` →
 `APP_FEATURE_OFFLINE_QUEUE`).
 
-The server MQTT bridge writes a `defect_logs` row on receipt. Duplicate
-detection is not implemented for PoC (duplicate delivery is accepted as
-a known limitation).
+The server MQTT bridge writes an `inspection_logs` row on receipt.
 
+**DEFECT tap:**
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "device_id": "qc-stm32-001a2b3c",
   "operator_id": 1,
   "product_id": 1,
+  "outcome": "DEFECT",
   "defect_type_id": 5,
   "note": null,
   "logged_at": "2026-05-19T08:23:01Z"
 }
 ```
 
+**OK tap (part passes):**
+```json
+{
+  "schema_version": 3,
+  "device_id": "qc-stm32-001a2b3c",
+  "operator_id": 1,
+  "product_id": 1,
+  "outcome": "OK",
+  "logged_at": "2026-05-19T08:25:00Z"
+}
+```
+
 **Field notes:**
-- `product_id` — the product selected at session start. The server
-  validates that `defect_type_id` belongs to this product.
-- `note` — free-text annotation, max 200 chars. Non-null only when
-  the selected defect type has `is_other_fallback=true`. The STM32
-  prompts for this before publishing.
+- `outcome` — `"DEFECT"` or `"OK"`. Required.
+- `defect_type_id` — required when `outcome=DEFECT`, absent when `outcome=OK`.
+  The server validates this constraint and discards messages that violate it.
+- `note` — free-text annotation, max 140 chars. Non-null only when the
+  selected defect type has `is_other_fallback=true`.
 - `logged_at` — STM32 RTC time (UTC). Synced via SNTP on connect.
-  If SNTP has never succeeded, firmware uses `0` and the server records
-  `received_at` as a fallback.
-- `schema_version` bumped to 2 (old schema_version 1 carried a
-  free-text `product_ref` field instead of `product_id`, and had no
-  `note` field).
+
+---
+
+## `qc/device/{id}/defect` *(legacy — do not use in new firmware)*
+
+**Direction:** device → server  
+**QoS:** 1 | **Retained:** no
+
+**Deprecated.** This topic carried schema_version 2 (DEFECT-only, no
+`outcome` field). The server logs a warning and discards all messages on
+this topic. New firmware must publish to `qc/device/{id}/inspection`
+with schema_version 3. See ADR-014 in `docs/decisions.md`.
 
 ---
 
@@ -289,7 +311,7 @@ Two account types:
 **Server** (`qc-server`):
 - Publishes: `qc/config/#`, `qc/device/+/cmd`
 - Subscribes: `qc/device/+/status`, `qc/device/+/session`,
-  `qc/device/+/defect`
+  `qc/device/+/inspection`, `qc/device/+/defect` *(legacy)*
 
 **Device** (one account per device, e.g. `qc-device-001a2b3c`):
 - Publishes: `qc/device/qc-stm32-001a2b3c/#`

@@ -4,7 +4,7 @@ from typing import Optional
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.models.defect import DefectLog, DefectType
+from app.models.defect import InspectionLog as DefectLog, DefectType
 from app.models.operator import Operator
 from app.models.product import Product
 from app.schemas.stats import ByDefectPoint, ByOperatorPoint, HeatmapPoint, SummaryPoint

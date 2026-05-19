@@ -2,7 +2,8 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 SCHEMA_VERSION_STATUS = 1
-SCHEMA_VERSION_DEFECT = 2
+SCHEMA_VERSION_DEFECT = 2        # legacy — reject with warning
+SCHEMA_VERSION_INSPECTION = 3    # current
 SCHEMA_VERSION_CMD = 1
 SCHEMA_VERSION_CONFIG = 2
 SCHEMA_VERSION_OPERATORS = 1
@@ -20,6 +21,19 @@ class StatusPayload(BaseModel):
     mqtt_reconnects: int
 
 
+class InspectionPayload(BaseModel):
+    schema_version: int
+    device_id: str
+    operator_id: int
+    product_id: int
+    outcome: Literal["DEFECT", "OK"]
+    # Required for DEFECT, absent for OK; validated in handler
+    defect_type_id: Optional[int] = None
+    note: Optional[str] = Field(default=None, max_length=140)
+    logged_at: str
+
+
+# Legacy schema kept for version-check rejection only
 class DefectPayload(BaseModel):
     schema_version: int
     device_id: str

@@ -1,5 +1,5 @@
 import pytest
-from app.models.defect import DefectLog, DefectType
+from app.models.defect import InspectionLog, DefectType
 from app.models.device import Device
 from app.models.operator import Operator
 from app.models.product import Product
@@ -8,7 +8,7 @@ from app.security import hash_pin
 
 @pytest.fixture
 def seed(db):
-    """Insert minimum FK prerequisites and two defect logs."""
+    """Insert minimum FK prerequisites and two inspection logs (both DEFECT)."""
     product = Product(name="Capot moteur")
     db.add(product)
     db.flush()
@@ -31,18 +31,20 @@ def seed(db):
     db.add(dev)
     db.flush()
 
-    log1 = DefectLog(
+    log1 = InspectionLog(
         device_id=dev.id,
         operator_id=op.id,
         defect_type_id=dt.id,
         product_id=product.id,
+        outcome="DEFECT",
         logged_at="2026-05-10T08:00:00Z",
     )
-    log2 = DefectLog(
+    log2 = InspectionLog(
         device_id=dev.id,
         operator_id=op.id,
         defect_type_id=dt.id,
         product_id=product.id,
+        outcome="DEFECT",
         note="préciser: bord droit",
         logged_at="2026-05-11T09:30:00Z",
     )
@@ -70,6 +72,7 @@ def test_list_returns_logs(client, auth_headers, seed):
     assert item["defect_type"]["label"] == "Rayure"
     assert item["defect_type"]["category_kind"] == "PMP"
     assert item["product"]["name"] == "Capot moteur"
+    assert item["outcome"] == "DEFECT"
 
 
 def test_list_returns_note(client, auth_headers, seed):
@@ -83,9 +86,10 @@ def test_list_filter_by_operator(client, auth_headers, seed, db):
     db.add(op2)
     db.flush()
     s = seed
-    db.add(DefectLog(
+    db.add(InspectionLog(
         device_id=s["dev"].id, operator_id=op2.id,
         defect_type_id=s["dt"].id, product_id=s["product"].id,
+        outcome="DEFECT",
         logged_at="2026-05-12T10:00:00Z",
     ))
     db.commit()
@@ -107,9 +111,10 @@ def test_list_filter_by_product(client, auth_headers, seed, db):
     db.add(dt2)
     db.flush()
     s = seed
-    db.add(DefectLog(
+    db.add(InspectionLog(
         device_id=s["dev"].id, operator_id=s["op"].id,
         defect_type_id=dt2.id, product_id=p2.id,
+        outcome="DEFECT",
         logged_at="2026-05-12T10:00:00Z",
     ))
     db.commit()

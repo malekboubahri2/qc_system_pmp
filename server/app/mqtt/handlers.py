@@ -87,38 +87,56 @@ def _handle_status(topic: str, payload: dict) -> None:
         db.close()
 
 
-@register("qc/device/+/defect")
-def _handle_defect(topic: str, payload: dict) -> None:
+@register("qc/device/+/inspection")
+def _handle_inspection(topic: str, payload: dict) -> None:
     from app.db import SessionLocal
-    from app.models.defect import DefectLog
-    from app.mqtt.schemas import DefectPayload, SCHEMA_VERSION_DEFECT
+    from app.models.defect import InspectionLog
+    from app.mqtt.schemas import InspectionPayload, SCHEMA_VERSION_INSPECTION
 
     try:
-        data = DefectPayload.model_validate(payload)
+        data = InspectionPayload.model_validate(payload)
     except Exception as exc:
-        logger.warning("MQTT defect payload invalid topic={} err={}", topic, exc)
+        logger.warning("MQTT inspection payload invalid topic={} err={}", topic, exc)
         return
-    if data.schema_version != SCHEMA_VERSION_DEFECT:
-        logger.warning("MQTT defect unknown schema_version={}", data.schema_version)
+    if data.schema_version != SCHEMA_VERSION_INSPECTION:
+        logger.warning("MQTT inspection unknown schema_version={}", data.schema_version)
+        return
+    if data.outcome == "DEFECT" and data.defect_type_id is None:
+        logger.warning("MQTT inspection DEFECT outcome missing defect_type_id topic={}", topic)
         return
 
     db = SessionLocal()
     try:
-        db.add(DefectLog(
+        db.add(InspectionLog(
             device_id=data.device_id,
             operator_id=data.operator_id,
             defect_type_id=data.defect_type_id,
             product_id=data.product_id,
+            outcome=data.outcome,
             note=data.note,
             logged_at=data.logged_at,
         ))
         db.commit()
-        logger.info("defect logged device_id={} type_id={}", data.device_id, data.defect_type_id)
+        logger.info(
+            "inspection logged device_id={} outcome={} type_id={}",
+            data.device_id, data.outcome, data.defect_type_id,
+        )
     except Exception:
         db.rollback()
         raise
     finally:
         db.close()
+
+
+@register("qc/device/+/defect")
+def _handle_defect_legacy(topic: str, payload: dict) -> None:
+    """Legacy handler for schema_version 2 devices. Logs a warning and discards."""
+    schema_version = payload.get("schema_version")
+    logger.warning(
+        "MQTT received legacy defect topic (schema_version={}); "
+        "device must upgrade to qc/device/+/inspection (schema_version=3). topic={}",
+        schema_version, topic,
+    )
 
 
 @register("qc/device/+/session")

@@ -382,3 +382,65 @@ business value.
   products through the same inspection station.
 - Keep flat global defect types: rejected. Loses the per-product
   signal that is the core value of the system.
+
+---
+
+## ADR-014 — Inspection outcomes (DEFECT/OK) and paper-taxonomy seed
+
+**Date:** 2026-05-19
+**Status:** Accepted
+
+**Context:** The PoC only logged defect taps. Comparing defect counts
+across products or shifts without knowing the total inspections performed
+makes the Taux NC (non-conformity rate) unmeasurable. Reviewing the
+actual paper QC form (SVI-PRD-17) revealed that operators already tick
+"OK" for passing parts and that the paper records 7 PMP defect types and
+10 INJECTION defect types — a taxonomy that had not been captured in the
+seed data.
+
+**Decision:**
+
+1. Rename `defect_logs` table → `inspection_logs`. Add an `outcome`
+   column (`'DEFECT'` | `'OK'`, NOT NULL, default `'DEFECT'`).
+2. Make `defect_type_id` nullable. A CHECK constraint enforces that it is
+   non-null only when `outcome = 'DEFECT'`.
+3. Replace MQTT topic `qc/device/{id}/defect` (schema_version 2) with
+   `qc/device/{id}/inspection` (schema_version 3). The new payload carries
+   `outcome` and optional `defect_type_id`. The old topic is retained as a
+   registered handler that logs a warning and discards all messages — it is
+   not silently ignored, so operators of old firmware see actionable log
+   entries.
+4. Add `GET /inspection-logs/reports/hourly?date=YYYY-MM-DD` returning
+   a 24-row hourly Taux NC report per category (PMP and INJECTION).
+   Keep `GET /logs` as a legacy alias so the existing dashboard does not
+   break before Commit 2.
+5. Seed the defect taxonomy from SVI-PRD-17:
+   - PMP (7 types): Poussière, Griffure, Trace, Filament, Manque matière,
+     Coulure matière, Pt brillant.
+   - INJECTION (10 types): Givrage, Trace d'huile, Rayure, Brillance,
+     Tache, Bavure, Flux, Effet de bord, Ventouse, Coup.
+   Applied to every product in the dev seed. Existing seed is truncated
+   on migration.
+6. Alembic migration `0004_inspection_logs_with_outcome.py` creates the
+   new table, migrates existing rows (all become `outcome='DEFECT'`), then
+   drops the old `defect_logs` table.
+
+**Consequences:**
+- Taux NC (defects ÷ total inspections) can now be computed hourly.
+- STM32 firmware must be updated to publish `qc/device/{id}/inspection`
+  (schema_version 3) and add an "OK" button to the defect grid screen.
+  Until firmware is updated, the old `defect` topic produces warning logs
+  on the server but no data loss (logs are still complete for DEFECT taps
+  sent on the old path — they're just discarded server-side, not stored).
+- `defect_type_id` nullable requires the service and schema layers to
+  handle `None` for OK rows (outer join in queries, `Optional` in Pydantic).
+- CSV export header gains `outcome` column; downstream consumers must
+  update.
+
+**Alternatives considered:**
+- Separate `ok_logs` table: rejected. One table for all inspection events
+  simplifies queries and keeps the audit trail contiguous.
+- Keep `defect_logs` name: rejected. The table now records OK events, so
+  the name would be actively misleading.
+- Require firmware upgrade before accepting data: rejected. Log-and-discard
+  on the legacy topic is kinder to incremental deployments.

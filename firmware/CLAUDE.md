@@ -347,6 +347,20 @@ cannot. Modules in between have partial coverage.
   field. schema_version 2 carries `product_id` (integer) and `note`
   (nullable string). Reject cached queue entries with schema_version 1
   on firmware upgrade.
+- **[ADR-014 — pending firmware work]** The next firmware iteration must
+  migrate from `qc/device/{id}/defect` (schema_version 2) to
+  `qc/device/{id}/inspection` (schema_version 3). Key changes:
+  - Add `outcome` field (`"DEFECT"` | `"OK"`) to the MQTT payload.
+  - Add an "OK" button to the defect-grid screen. When tapped, publish
+    with `outcome="OK"` and no `defect_type_id`.
+  - When a defect button is tapped, publish with `outcome="DEFECT"` and
+    `defect_type_id` set as before.
+  - Update `mqtt_topics.h`: rename `MQTT_TOPIC_DEFECT` →
+    `MQTT_TOPIC_INSPECTION`. Update `defect_queue` entry struct to carry
+    `outcome` and nullable `defect_type_id`.
+  - The server's `qc/device/{id}/defect` handler now discards all
+    messages. Old firmware will lose data once server is updated; update
+    firmware first.
 
 ## Useful debug commands
 
