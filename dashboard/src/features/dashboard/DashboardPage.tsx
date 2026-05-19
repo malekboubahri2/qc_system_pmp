@@ -103,11 +103,11 @@ export function DashboardPage() {
                 <span className="font-mono text-sm text-ink-muted w-40 flex-shrink-0 whitespace-nowrap">
                   {formatDateTime(log.logged_at)}
                 </span>
-                <span className="text-sm text-ink-muted flex-shrink-0 w-32 truncate">{log.operator_name}</span>
-                <span className="text-sm text-ink-muted flex-shrink-0 hidden md:block w-28 truncate">{log.category_name}</span>
-                <span className="text-sm font-medium text-ink truncate">{log.defect_label}</span>
-                {log.product_ref && (
-                  <span className="ml-auto font-mono text-sm text-ink-muted flex-shrink-0">{log.product_ref}</span>
+                <span className="text-sm text-ink-muted flex-shrink-0 w-32 truncate">{log.operator.name}</span>
+                <span className="text-sm text-ink-muted flex-shrink-0 hidden md:block w-28 truncate">{log.defect_type.category_kind}</span>
+                <span className="text-sm font-medium text-ink truncate">{log.defect_type.label}</span>
+                {log.product && (
+                  <span className="ml-auto font-mono text-sm text-ink-muted flex-shrink-0">{log.product.name}</span>
                 )}
               </li>
             ))}

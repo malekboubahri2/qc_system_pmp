@@ -18,33 +18,36 @@ export interface Operator {
   archived_at?: string;
 }
 
-export interface DefectCategory {
+export interface Product {
   id: number;
   name: string;
-  display_order: number;
   active: boolean;
-  defect_count: number;
-  archived_at?: string;
+  created_at: string;
+}
+
+export interface CategoryConstant {
+  kind: string;
+  display_name: string;
 }
 
 export interface DefectType {
   id: number;
-  category_id: number;
+  product_id: number;
+  category_kind: string;
   label: string;
+  is_other_fallback: boolean;
   display_order: number;
   active: boolean;
-  archived_at?: string;
+  created_at: string;
 }
 
 export interface DefectLog {
   id: number;
   device_id: string;
-  operator_id: number;
-  operator_name: string;
-  defect_type_id: number;
-  defect_label: string;
-  category_name: string;
-  product_ref: string;
+  operator: { id: number; name: string };
+  defect_type: { id: number; label: string; category_kind: string };
+  product: { id: number; name: string };
+  note: string | null;
   logged_at: string;
   received_at: string;
 }
@@ -71,7 +74,9 @@ export interface SummaryPoint {
 export interface ByDefectPoint {
   defect_type_id: number;
   label: string;
-  category: string;
+  category_kind: string;
+  product_id: number;
+  product_name: string;
   count: number;
 }
 
@@ -90,7 +95,7 @@ export interface PaginatedLogs {
   items: DefectLog[];
   total: number;
   page: number;
-  page_size: number;
+  per_page: number;
 }
 
 export interface ApiError {

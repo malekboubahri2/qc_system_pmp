@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import { listLogs, downloadCsv } from '@/api/logs';
 import { useOperators } from '@/hooks/useOperators';
-import { useCategories, useTypes } from '@/hooks/useDefects';
+import { useProducts } from '@/hooks/useProducts';
 import { DateRangePicker, daysAgo, today } from '@/components/shared/DateRangePicker';
 import { Button } from '@/components/shared/Button';
 import { Icon } from '@/components/Icon';
@@ -24,8 +24,7 @@ export function LogsPage() {
   });
 
   const { data: operators = [] } = useOperators();
-  const { data: categories = [] } = useCategories();
-  const { data: types = [] } = useTypes();
+  const { data: products = [] } = useProducts();
 
   const setFilter = useCallback(<K extends keyof LogFilters>(k: K, v: LogFilters[K]) => {
     setFilters((prev) => ({ ...prev, [k]: v || undefined }));
@@ -85,22 +84,16 @@ export function LogsPage() {
           </select>
         </div>
 
-        {/* Category + type filter */}
+        {/* Product filter */}
         <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-ink-muted">Type de défaut</label>
+          <label className="text-sm font-medium text-ink-muted">Produit</label>
           <select
             className="bg-white border border-cream-subtle rounded-lg px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-accent/40"
-            value={filters.defect_type_id ?? ''}
-            onChange={(e) => setFilter('defect_type_id', e.target.value ? Number(e.target.value) : undefined)}
+            value={filters.product_id ?? ''}
+            onChange={(e) => setFilter('product_id', e.target.value ? Number(e.target.value) : undefined)}
           >
             <option value="">Tous</option>
-            {categories.map((cat) => (
-              <optgroup key={cat.id} label={cat.name}>
-                {types.filter((t) => t.category_id === cat.id).map((t) => (
-                  <option key={t.id} value={t.id}>{t.label}</option>
-                ))}
-              </optgroup>
-            ))}
+            {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </div>
       </div>
@@ -122,9 +115,9 @@ export function LogsPage() {
               <tr className="bg-cream-subtle text-xs font-semibold uppercase tracking-wider text-ink-muted">
                 <th className="px-4 py-4 text-left">Date / Heure</th>
                 <th className="px-4 py-4 text-left">Opérateur</th>
-                <th className="px-4 py-4 text-left">Catégorie</th>
+                <th className="px-4 py-4 text-left">Produit</th>
                 <th className="px-4 py-4 text-left">Défaut</th>
-                <th className="px-4 py-4 text-left">Référence</th>
+                <th className="px-4 py-4 text-left">Note</th>
                 <th className="px-4 py-4 text-left">Appareil</th>
               </tr>
             </thead>
@@ -134,10 +127,10 @@ export function LogsPage() {
                   <td className="px-4 py-4 font-mono text-sm text-ink-muted whitespace-nowrap">
                     {formatDateTime(log.logged_at)}
                   </td>
-                  <td className="px-4 py-4 text-sm text-ink">{log.operator_name}</td>
-                  <td className="px-4 py-4 text-sm text-ink-muted">{log.category_name}</td>
-                  <td className="px-4 py-4 text-sm font-medium text-ink">{log.defect_label}</td>
-                  <td className="px-4 py-4 font-mono text-sm text-ink">{log.product_ref || '—'}</td>
+                  <td className="px-4 py-4 text-sm text-ink">{log.operator.name}</td>
+                  <td className="px-4 py-4 text-sm text-ink-muted">{log.product.name}</td>
+                  <td className="px-4 py-4 text-sm font-medium text-ink">{log.defect_type.label}</td>
+                  <td className="px-4 py-4 text-sm text-ink-muted">{log.note ?? '—'}</td>
                   <td className="px-4 py-4 font-mono text-sm text-ink-muted">{log.device_id}</td>
                 </tr>
               ))}
@@ -149,9 +142,7 @@ export function LogsPage() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between text-sm">
-          <p className="text-ink-muted">
-            Page {page} sur {totalPages}
-          </p>
+          <p className="text-ink-muted">Page {page} sur {totalPages}</p>
           <div className="flex gap-2">
             <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
               <Icon icon={ChevronLeft} size={15} />

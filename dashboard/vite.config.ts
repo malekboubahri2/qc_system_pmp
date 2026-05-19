@@ -20,7 +20,11 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
-    setupFiles: ['./src/test-utils/setup.ts'],
+    setupFiles: ['./src/test-utils/polyfills.ts', './src/test-utils/setup.ts'],
     globals: true,
+    pool: 'threads',
+    poolOptions: {
+      threads: { singleThread: true },
+    },
   },
 });

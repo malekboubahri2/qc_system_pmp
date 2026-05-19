@@ -1,7 +1,8 @@
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 import {
-  FIXTURE_USER, FIXTURE_OPERATOR, FIXTURE_CATEGORY, FIXTURE_TYPE,
+  FIXTURE_USER, FIXTURE_OPERATOR, FIXTURE_PRODUCT, FIXTURE_CATEGORIES,
+  FIXTURE_TYPE, FIXTURE_TYPE_FALLBACK,
   FIXTURE_DEVICE, FIXTURE_LOGS, FIXTURE_FLAG,
   FIXTURE_SUMMARY, FIXTURE_BY_DEFECT, FIXTURE_BY_OPERATOR, FIXTURE_HEATMAP,
 } from './fixtures';
@@ -18,9 +19,25 @@ export const handlers = [
   // Operators
   http.get(`${BASE}/operators`, () => HttpResponse.json([FIXTURE_OPERATOR])),
 
-  // Defect categories + types
-  http.get(`${BASE}/defect-categories`, () => HttpResponse.json([FIXTURE_CATEGORY])),
-  http.get(`${BASE}/defect-types`, () => HttpResponse.json([FIXTURE_TYPE])),
+  // Products
+  http.get(`${BASE}/products`, () => HttpResponse.json([FIXTURE_PRODUCT])),
+  http.post(`${BASE}/products`, async ({ request }) => {
+    const body = await request.json() as { name: string };
+    return HttpResponse.json({ ...FIXTURE_PRODUCT, name: body.name }, { status: 201 });
+  }),
+  http.get(`${BASE}/products/:productId`, () => HttpResponse.json(FIXTURE_PRODUCT)),
+
+  // Defect types (product-scoped)
+  http.get(`${BASE}/products/:productId/defect-types`, () =>
+    HttpResponse.json([FIXTURE_TYPE, FIXTURE_TYPE_FALLBACK]),
+  ),
+  http.post(`${BASE}/products/:productId/defect-types`, async ({ request }) => {
+    const body = await request.json() as { label: string; category_kind: string };
+    return HttpResponse.json({ ...FIXTURE_TYPE, label: body.label }, { status: 201 });
+  }),
+
+  // Category constants
+  http.get(`${BASE}/constants/categories`, () => HttpResponse.json(FIXTURE_CATEGORIES)),
 
   // Devices
   http.get(`${BASE}/devices`, () => HttpResponse.json([FIXTURE_DEVICE])),

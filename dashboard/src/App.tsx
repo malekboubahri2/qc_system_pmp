@@ -6,7 +6,8 @@ import { RequireAuth } from '@/components/RequireAuth';
 import { AppShell } from '@/components/shared/AppShell';
 import { LoginPage } from '@/pages/Login';
 import { DashboardPage } from '@/features/dashboard';
-import { DefectsPage } from '@/features/defect-types';
+import { ProductsPage } from '@/features/products';
+import { ProductDetailPage } from '@/features/product-detail';
 import { OperatorsPage } from '@/features/operators';
 import { LogsPage } from '@/features/logs';
 import { AnalyticsPage } from '@/features/analytics';
@@ -43,8 +44,12 @@ export default function App() {
               element={<ProtectedShell><DashboardPage /></ProtectedShell>}
             />
             <Route
-              path="/defects"
-              element={<ProtectedShell><DefectsPage /></ProtectedShell>}
+              path="/products"
+              element={<ProtectedShell><ProductsPage /></ProtectedShell>}
+            />
+            <Route
+              path="/products/:productId"
+              element={<ProtectedShell><ProductDetailPage /></ProtectedShell>}
             />
             <Route
               path="/operators"

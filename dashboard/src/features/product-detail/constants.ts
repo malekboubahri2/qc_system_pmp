@@ -1,0 +1,1 @@
+export const DEFECT_TYPES_PER_CATEGORY_CAP = 12;

@@ -1,5 +1,5 @@
 import type {
-  User, Operator, DefectCategory, DefectType, DefectLog,
+  User, Operator, Product, CategoryConstant, DefectType, DefectLog,
   Device, FeatureFlag, PaginatedLogs,
   SummaryPoint, ByDefectPoint, ByOperatorPoint, HeatmapPoint,
 } from '@/types';
@@ -18,20 +18,38 @@ export const FIXTURE_OPERATOR: Operator = {
   created_at: '2026-05-01T08:00:00Z',
 };
 
-export const FIXTURE_CATEGORY: DefectCategory = {
+export const FIXTURE_PRODUCT: Product = {
   id: 1,
-  name: 'Peinture',
-  display_order: 1,
+  name: 'Capot moteur',
   active: true,
-  defect_count: 1,
+  created_at: '2026-05-01T08:00:00Z',
 };
+
+export const FIXTURE_CATEGORIES: CategoryConstant[] = [
+  { kind: 'PMP', display_name: 'PMP Défauts' },
+  { kind: 'INJECTION', display_name: 'Injection Défauts' },
+];
 
 export const FIXTURE_TYPE: DefectType = {
   id: 1,
-  category_id: 1,
+  product_id: 1,
+  category_kind: 'PMP',
   label: 'Coulure',
+  is_other_fallback: false,
   display_order: 1,
   active: true,
+  created_at: '2026-05-01T08:00:00Z',
+};
+
+export const FIXTURE_TYPE_FALLBACK: DefectType = {
+  id: 2,
+  product_id: 1,
+  category_kind: 'PMP',
+  label: 'Autre — préciser',
+  is_other_fallback: true,
+  display_order: 999,
+  active: true,
+  created_at: '2026-05-01T08:00:00Z',
 };
 
 export const FIXTURE_DEVICE: Device = {
@@ -44,12 +62,10 @@ export const FIXTURE_DEVICE: Device = {
 export const FIXTURE_LOG: DefectLog = {
   id: 1,
   device_id: 'qc-stm32-pilot01',
-  operator_id: 1,
-  operator_name: 'Mohammed',
-  defect_type_id: 1,
-  defect_label: 'Coulure',
-  category_name: 'Peinture',
-  product_ref: 'LOT-2026-001',
+  operator: { id: 1, name: 'Mohammed' },
+  defect_type: { id: 1, label: 'Coulure', category_kind: 'PMP' },
+  product: { id: 1, name: 'Capot moteur' },
+  note: null,
   logged_at: '2026-05-17T09:00:00Z',
   received_at: '2026-05-17T09:00:01Z',
 };
@@ -58,7 +74,7 @@ export const FIXTURE_LOGS: PaginatedLogs = {
   items: [FIXTURE_LOG],
   total: 1,
   page: 1,
-  page_size: 50,
+  per_page: 50,
 };
 
 export const FIXTURE_FLAG: FeatureFlag = {
@@ -73,7 +89,14 @@ export const FIXTURE_SUMMARY: SummaryPoint[] = [
 ];
 
 export const FIXTURE_BY_DEFECT: ByDefectPoint[] = [
-  { defect_type_id: 1, label: 'Coulure', category: 'Peinture', count: 5 },
+  {
+    defect_type_id: 1,
+    label: 'Coulure',
+    category_kind: 'PMP',
+    product_id: 1,
+    product_name: 'Capot moteur',
+    count: 5,
+  },
 ];
 
 export const FIXTURE_BY_OPERATOR: ByOperatorPoint[] = [

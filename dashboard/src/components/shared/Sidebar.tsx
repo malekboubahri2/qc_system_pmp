@@ -15,7 +15,7 @@ import { Icon } from '@/components/Icon';
 
 const mainNav = [
   { to: '/', label: 'Tableau de bord', icon: LayoutDashboard, end: true },
-  { to: '/defects', label: 'Défauts', icon: Layers, end: false },
+  { to: '/products', label: 'Produits', icon: Layers, end: false },
   { to: '/operators', label: 'Opérateurs', icon: Users, end: false },
   { to: '/logs', label: 'Journaux', icon: FileText, end: false },
   { to: '/analytics', label: 'Analytique', icon: BarChart2, end: false },
