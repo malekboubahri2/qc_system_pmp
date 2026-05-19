@@ -1,5 +1,29 @@
 # Visual Identity
 
+## Reference implementation
+
+The visual contract is locked to the **Stations en direct** page (Frame 1,
+`Stations_en_direct.html`). Every other page in the dashboard inherits the
+same component primitives and tokens. If a styling question doesn't have an
+answer here, look at how Stations en direct does it.
+
+Components established in this refresh:
+- `Panel` (with `PanelHeader`, `PanelBody`, `PanelFooter`)
+- `PageHeader` (breadcrumb + title + sub + right-side `MetaPill`)
+- `MetaPill` (the "Mis à jour à 14:32" pulse element)
+- `Card` (white feed-row container — default, fallback, historical variants)
+- `Pill` (status badges — success/idle/warning/danger/info, on-dark/on-light tone)
+- `StatBig` (36px number with label and optional trend)
+- `Avatar` (40×40 brand-teal initial circle)
+- `Glyph` (40×40 letter square, deterministic muted color from 12-color palette)
+- `EmptyState` (Lucide icon + heading + sub)
+- `Section` (generic page section wrapper)
+- `Icon` (Lucide wrapper enforcing strokeWidth 1.5)
+
+Files: `src/components/ui/*`
+
+---
+
 The dashboard borrows its visual language from PMP (Peinture et Métallisation
 sur Plastique). This document is the single source of truth for color,
 typography, and styling decisions. If a design question isn't answered here,

@@ -18,13 +18,13 @@ export default defineConfig({
       },
     },
   },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test-utils/polyfills.ts', './src/test-utils/setup.ts'],
     globals: true,
     pool: 'threads',
-    poolOptions: {
-      threads: { singleThread: true },
-    },
-  },
+    // singleThread avoids per-file worker startup overhead in devcontainer
+    poolOptions: { threads: { singleThread: true } },
+  } as any,
 });
