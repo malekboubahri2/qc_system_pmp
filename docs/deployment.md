@@ -168,20 +168,35 @@ Enter the same password you put in `.env` as `MQTT_SERVER_PASSWORD`.
 
 ### 5.2 Add a device account
 
-Run `scripts/provision-device.sh` for each STM32 device:
+> **Note:** `scripts/provision-device.sh` is not yet implemented. Add
+> accounts manually until the script is written.
+
+For each STM32 device, add the account manually:
 
 ```bash
-./scripts/provision-device.sh <lower8hexUID>
-# Example: ./scripts/provision-device.sh 001a2b3c
+# -c creates the file; omit -c to append to an existing file
+docker compose -f infra/docker-compose.prod.yml run --rm mosquitto \
+  mosquitto_passwd /mosquitto/config/passwd qc-device-001a2b3c
 ```
 
-The script:
-1. Generates a random password
-2. Appends the account to `infra/mosquitto/passwd`
-3. Appends ACL entries for the device to `infra/mosquitto/acl.conf`
-4. Reloads Mosquitto without dropping existing connections
-5. Prints the credentials to stdout — copy them to the STM32 provisioning
-   tool; they are not stored anywhere else
+Then append the ACL block for the device to `infra/mosquitto/acl.conf`
+(see the template at the top of that file), and reload Mosquitto:
+
+```bash
+docker compose -f infra/docker-compose.prod.yml kill -s SIGHUP mosquitto
+```
+
+SIGHUP causes Mosquitto to reload its config and ACL without dropping
+connections. Record the generated password — it is not stored anywhere
+else; losing it requires re-provisioning the device.
+
+When `scripts/provision-device.sh` is written, it will automate steps 1–4
+and print credentials for the STM32 flashing tool:
+1. Generate a random password
+2. Append the account to `infra/mosquitto/passwd`
+3. Append ACL entries to `infra/mosquitto/acl.conf`
+4. Reload Mosquitto (SIGHUP — no dropped connections)
+5. Print credentials to stdout
 
 If Mosquitto is not yet running, you may add accounts manually:
 
@@ -221,13 +236,14 @@ Services: `qc-server` (FastAPI :8000), `mosquitto` (:1883),
 ### Production (RPi)
 
 ```bash
-docker compose -f infra/docker-compose.prod.yml up -d --build
-```
+# From dev laptop — GHCR images (requires images pushed by CI)
+QC_VERSION=v0.1.0 ./scripts/deploy.sh user@<rpi-ip>
 
-Or use the deploy script from your laptop:
+# From dev laptop — local build (no GHCR, builds from source on RPi)
+BUILD_LOCAL=1 ./scripts/deploy.sh user@<rpi-ip>
 
-```bash
-./scripts/deploy.sh production
+# From the RPi itself (detected automatically when /etc/qc/.env exists)
+QC_VERSION=v0.1.0 ./scripts/deploy.sh
 ```
 
 Verify all services are healthy:
@@ -286,7 +302,7 @@ After bringing up the stack and flashing a device:
    and a heartbeat on `qc/device/qc-stm32-<uid>/status`.
 
 3. **Config delivery:** The device should receive the retained
-   `qc/config/defects` and `qc/config/operators` messages immediately on
+   `qc/config/products` and `qc/config/operators` messages immediately on
    connect. Verify via the `mosquitto_sub` terminal above.
 
 4. **Defect log round-trip:** Tap a defect on the STM32 touchscreen.

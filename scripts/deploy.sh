@@ -79,6 +79,7 @@ if [[ "$ON_RPI" == "0" ]]; then
         rsync -avz --delete \
             --exclude='.git' \
             --exclude='node_modules' \
+            --exclude='.pnpm-store' \
             --exclude='dist' \
             --exclude='.venv' \
             --exclude='__pycache__' \
