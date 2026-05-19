@@ -87,6 +87,8 @@ if [[ "$ON_RPI" == "0" ]]; then
             --exclude='.pytest_cache' \
             --exclude='server/qc-dev.db' \
             --exclude='server/uv.lock' \
+            --exclude='infra/mosquitto/passwd' \
+            --exclude='infra/mosquitto/data' \
             "$REPO_ROOT/" \
             "${SSH_TARGET}:~/qc-deploy/"
     else
