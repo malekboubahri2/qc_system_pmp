@@ -13,10 +13,8 @@ Or inside the running server container:
 
 Prerequisite: Alembic migrations must have run (tables must exist).
 """
-import hashlib
 import os
 import random
-import secrets
 import sys
 from datetime import datetime, timedelta, timezone
 
@@ -29,12 +27,17 @@ os.environ.setdefault("JWT_SECRET", "seed-stub-not-used-for-signing")
 from sqlalchemy import select  # noqa: E402
 
 from app.db import SessionLocal  # noqa: E402
-from app.models.defect import DefectCategory, DefectLog, DefectType  # noqa: E402
+from app.models.defect import DefectLog, DefectType  # noqa: E402
 from app.models.device import Device  # noqa: E402
 from app.models.feature_flag import FeatureFlag  # noqa: E402
 from app.models.operator import Operator  # noqa: E402
+from app.models.product import Product  # noqa: E402
 from app.models.user import User  # noqa: E402
 from app.security import hash_password, hash_pin  # noqa: E402
+from app.constants import (  # noqa: E402
+    CATEGORY_KIND_PMP, CATEGORY_KIND_INJECTION,
+    OTHER_FALLBACK_LABEL,
+)
 
 # ---------------------------------------------------------------------------
 # Seed data
@@ -49,21 +52,79 @@ _OPERATORS = [
     {"name": "Youssef Chabbi",  "pin": "9012"},
 ]
 
-_CATEGORIES: list[dict] = [
+# 5 products with French defect catalogs per category.
+# Each list may have at most 12 user-defined types (fallback is auto-added by service,
+# but here we add types directly in the DB for seeding).
+_PRODUCTS: list[dict] = [
     {
-        "name": "Peinture",
-        "display_order": 1,
-        "types": ["Coulure", "Peau d'orange", "Bullage", "Manque de brillance", "Séchage insuf."],
+        "name": "Capot moteur",
+        "ref": "PROD-001",
+        "types": {
+            CATEGORY_KIND_PMP: [
+                "Coulure", "Peau d'orange", "Bullage",
+                "Manque de brillance", "Séchage insuf.", "Voile",
+            ],
+            CATEGORY_KIND_INJECTION: [
+                "Rayure surface", "Bosse", "Contamination",
+                "Marque d'outil", "Porosité",
+            ],
+        },
     },
     {
-        "name": "Surface",
-        "display_order": 2,
-        "types": ["Rayure", "Bosse", "Contamination", "Marque d'outil"],
+        "name": "Cadre miroir",
+        "ref": "PROD-002",
+        "types": {
+            CATEGORY_KIND_PMP: [
+                "Coulure", "Débordement", "Épaisseur insuf.",
+                "Zone non couverte", "Brillance irrégulière",
+            ],
+            CATEGORY_KIND_INJECTION: [
+                "Rayure moulage", "Retrait matière", "Ligne de soudure",
+                "Flash", "Déformation",
+            ],
+        },
     },
     {
-        "name": "Application",
-        "display_order": 3,
-        "types": ["Zone non couverte", "Épaisseur insuf.", "Débordement"],
+        "name": "Boîtier cosmétique",
+        "ref": "PROD-003",
+        "types": {
+            CATEGORY_KIND_PMP: [
+                "Coulure", "Bullage", "Inclusion", "Voile",
+                "Manque de brillance", "Séchage insuf.",
+            ],
+            CATEGORY_KIND_INJECTION: [
+                "Rayure", "Contamination", "Retrait matière",
+                "Marque d'éjecteur", "Brûlure",
+            ],
+        },
+    },
+    {
+        "name": "Poignée de porte",
+        "ref": "PROD-004",
+        "types": {
+            CATEGORY_KIND_PMP: [
+                "Coulure", "Peau d'orange", "Zone non couverte",
+                "Débordement", "Voile",
+            ],
+            CATEGORY_KIND_INJECTION: [
+                "Rayure", "Porosité", "Déformation",
+                "Flash", "Ligne de soudure",
+            ],
+        },
+    },
+    {
+        "name": "Calandre",
+        "ref": "PROD-005",
+        "types": {
+            CATEGORY_KIND_PMP: [
+                "Coulure", "Bullage", "Manque de brillance",
+                "Épaisseur insuf.", "Débordement", "Inclusion",
+            ],
+            CATEGORY_KIND_INJECTION: [
+                "Rayure surface", "Retrait matière", "Contamination",
+                "Marque d'outil", "Brûlure",
+            ],
+        },
     },
 ]
 
@@ -77,10 +138,8 @@ _FLAGS = [
     {"name": "advanced_analytics", "enabled": False, "description": "Graphiques avancés et export CSV"},
 ]
 
-_PRODUCT_REFS = [f"LOT-2026-{n:03d}" for n in range(1, 21)]
-
-LOG_COUNT = 200
-LOG_DAYS = 30
+LOG_COUNT = 312
+LOG_DAYS = 14
 
 # hour weights (index = UTC hour) — biased toward 07:00-17:00 plant time (UTC+1)
 _HOUR_WEIGHTS = [1, 1, 1, 1, 1, 1, 1, 5, 8, 10, 10, 9, 7, 9, 10, 10, 8, 5, 2, 1, 1, 1, 1, 1]
@@ -88,10 +147,6 @@ _HOUR_WEIGHTS = [1, 1, 1, 1, 1, 1, 1, 5, 8, 10, 10, 9, 7, 9, 10, 10, 8, 5, 2, 1,
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
-
-
-def _now_str() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _rand_ts() -> str:
@@ -108,7 +163,7 @@ def _rand_ts() -> str:
 
 
 # ---------------------------------------------------------------------------
-# Seed functions (each returns the list of ORM objects it touched)
+# Seed functions
 # ---------------------------------------------------------------------------
 
 
@@ -137,28 +192,65 @@ def _seed_operators(db) -> list[Operator]:
     return ops
 
 
-def _seed_categories(db) -> list[DefectType]:
-    all_types: list[DefectType] = []
-    for cat_data in _CATEGORIES:
-        cat = db.scalar(select(DefectCategory).where(DefectCategory.name == cat_data["name"]))
-        if cat is None:
-            cat = DefectCategory(name=cat_data["name"], display_order=cat_data["display_order"])
-            db.add(cat)
+def _seed_products(db) -> list[tuple[Product, list[DefectType]]]:
+    """Returns list of (product, [all_active_defect_types_including_fallbacks])."""
+    result = []
+    for pdata in _PRODUCTS:
+        product = db.scalar(select(Product).where(Product.name == pdata["name"]))
+        if product is None:
+            product = Product(name=pdata["name"])
+            db.add(product)
             db.flush()
-            print(f"  + category '{cat.name}'")
+            print(f"  + product '{product.name}'")
         else:
-            print(f"  ~ category '{cat.name}' (exists)")
-        for order, label in enumerate(cat_data["types"], start=1):
-            dt = db.scalar(
-                select(DefectType).where(DefectType.category_id == cat.id, DefectType.label == label)
+            print(f"  ~ product '{product.name}' (exists)")
+
+        all_types: list[DefectType] = []
+        for category_kind, labels in pdata["types"].items():
+            for order, label in enumerate(labels, start=1):
+                dt = db.scalar(
+                    select(DefectType).where(
+                        DefectType.product_id == product.id,
+                        DefectType.category_kind == category_kind,
+                        DefectType.label == label,
+                        DefectType.is_other_fallback.is_(False),
+                    )
+                )
+                if dt is None:
+                    dt = DefectType(
+                        product_id=product.id,
+                        category_kind=category_kind,
+                        label=label,
+                        is_other_fallback=False,
+                        display_order=order,
+                    )
+                    db.add(dt)
+                    print(f"      + [{category_kind}] '{label}'")
+                all_types.append(dt)
+
+            # Ensure fallback exists
+            fallback = db.scalar(
+                select(DefectType).where(
+                    DefectType.product_id == product.id,
+                    DefectType.category_kind == category_kind,
+                    DefectType.is_other_fallback.is_(True),
+                )
             )
-            if dt is None:
-                dt = DefectType(category_id=cat.id, label=label, display_order=order)
-                db.add(dt)
-                print(f"      + type '{label}'")
-            all_types.append(dt)
-    db.flush()
-    return all_types
+            if fallback is None:
+                fallback = DefectType(
+                    product_id=product.id,
+                    category_kind=category_kind,
+                    label=OTHER_FALLBACK_LABEL,
+                    is_other_fallback=True,
+                    display_order=999,
+                )
+                db.add(fallback)
+                print(f"      + [{category_kind}] fallback (auto)")
+            all_types.append(fallback)
+
+        db.flush()
+        result.append((product, all_types))
+    return result
 
 
 def _seed_devices(db) -> list[Device]:
@@ -167,9 +259,13 @@ def _seed_devices(db) -> list[Device]:
         dev = db.get(Device, data["id"])
         if dev is None:
             if data["online"]:
-                last_seen = (datetime.now(timezone.utc) - timedelta(seconds=25)).strftime("%Y-%m-%dT%H:%M:%SZ")
+                last_seen = (datetime.now(timezone.utc) - timedelta(seconds=25)).strftime(
+                    "%Y-%m-%dT%H:%M:%SZ"
+                )
             else:
-                last_seen = (datetime.now(timezone.utc) - timedelta(days=3)).strftime("%Y-%m-%dT%H:%M:%SZ")
+                last_seen = (datetime.now(timezone.utc) - timedelta(days=3)).strftime(
+                    "%Y-%m-%dT%H:%M:%SZ"
+                )
             dev = Device(id=data["id"], last_seen=last_seen, config_version=1, operator_version=1)
             db.add(dev)
             status = "online" if data["online"] else "offline"
@@ -185,27 +281,46 @@ def _seed_flags(db) -> None:
     for data in _FLAGS:
         existing = db.scalar(select(FeatureFlag).where(FeatureFlag.name == data["name"]))
         if existing is None:
-            db.add(FeatureFlag(name=data["name"], enabled=data["enabled"], description=data["description"]))
+            db.add(FeatureFlag(
+                name=data["name"],
+                enabled=data["enabled"],
+                description=data["description"],
+            ))
             print(f"  + flag '{data['name']}' = {data['enabled']}")
         else:
             print(f"  ~ flag '{data['name']}' (exists)")
 
 
-def _seed_logs(db, operators: list[Operator], devices: list[Device], defect_types: list[DefectType]) -> None:
+def _seed_logs(
+    db,
+    operators: list[Operator],
+    devices: list[Device],
+    product_types: list[tuple[Product, list[DefectType]]],
+) -> None:
     if db.scalar(select(DefectLog.id).limit(1)) is not None:
-        print(f"  ~ logs exist, skipping")
+        print("  ~ logs exist, skipping")
         return
-    logs = [
-        DefectLog(
+    logs = []
+    for _ in range(LOG_COUNT):
+        product, types = random.choice(product_types)
+        op = random.choice([o for o in operators if o.pin_hash is not None])
+        defect_type = random.choice(types)
+        ts = _rand_ts()
+        note = None
+        if defect_type.is_other_fallback:
+            note = random.choice([
+                "préciser: bord droit", "préciser: coin inférieur",
+                "préciser: surface centrale", "préciser: à voir avec chef",
+            ])
+        logs.append(DefectLog(
             device_id=random.choice(devices).id,
-            operator_id=random.choice(operators).id,
-            defect_type_id=random.choice(defect_types).id,
-            product_ref=random.choice(_PRODUCT_REFS),
-            logged_at=_rand_ts(),
-            received_at=_rand_ts(),
-        )
-        for _ in range(LOG_COUNT)
-    ]
+            operator_id=op.id,
+            defect_type_id=defect_type.id,
+            product_id=product.id,
+            note=note,
+            logged_at=ts,
+            received_at=ts,
+        ))
     db.add_all(logs)
     print(f"  + {LOG_COUNT} defect logs over the last {LOG_DAYS} days")
 
@@ -222,14 +337,14 @@ def seed() -> None:
         _seed_user(db)
         print("Operators:")
         operators = _seed_operators(db)
-        print("Categories & types:")
-        defect_types = _seed_categories(db)
+        print("Products & defect types:")
+        product_types = _seed_products(db)
         print("Devices:")
         devices = _seed_devices(db)
         print("Feature flags:")
         _seed_flags(db)
         print("Defect logs:")
-        _seed_logs(db, operators, devices, defect_types)
+        _seed_logs(db, operators, devices, product_types)
         db.commit()
         print("Done.")
     except Exception as exc:
