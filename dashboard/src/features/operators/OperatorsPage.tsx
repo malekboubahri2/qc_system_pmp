@@ -194,7 +194,7 @@ export function OperatorsPage() {
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-2 justify-end">
                       <button onClick={() => setPinModal({ open: true, operator: op })}
-                        className="text-ink-muted hover:text-brand transition-colors" title="Définir PIN">
+                        className="p-1.5 rounded text-ink-muted hover:text-brand transition-colors" title="Définir PIN">
                         <Icon icon={KeyRound} size={15} />
                       </button>
                       <button onClick={() => setOpModal({ open: true, editing: op })}

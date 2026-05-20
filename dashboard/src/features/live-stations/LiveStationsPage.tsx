@@ -6,7 +6,7 @@ export function LiveStationsPage() {
   const { stations, updatedAt } = useLiveStations();
 
   return (
-    <>
+    <div className="flex flex-col gap-8">
       <PageHeader
         breadcrumb={[{ label: 'Qualité' }, { label: 'Stations en direct' }]}
         title="Stations en direct"
@@ -23,6 +23,6 @@ export function LiveStationsPage() {
           <StationPanel key={station.id} station={station} />
         ))}
       </div>
-    </>
+    </div>
   );
 }
