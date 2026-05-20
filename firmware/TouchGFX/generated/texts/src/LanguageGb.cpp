@@ -76,5 +76,7 @@ KEEP extern const uint32_t indicesGb[] TEXT_LOCATION_FLASH_ATTRIBUTE = {
     208, // T___SINGLEUSE_SA5S: "Rayure"
     87,  // T___SINGLEUSE_1T7J: "Trace\nd'huile"
     177, // T___SINGLEUSE_4Z3T: "Givrage"
-    306  // T_INPUT_WILDCARD: "<wildcard>"
+    306, // T_INPUT_WILDCARD: "<wildcard>"
+    306, // T_SUMMARY_LARGE: "<wildcard>"
+    306  // T_SUMMARY_NORMAL: "<wildcard>"
 };
