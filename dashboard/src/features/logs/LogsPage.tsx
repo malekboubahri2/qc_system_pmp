@@ -130,7 +130,7 @@ export function LogsPage() {
                   </td>
                   <td className="px-4 py-4 text-sm text-ink">{log.operator.name}</td>
                   <td className="px-4 py-4 text-sm text-ink-muted">{log.product.name}</td>
-                  <td className="px-4 py-4 text-sm font-medium text-ink">{log.defect_type.label}</td>
+                  <td className="px-4 py-4 text-sm font-medium text-ink">{log.defect_type?.label ?? 'OK'}</td>
                   <td className="px-4 py-4 text-sm text-ink-muted">{log.note ?? '—'}</td>
                   <td className="px-4 py-4 font-mono text-sm text-ink-muted">{log.device_id}</td>
                 </tr>

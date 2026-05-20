@@ -106,8 +106,8 @@ export function DashboardPage() {
                   {formatDateTime(log.logged_at)}
                 </span>
                 <span className="text-sm text-ink-muted flex-shrink-0 w-32 truncate">{log.operator.name}</span>
-                <span className="text-sm text-ink-muted flex-shrink-0 hidden md:block w-28 truncate">{log.defect_type.category_kind}</span>
-                <span className="text-sm font-medium text-ink truncate">{log.defect_type.label}</span>
+                <span className="text-sm text-ink-muted flex-shrink-0 hidden md:block w-28 truncate">{log.defect_type?.category_kind ?? '—'}</span>
+                <span className="text-sm font-medium text-ink truncate">{log.defect_type?.label ?? 'OK'}</span>
                 {log.product && (
                   <span className="ml-auto font-mono text-sm text-ink-muted flex-shrink-0">{log.product.name}</span>
                 )}
