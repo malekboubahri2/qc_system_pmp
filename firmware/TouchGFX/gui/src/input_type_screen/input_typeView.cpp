@@ -17,6 +17,8 @@ void input_typeView::setupScreen()
 
     m_len = 0;
     m_buf[0] = 0;
+    input_other.setVisible(true);
+    input_other.invalidate();
 
     /* Map each keyboard button to its character. Layout: AZERTY rows. */
     m_keys[0]  = { &keyboard_button_,     'a' };
@@ -53,11 +55,12 @@ void input_typeView::setupScreen()
 
     next_button.setClickAction(m_doneCb);
 
-    /* Overlay to show typed text in real time. */
+    /* Overlay to show typed text — hidden until first keypress. */
     m_inputDisplay.setTypedText(touchgfx::TypedText(T_INPUT_WILDCARD));
     m_inputDisplay.setWildcard(m_buf);
     m_inputDisplay.setColor(touchgfx::Color::getColorFromRGB(0, 0, 0));
     m_inputDisplay.setPosition(25, 176, 230, 20);
+    m_inputDisplay.setVisible(false);
     add(m_inputDisplay);
 }
 
@@ -85,6 +88,12 @@ void input_typeView::appendChar(char c)
     m_buf[m_len++] = static_cast<touchgfx::Unicode::UnicodeChar>(
         static_cast<unsigned char>(c));
     m_buf[m_len] = 0;
+    if (m_len == 1)
+    {
+        input_other.setVisible(false);
+        input_other.invalidate();
+        m_inputDisplay.setVisible(true);
+    }
     m_inputDisplay.setWildcard(m_buf);
     m_inputDisplay.invalidate();
 }
