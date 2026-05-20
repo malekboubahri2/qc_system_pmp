@@ -1,4 +1,5 @@
 #include <gui/common/FrontendApplication.hpp>
+#include <gui/common/FrontendHeap.hpp>
 #include <gui/defects_pmp_screen/defects_pmpView.hpp>
 #include <gui/defects_pmp_screen/defects_pmpPresenter.hpp>
 #include <gui/input_type_screen/input_typeView.hpp>
