@@ -25,6 +25,10 @@ public:
      */
     virtual void deactivate();
 
+    /* Called by the View when the operator confirms. */
+    void logDefectInspection(int defectTypeId, const char* note);
+    void logOkInspection();
+
     virtual ~defects_injPresenter() {}
 
 private:

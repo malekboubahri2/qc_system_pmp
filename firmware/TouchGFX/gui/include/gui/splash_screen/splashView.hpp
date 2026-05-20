@@ -11,7 +11,12 @@ public:
     virtual ~splashView() {}
     virtual void setupScreen();
     virtual void tearDownScreen();
-protected:
+    virtual void handleTickEvent();
+
+private:
+    uint16_t m_tick_count;
+    /* 3 seconds at 60 Hz */
+    static constexpr uint16_t ADVANCE_TICKS = 3u * 60u;
 };
 
 #endif // SPLASHVIEW_HPP
