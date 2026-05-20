@@ -362,6 +362,197 @@ cannot. Modules in between have partial coverage.
     messages. Old firmware will lose data once server is updated; update
     firmware first.
 
+## MQTT ↔ UI Integration — What To Wire Up
+
+This section maps every stub/hardcoded value in the TouchGFX UI to the
+MQTT data it must eventually receive or publish. Do these in order.
+
+### Current stubs (what is hardcoded today)
+
+| Screen | File | Stub |
+|--------|------|------|
+| Login | `gui/src/model/Model.cpp` | `s_operators[]` — 3 hardcoded operators |
+| Product ref | `gui/src/productref_screen/productRefView.cpp` | `setNumberOfItems(3)` — 3 dummy rows; no `product_id` stored |
+| Defects PMP | `gui/src/defects_pmp_screen/defects_pmpPresenter.cpp` | `logDefectInspection()` and `logOkInspection()` are empty TODOs |
+| Defects INJ | `gui/src/defects_inj_screen/defects_injPresenter.cpp` | same two TODOs |
+| Summary | `gui/src/summary_screen/summaryPresenter.cpp` | already wired to model; needs real defect count |
+
+### Step 1 — Expand `Model` (the single source of truth for the UI)
+
+File: `gui/include/gui/model/Model.hpp` + `gui/src/model/Model.cpp`
+
+Add these structs and methods (keep `operator_entry_t` — just change the
+backing storage from a static array to a settable buffer):
+
+```cpp
+/* Incoming from qc/config/operators */
+void setOperators(const operator_entry_t* list, int count);
+int  getOperatorCount() const;
+// validatePin() and getOperator() already exist — no change needed
+
+/* Incoming from qc/config/products */
+struct product_entry_t {
+    int  id;
+    char name[32];
+};
+struct defect_type_t {
+    int  id;
+    char label[APP_DEFECT_LABEL_MAX + 1];
+};
+void setProducts(const product_entry_t* list, int count);
+int  getProductCount() const;
+const product_entry_t& getProduct(int idx) const;
+
+void setDefectTypes(int product_id, int category,   // category: 0=PMP 1=INJ
+                    const defect_type_t* list, int count);
+const defect_type_t* getDefectTypes(int product_id, int category,
+                                     int* out_count) const;
+
+/* Set by productRefPresenter when operator picks a row */
+void setCurrentProductId(int id);
+int  getCurrentProductId() const;
+
+/* Outgoing — called by defect presenters, posts to q_mqtt_publish */
+void enqueueInspection(int product_id, int operator_id,
+                       const char* outcome,          // "DEFECT" | "OK"
+                       int defect_type_id,           // -1 if OK
+                       const char* note);
+void publishSessionStart(int product_id, int operator_id);
+```
+
+Remove `static const operator_entry_t s_operators[OPERATOR_COUNT]`.
+Replace with `operator_entry_t m_operators[APP_OPERATOR_LIST_MAX]` and
+`int m_operatorCount`.
+
+### Step 2 — Fill in the presenter TODOs
+
+**`defects_pmpPresenter.cpp` and `defects_injPresenter.cpp`** — identical
+pattern for both categories:
+
+```cpp
+void defects_pmpPresenter::logDefectInspection(int defectTypeId, const char* note)
+{
+    model->incrementSessionDefectCount();
+    model->enqueueInspection(
+        model->getCurrentProductId(),
+        model->getOperator(model->getCurrentOperatorIdx()).id,
+        "DEFECT", defectTypeId, note);
+}
+
+void defects_pmpPresenter::logOkInspection()
+{
+    model->enqueueInspection(
+        model->getCurrentProductId(),
+        model->getOperator(model->getCurrentOperatorIdx()).id,
+        "OK", -1, "");
+}
+```
+
+**`productRefPresenter.cpp`:**
+- `activate()`: call `view.setProductCount(model->getProductCount())` so
+  the scroll list shows the real number of rows.
+- Add `void onProductSelected(int idx)`: called by View on row tap;
+  stores `model->setCurrentProductId(model->getProduct(idx).id)` then
+  publishes session start.
+
+**`productRefView.cpp`:**
+- Replace `scrollList1.setNumberOfItems(3)` with
+  `scrollList1.setNumberOfItems(presenter->getProductCount())`.
+- `scrollList1UpdateItem()`: pass `model->getProduct(itemIndex).name` to
+  the container instead of a raw index.
+- Wire a row-tap callback that calls `presenter->onProductSelected(idx)`.
+
+### Step 3 — Wire defect button labels to product config
+
+Currently the 8 defect buttons per screen use static `TypedText` strings
+baked into the TouchGFX designer. To make them dynamic:
+
+For each defect screen in `setupScreen()`:
+```cpp
+int count = 0;
+const Model::defect_type_t* types =
+    model->getDefectTypes(model->getCurrentProductId(), CATEGORY_PMP, &count);
+for (int i = 0; i < count && i < DEFECT_COUNT; ++i)
+    // set button label via TextAreaWithOneWildcard overlay (same technique
+    // as the préciser display — add m_labelBuf[DEFECT_COUNT][25] in the View)
+```
+
+This is the most effort. For PoC it is acceptable to keep static labels
+and just map by position (button 1 = defect_type_id 1 for that product).
+Decide before starting this step.
+
+### Step 4 — mqtt_task → Model bridge (incoming config)
+
+`Application/mqtt/mqtt_task.c` parses retained payloads and must call
+into Model. Because Model is a C++ object and mqtt_task is C, expose a
+thin C shim:
+
+```c
+/* Application/domain/ui_data_bridge.h */
+void ui_bridge_set_operators(const operator_entry_t* list, int count);
+void ui_bridge_set_products(const product_entry_t* list, int count);
+void ui_bridge_set_defect_types(int product_id, int category,
+                                const defect_type_t* list, int count);
+```
+
+Implement in a `.cpp` file that includes `Model.hpp` and calls the
+singleton model. Gate each call with a FreeRTOS mutex (1-ms timeout;
+skip update if UI is mid-render — the next retained message will retry).
+
+In `mqtt_task.c`, after parsing:
+- `qc/config/operators` payload → `ui_bridge_set_operators(...)` +
+  `xEventGroupSetBits(app_events, EVT_OPERATORS_UPDATED)`
+- `qc/config/products` payload → `ui_bridge_set_products(...)` +
+  `ui_bridge_set_defect_types(...)` +
+  `xEventGroupSetBits(app_events, EVT_CONFIG_UPDATED)`
+
+### Step 5 — Model → mqtt_task bridge (outgoing events)
+
+`Model::enqueueInspection()` posts a struct to `q_mqtt_publish`:
+
+```c
+typedef struct {
+    uint8_t  schema_version; /* = 3 (ADR-014) */
+    char     outcome[8];     /* "DEFECT" or "OK" */
+    int      product_id;
+    int      operator_id;
+    int      defect_type_id; /* -1 if OK */
+    char     note[128];
+} mqtt_inspection_msg_t;
+```
+
+`mqtt_task.c` drains `q_mqtt_publish`, serializes to JSON, publishes to
+`qc/device/{id}/inspection` (QoS 1). On failure: `defect_queue` write
+(Octo-SPI circular buffer), drained by `queue_task` on reconnect.
+
+`Model::publishSessionStart()` posts a similar struct for
+`qc/device/{id}/session`.
+
+### Step 6 — Connection status indicator
+
+`Model::tick()` is called every TouchGFX frame. Add:
+```cpp
+bool isConnected() const; // returns true if EVT_MQTT_CONNECTED bit is set
+```
+Each `Presenter::activate()` should register a `modelListener` callback
+so the View can refresh the Wi-Fi icon when connectivity changes. All
+screens must show this indicator (required by Wi-Fi operational notes
+above).
+
+---
+
+### Integration order
+
+1. Expand `Model` (Step 1) — no UI change, all compile-time safe.
+2. Fill in presenter TODOs (Step 2) — purely internal, no MQTT yet.
+3. Wire `q_mqtt_publish` in `mqtt_task` (Step 5) — sends events once
+   mqtt_task exists.
+4. Wire incoming config (Step 4) — operators and products flow in.
+5. Wire product list to scroll UI (Step 3 + productRef presenter).
+6. Add connection indicator (Step 6).
+7. Dynamic defect button labels (Step 3 optional) — last, after all
+   the above is proven.
+
 ## Useful debug commands
 
 - ST-Link CLI flash: `STM32_Programmer_CLI -c port=SWD -w PaintingQC.elf -rst`
