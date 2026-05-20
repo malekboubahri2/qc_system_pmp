@@ -37,9 +37,15 @@ private:
 
     void onDefectClicked(const ButtonBase& src, const touchgfx::ClickEvent& evt);
     void onNextClicked(const ButtonBase& src, const touchgfx::ClickEvent& evt);
+    void onPreciserClicked(const touchgfx::TextArea& src, const touchgfx::ClickEvent& evt);
 
     touchgfx::Callback<defects_pmpView, const ButtonBase&, const touchgfx::ClickEvent&> m_defectCb;
     touchgfx::Callback<defects_pmpView, const ButtonBase&, const touchgfx::ClickEvent&> m_nextCb;
+    touchgfx::Callback<defects_pmpView, const touchgfx::TextArea&, const touchgfx::ClickEvent&> m_preciserCb;
+
+public:
+    /* Called by presenter after returning from keyboard screen. */
+    void receivePreciserText(const char* text);
 };
 
 #endif // DEFECTS_PMPVIEW_HPP

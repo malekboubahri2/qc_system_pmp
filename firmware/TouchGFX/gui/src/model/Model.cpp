@@ -8,8 +8,28 @@ const Model::operator_entry_t Model::s_operators[Model::OPERATOR_COUNT] = {
     { 3, "Youssef Chabbi",  "9876" },
 };
 
-Model::Model() : modelListener(0)
+Model::Model()
+    : modelListener(0),
+      m_preciserOrigin(PreciserOrigin::NONE)
 {
+    m_preciserBuffer[0] = '\0';
+}
+
+void Model::setPreciserPendingText(const char* text)
+{
+    if (text == nullptr)
+    {
+        m_preciserBuffer[0] = '\0';
+        return;
+    }
+    strncpy(m_preciserBuffer, text, PRECISER_BUFFER_SIZE - 1);
+    m_preciserBuffer[PRECISER_BUFFER_SIZE - 1] = '\0';
+}
+
+void Model::clearPreciser()
+{
+    m_preciserOrigin = PreciserOrigin::NONE;
+    m_preciserBuffer[0] = '\0';
 }
 
 void Model::tick()

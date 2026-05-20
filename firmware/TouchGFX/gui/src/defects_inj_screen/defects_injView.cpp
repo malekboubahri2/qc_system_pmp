@@ -5,7 +5,8 @@
 defects_injView::defects_injView()
     : m_autre_selected(false),
       m_defectCb(this, &defects_injView::onDefectClicked),
-      m_nextCb(this, &defects_injView::onNextClicked)
+      m_nextCb(this, &defects_injView::onNextClicked),
+      m_preciserCb(this, &defects_injView::onPreciserClicked)
 {
     for (int i = 0; i < DEFECT_COUNT; ++i)
         m_selected[i] = false;
@@ -35,6 +36,7 @@ void defects_injView::setupScreen()
     input_other.invalidate();
     input_underline_ui.setVisible(false);
     input_underline_ui.invalidate();
+    input_other.setClickAction(m_preciserCb);
 
     updateActionButton();
 }
@@ -147,4 +149,24 @@ void defects_injView::onNextClicked(const ButtonBase& /*src*/, const touchgfx::C
     }
 
     application().gotosummaryScreenNoTransition();
+}
+
+void defects_injView::onPreciserClicked(const touchgfx::TextArea& /*src*/,
+                                        const touchgfx::ClickEvent& evt)
+{
+    if (evt.getType() != touchgfx::ClickEvent::RELEASED)
+        return;
+    if (m_autre_selected)
+        presenter->openKeyboardForPreciser();
+}
+
+void defects_injView::receivePreciserText(const char* text)
+{
+    /* DESIGNER ACTION REQUIRED: change input_other widget type from TextArea
+     * to TextAreaWithOneWildcard and add a wildcard placeholder in its text
+     * resource. Then replace this comment with:
+     *     input_other.setWildcard(text); input_other.invalidate();
+     * Until then, the Préciser text is silently passed to the note field
+     * but not displayed on screen. */
+    (void)text;
 }

@@ -29,6 +29,10 @@ public:
     void logDefectInspection(int defectTypeId, const char* note);
     void logOkInspection();
 
+    /* Préciser keyboard round-trip. */
+    void openKeyboardForPreciser();
+    void checkPendingPreciserText();
+
     virtual ~defects_pmpPresenter() {}
 
 private:

@@ -25,6 +25,9 @@ public:
      */
     virtual void deactivate();
 
+    /* Called by View when the operator taps "Suivant" on the keyboard. */
+    void finishPreciser(const char* text);
+
     virtual ~input_typePresenter() {}
 
 private:
