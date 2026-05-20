@@ -51,6 +51,14 @@ public:
 
     void clearPreciser();
 
+    /* Session state — set at login, consumed by summary screen. */
+    void setCurrentOperatorIdx(int idx) { m_currentOperatorIdx = idx; }
+    int  getCurrentOperatorIdx() const  { return m_currentOperatorIdx; }
+
+    void incrementSessionDefectCount() { ++m_sessionDefectCount; }
+    void resetSessionDefectCount()     { m_sessionDefectCount = 0; }
+    int  getSessionDefectCount() const { return m_sessionDefectCount; }
+
 protected:
     ModelListener* modelListener;
 
@@ -60,6 +68,9 @@ private:
     static const size_t PRECISER_BUFFER_SIZE = 128;
     PreciserOrigin m_preciserOrigin;
     char m_preciserBuffer[PRECISER_BUFFER_SIZE];
+
+    int m_currentOperatorIdx;
+    int m_sessionDefectCount;
 };
 
 #endif // MODEL_HPP

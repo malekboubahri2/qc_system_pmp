@@ -37,6 +37,8 @@ void loginPresenter::submitPin()
     int op_idx = -1;
     if (model->validatePin(m_pin, &op_idx))
     {
+        model->setCurrentOperatorIdx(op_idx);
+        model->resetSessionDefectCount();
         clearPin();
         view.gotoProductRefScreen();
     }

@@ -10,7 +10,9 @@ const Model::operator_entry_t Model::s_operators[Model::OPERATOR_COUNT] = {
 
 Model::Model()
     : modelListener(0),
-      m_preciserOrigin(PreciserOrigin::NONE)
+      m_preciserOrigin(PreciserOrigin::NONE),
+      m_currentOperatorIdx(-1),
+      m_sessionDefectCount(0)
 {
     m_preciserBuffer[0] = '\0';
 }
