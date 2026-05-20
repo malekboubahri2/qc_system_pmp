@@ -102,7 +102,14 @@ const touchgfx::TypedText::TypedTextData typedText_database_DEFAULT[] TEXT_LOCAT
     { 0, touchgfx::CENTER, touchgfx::TEXT_DIRECTION_LTR }, // 71: T_SUMMARY_BTN_NEXT
     { 0, touchgfx::CENTER, touchgfx::TEXT_DIRECTION_LTR }, // 72: T_SUMMARY_BTN_CHANGE
     { 0, touchgfx::CENTER, touchgfx::TEXT_DIRECTION_LTR }, // 73: T_DEFECTS_PMP_TITLE
-    { 0, touchgfx::CENTER, touchgfx::TEXT_DIRECTION_LTR }  // 74: T_DEFECTS_INJ_TITLE
+    { 0, touchgfx::CENTER, touchgfx::TEXT_DIRECTION_LTR }, // 74: T_DEFECTS_INJ_TITLE
+    { 4, touchgfx::LEFT, touchgfx::TEXT_DIRECTION_LTR },   // 75: T___SINGLEUSE_Z8KG
+    { 1, touchgfx::CENTER, touchgfx::TEXT_DIRECTION_LTR }, // 76: T___SINGLEUSE_G5F9
+    { 0, touchgfx::CENTER, touchgfx::TEXT_DIRECTION_LTR }, // 77: T___SINGLEUSE_OXE5
+    { 0, touchgfx::CENTER, touchgfx::TEXT_DIRECTION_LTR }, // 78: T___SINGLEUSE_AQJ2
+    { 0, touchgfx::CENTER, touchgfx::TEXT_DIRECTION_LTR }, // 79: T___SINGLEUSE_J7U5
+    { 0, touchgfx::CENTER, touchgfx::TEXT_DIRECTION_LTR }, // 80: T___SINGLEUSE_ZM5Y
+    { 0, touchgfx::CENTER, touchgfx::TEXT_DIRECTION_LTR }  // 81: T___SINGLEUSE_G5OE
 };
 
 const touchgfx::TypedText::TypedTextData* const typedTextDatabaseArray[] = {

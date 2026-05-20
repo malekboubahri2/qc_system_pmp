@@ -84,5 +84,12 @@ KEEP extern const uint32_t indicesGb[] TEXT_LOCATION_FLASH_ATTRIBUTE = {
     335, // T_SUMMARY_BTN_NEXT: "Pièce suivant"
     349, // T_SUMMARY_BTN_CHANGE: "Changer le produit"
     368, // T_DEFECTS_PMP_TITLE: "Peinture PMP"
-    381  // T_DEFECTS_INJ_TITLE: "Moulage"
+    381, // T_DEFECTS_INJ_TITLE: "Moulage"
+    0,   // T___SINGLEUSE_Z8KG: "dddd, MMMM d, yyyy h:mm tt"
+    306, // T___SINGLEUSE_G5F9: "<wildcard>"
+    389, // T___SINGLEUSE_OXE5: " pièces inspectées"
+    306, // T___SINGLEUSE_AQJ2: "<wildcard>"
+    349, // T___SINGLEUSE_J7U5: "Changer le produit"
+    325, // T___SINGLEUSE_ZM5Y: "Connexion"
+    335  // T___SINGLEUSE_G5OE: "Pièce suivant"
 };

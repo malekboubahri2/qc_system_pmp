@@ -310,6 +310,34 @@
         <Translation Language="GB">Moulage</Translation>
         <Translation Language="FR">Moulage</Translation>
       </Text>
+      <Text Id="__SingleUse_Z8KG" Alignment="Left" TypographyId="Typography2">
+        <Translation Language="GB">dddd d MMMM yyyy HH:mm</Translation>
+        <Translation Language="FR">dddd d MMMM yyyy HH:mm</Translation>
+      </Text>
+      <Text Id="__SingleUse_G5F9" Alignment="Center" TypographyId="Large">
+        <Translation Language="GB">&lt;&gt;</Translation>
+        <Translation Language="FR">&lt;&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_OXE5" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB"> pièces inspectées</Translation>
+        <Translation Language="FR"> pièces inspectées</Translation>
+      </Text>
+      <Text Id="__SingleUse_AQJ2" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">&lt;&gt;</Translation>
+        <Translation Language="FR">&lt;&gt;</Translation>
+      </Text>
+      <Text Id="__SingleUse_J7U5" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Changer le produit</Translation>
+        <Translation Language="FR">Changer le produit</Translation>
+      </Text>
+      <Text Id="__SingleUse_ZM5Y" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Connexion</Translation>
+        <Translation Language="FR">Connexion</Translation>
+      </Text>
+      <Text Id="__SingleUse_G5OE" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Pièce suivant</Translation>
+        <Translation Language="FR">Pièce suivant</Translation>
+      </Text>
     </TextGroup>
   </Texts>
   <Typographies>
