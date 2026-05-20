@@ -3,6 +3,13 @@
 
 #include <gui_generated/summary_screen/summaryViewBase.hpp>
 #include <gui/summary_screen/summaryPresenter.hpp>
+#include <touchgfx/Callback.hpp>
+#include <touchgfx/events/ClickEvent.hpp>
+#include <touchgfx/containers/buttons/BoxWithBorderButtonStyle.hpp>
+#include <touchgfx/containers/buttons/ClickButtonTrigger.hpp>
+#include <touchgfx/containers/buttons/TextButtonStyle.hpp>
+#include <touchgfx/mixins/ClickListener.hpp>
+#include <touchgfx/widgets/TextArea.hpp>
 #include <touchgfx/widgets/TextAreaWithWildcard.hpp>
 #include <touchgfx/Unicode.hpp>
 #include <stddef.h>
@@ -15,29 +22,37 @@ public:
     virtual void setupScreen();
     virtual void tearDownScreen();
 
-    /* Suppress the Designer-generated "go to splash immediately" behaviour. */
     virtual void transitionBegins() {}
 
-    /* Called by presenter once session data is available. */
     void setDisplayData(int defectCount, const char* operatorName);
 
-    virtual void handleTickEvent();
-
-protected:
 private:
+    typedef touchgfx::TextButtonStyle<
+                touchgfx::BoxWithBorderButtonStyle<
+                    touchgfx::ClickButtonTrigger>> NavBtnBase;
+    typedef touchgfx::ClickListener<NavBtnBase> NavButton;
+
     static const size_t COUNT_BUF_SIZE = 16;
     static const size_t NAME_BUF_SIZE  = 32;
-    static const size_t LABEL_BUF_SIZE = 32;
 
     touchgfx::Unicode::UnicodeChar m_countBuf[COUNT_BUF_SIZE];
     touchgfx::Unicode::UnicodeChar m_nameBuf[NAME_BUF_SIZE];
-    touchgfx::Unicode::UnicodeChar m_labelBuf[LABEL_BUF_SIZE];
 
     touchgfx::TextAreaWithOneWildcard m_countDisplay;
-    touchgfx::TextAreaWithOneWildcard m_labelDisplay;
+    touchgfx::TextArea               m_rateLabel;
     touchgfx::TextAreaWithOneWildcard m_nameDisplay;
 
-    int m_tickCount;
+    NavButton m_signoutBtn;
+    NavButton m_nextPieceBtn;
+    NavButton m_changeProductBtn;
+
+    void onSignoutClicked(const NavBtnBase& src, const touchgfx::ClickEvent& evt);
+    void onNextPieceClicked(const NavBtnBase& src, const touchgfx::ClickEvent& evt);
+    void onChangeProductClicked(const NavBtnBase& src, const touchgfx::ClickEvent& evt);
+
+    touchgfx::Callback<summaryView, const NavBtnBase&, const touchgfx::ClickEvent&> m_signoutCb;
+    touchgfx::Callback<summaryView, const NavBtnBase&, const touchgfx::ClickEvent&> m_nextPieceCb;
+    touchgfx::Callback<summaryView, const NavBtnBase&, const touchgfx::ClickEvent&> m_changeProductCb;
 };
 
 #endif // SUMMARYVIEW_HPP

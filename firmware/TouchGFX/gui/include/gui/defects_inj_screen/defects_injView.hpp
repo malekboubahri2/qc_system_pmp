@@ -9,6 +9,7 @@
 #include <touchgfx/containers/buttons/ClickButtonTrigger.hpp>
 #include <touchgfx/containers/buttons/TextButtonStyle.hpp>
 #include <touchgfx/mixins/ClickListener.hpp>
+#include <touchgfx/widgets/TextArea.hpp>
 #include <touchgfx/widgets/TextAreaWithWildcard.hpp>
 #include <touchgfx/Unicode.hpp>
 
@@ -30,6 +31,8 @@ private:
 
     bool m_selected[DEFECT_COUNT];
     bool m_autre_selected;
+
+    touchgfx::TextArea m_titleLabel;
 
     char m_preciserText[128];
     touchgfx::Unicode::UnicodeChar m_preciserBuf[128];

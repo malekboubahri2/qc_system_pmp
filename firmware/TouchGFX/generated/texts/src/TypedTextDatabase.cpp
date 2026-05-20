@@ -94,9 +94,15 @@ const touchgfx::TypedText::TypedTextData typedText_database_DEFAULT[] TEXT_LOCAT
     { 0, touchgfx::CENTER, touchgfx::TEXT_DIRECTION_LTR },
     { 0, touchgfx::CENTER, touchgfx::TEXT_DIRECTION_LTR },
     { 0, touchgfx::CENTER, touchgfx::TEXT_DIRECTION_LTR },
-    { 4, touchgfx::LEFT, touchgfx::TEXT_DIRECTION_LTR },  // 66: T_INPUT_WILDCARD
+    { 4, touchgfx::LEFT, touchgfx::TEXT_DIRECTION_LTR },   // 66: T_INPUT_WILDCARD
     { 1, touchgfx::CENTER, touchgfx::TEXT_DIRECTION_LTR }, // 67: T_SUMMARY_LARGE
-    { 4, touchgfx::CENTER, touchgfx::TEXT_DIRECTION_LTR }  // 68: T_SUMMARY_NORMAL
+    { 4, touchgfx::CENTER, touchgfx::TEXT_DIRECTION_LTR }, // 68: T_SUMMARY_NORMAL
+    { 0, touchgfx::CENTER, touchgfx::TEXT_DIRECTION_LTR }, // 69: T_SUMMARY_RATE_LABEL
+    { 0, touchgfx::CENTER, touchgfx::TEXT_DIRECTION_LTR }, // 70: T_SUMMARY_BTN_SIGNOUT
+    { 0, touchgfx::CENTER, touchgfx::TEXT_DIRECTION_LTR }, // 71: T_SUMMARY_BTN_NEXT
+    { 0, touchgfx::CENTER, touchgfx::TEXT_DIRECTION_LTR }, // 72: T_SUMMARY_BTN_CHANGE
+    { 0, touchgfx::CENTER, touchgfx::TEXT_DIRECTION_LTR }, // 73: T_DEFECTS_PMP_TITLE
+    { 0, touchgfx::CENTER, touchgfx::TEXT_DIRECTION_LTR }  // 74: T_DEFECTS_INJ_TITLE
 };
 
 const touchgfx::TypedText::TypedTextData* const typedTextDatabaseArray[] = {

@@ -2,6 +2,7 @@
 #include <gui/common/pmp_colors.hpp>
 #include <texts/TextKeysAndLanguages.hpp>
 #include <touchgfx/Color.hpp>
+#include <touchgfx/Unicode.hpp>
 #include <string.h>
 
 defects_pmpView::defects_pmpView()
@@ -35,6 +36,11 @@ void defects_pmpView::setupScreen()
         btns[i]->setClickAction(m_defectCb);
 
     next_button.setClickAction(m_nextCb);
+
+    m_titleLabel.setTypedText(touchgfx::TypedText(T_DEFECTS_PMP_TITLE));
+    m_titleLabel.setColor(touchgfx::Color::getColorFromRGB(0xFA, 0xEE, 0xE3));
+    m_titleLabel.setPosition(10, 5, 252, 23);
+    add(m_titleLabel);
 
     /* Préciser hidden until Autre is selected */
     input_other.setVisible(false);

@@ -286,6 +286,30 @@
         <Translation Language="GB">&lt;&gt;</Translation>
         <Translation Language="FR">&lt;&gt;</Translation>
       </Text>
+      <Text Id="T_SUMMARY_RATE_LABEL" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Taux des défauts</Translation>
+        <Translation Language="FR">Taux des défauts</Translation>
+      </Text>
+      <Text Id="T_SUMMARY_BTN_SIGNOUT" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Connexion</Translation>
+        <Translation Language="FR">Connexion</Translation>
+      </Text>
+      <Text Id="T_SUMMARY_BTN_NEXT" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Pièce suivant</Translation>
+        <Translation Language="FR">Pièce suivant</Translation>
+      </Text>
+      <Text Id="T_SUMMARY_BTN_CHANGE" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Changer le produit</Translation>
+        <Translation Language="FR">Changer le produit</Translation>
+      </Text>
+      <Text Id="T_DEFECTS_PMP_TITLE" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Peinture PMP</Translation>
+        <Translation Language="FR">Peinture PMP</Translation>
+      </Text>
+      <Text Id="T_DEFECTS_INJ_TITLE" Alignment="Center" TypographyId="Default">
+        <Translation Language="GB">Moulage</Translation>
+        <Translation Language="FR">Moulage</Translation>
+      </Text>
     </TextGroup>
   </Texts>
   <Typographies>

@@ -78,5 +78,11 @@ KEEP extern const uint32_t indicesGb[] TEXT_LOCATION_FLASH_ATTRIBUTE = {
     177, // T___SINGLEUSE_4Z3T: "Givrage"
     306, // T_INPUT_WILDCARD: "<wildcard>"
     306, // T_SUMMARY_LARGE: "<wildcard>"
-    306  // T_SUMMARY_NORMAL: "<wildcard>"
+    306, // T_SUMMARY_NORMAL: "<wildcard>"
+    308, // T_SUMMARY_RATE_LABEL: "Taux des défauts"
+    325, // T_SUMMARY_BTN_SIGNOUT: "Connexion"
+    335, // T_SUMMARY_BTN_NEXT: "Pièce suivant"
+    349, // T_SUMMARY_BTN_CHANGE: "Changer le produit"
+    368, // T_DEFECTS_PMP_TITLE: "Peinture PMP"
+    381  // T_DEFECTS_INJ_TITLE: "Moulage"
 };
