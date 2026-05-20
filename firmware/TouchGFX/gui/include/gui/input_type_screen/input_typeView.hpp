@@ -7,6 +7,8 @@
 #include <touchgfx/events/ClickEvent.hpp>
 #include <touchgfx/containers/buttons/AbstractButtonContainer.hpp>
 #include <touchgfx/widgets/TextArea.hpp>
+#include <touchgfx/widgets/TextAreaWithWildcard.hpp>
+#include <touchgfx/Unicode.hpp>
 #include <stddef.h>
 
 class input_typeView : public input_typeViewBase
@@ -25,8 +27,10 @@ private:
     static const size_t BUF_SIZE = 128;
     static const int    KEY_COUNT = 28;
 
-    char m_buf[BUF_SIZE];
+    touchgfx::Unicode::UnicodeChar m_buf[BUF_SIZE];
     size_t m_len;
+
+    touchgfx::TextAreaWithOneWildcard m_inputDisplay;
 
     struct KeyEntry {
         touchgfx::AbstractButtonContainer* btn;

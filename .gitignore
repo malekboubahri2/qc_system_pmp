@@ -35,7 +35,11 @@ firmware/.cproject
 *.su
 
 # ── TouchGFX ─────────────────────────────────────────────────────────────────
-firmware/TouchGFX/generated/
+# Ignore generated GUI code (Designer regenerates it), but keep the text
+# database which we hand-edit to add wildcard resources and fix alignments.
+firmware/TouchGFX/generated/**
+!firmware/TouchGFX/generated/texts/
+!firmware/TouchGFX/generated/texts/**
 firmware/TouchGFX/build/
 
 # ── Docker ───────────────────────────────────────────────────────────────────

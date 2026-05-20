@@ -10,7 +10,8 @@ public:
     virtual ~CustomContainer1() {}
 
     virtual void initialize();
-protected:
+
+    void setProductIndex(int index);
 };
 
 #endif // CUSTOMCONTAINER1_HPP

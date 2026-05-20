@@ -10,9 +10,9 @@
         <Translation Language="GB">Next</Translation>
         <Translation Language="FR">Suivant</Translation>
       </Text>
-      <Text Id="T_PIECE_OK" Alignment="Left" TypographyId="Typography2">
+      <Text Id="T_PIECE_OK" Alignment="Center" TypographyId="Typography1">
         <Translation Language="GB">Part OK</Translation>
-        <Translation Language="FR">Pièce OK</Translation>
+        <Translation Language="FR">Piece OK</Translation>
       </Text>
     </TextGroup>
     <TextGroup Id="keypad">
@@ -273,6 +273,10 @@
       <Text Id="__SingleUse_4Z3T" Alignment="Center" TypographyId="Default">
         <Translation Language="GB">Givrage</Translation>
         <Translation Language="FR">Givrage</Translation>
+      </Text>
+      <Text Id="T_INPUT_WILDCARD" Alignment="Left" TypographyId="Typography2">
+        <Translation Language="GB">&lt;&gt;</Translation>
+        <Translation Language="FR">&lt;&gt;</Translation>
       </Text>
     </TextGroup>
   </Texts>

@@ -9,6 +9,8 @@
 #include <touchgfx/containers/buttons/ClickButtonTrigger.hpp>
 #include <touchgfx/containers/buttons/TextButtonStyle.hpp>
 #include <touchgfx/mixins/ClickListener.hpp>
+#include <touchgfx/widgets/TextAreaWithWildcard.hpp>
+#include <touchgfx/Unicode.hpp>
 
 class defects_pmpView : public defects_pmpViewBase
 {
@@ -19,18 +21,19 @@ public:
     virtual void tearDownScreen();
 
 private:
-    /* ButtonBase is what ClickListener<T>::setClickAction expects (const T&).
-     * DefectButton is the full mixin stack used as the widget pointer type. */
     typedef touchgfx::TextButtonStyle<
                 touchgfx::BoxWithBorderButtonStyle<
                     touchgfx::ClickButtonTrigger>> ButtonBase;
     typedef touchgfx::ClickListener<ButtonBase> DefectButton;
 
-    /* 7 numbered defects + Autre = 8 slots. PMP buttons are defect_4..defect_10 + defect_other. */
     static constexpr int DEFECT_COUNT = 8;
 
-    bool m_selected[DEFECT_COUNT]; /* index 0..6 = defect_4..defect_10, index 7 = defect_other */
+    bool m_selected[DEFECT_COUNT];
     bool m_autre_selected;
+
+    char m_preciserText[128];
+    touchgfx::Unicode::UnicodeChar m_preciserBuf[128];
+    touchgfx::TextAreaWithOneWildcard m_preciserDisplay;
 
     void updateDefectButton(DefectButton& btn, bool selected);
     void updateActionButton();
@@ -44,7 +47,6 @@ private:
     touchgfx::Callback<defects_pmpView, const touchgfx::TextArea&, const touchgfx::ClickEvent&> m_preciserCb;
 
 public:
-    /* Called by presenter after returning from keyboard screen. */
     void receivePreciserText(const char* text);
 };
 

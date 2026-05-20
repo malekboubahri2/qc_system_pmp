@@ -1,5 +1,6 @@
 #include <gui/login_screen/loginView.hpp>
 #include <gui/common/FrontendApplication.hpp>
+#include <texts/TextKeysAndLanguages.hpp>
 
 static const touchgfx::colortype COLOR_DOT   = touchgfx::Color::getColorFromRGB(0xD4, 0xB7, 0x65);
 static const touchgfx::colortype COLOR_ERROR = touchgfx::Color::getColorFromRGB(0xE5, 0x3E, 0x3E);
@@ -13,6 +14,17 @@ loginView::loginView()
 void loginView::setupScreen()
 {
     loginViewBase::setupScreen();
+
+    /* Fix Designer bug: all buttons were assigned T_KEYPAD_NUM_3. */
+    keypad_1.setText(TypedText(T_KEYPAD_NUM_1)); keypad_1.invalidate();
+    keypad_2.setText(TypedText(T_KEYPAD_NUM_2)); keypad_2.invalidate();
+    keypad_3.setText(TypedText(T_KEYPAD_NUM_3)); keypad_3.invalidate();
+    keypad_4.setText(TypedText(T_KEYPAD_NUM_4)); keypad_4.invalidate();
+    keypad_5.setText(TypedText(T_KEYPAD_NUM_5)); keypad_5.invalidate();
+    keypad_6.setText(TypedText(T_KEYPAD_NUM_6)); keypad_6.invalidate();
+    keypad_7.setText(TypedText(T_KEYPAD_NUM_7)); keypad_7.invalidate();
+    keypad_8.setText(TypedText(T_KEYPAD_NUM_8)); keypad_8.invalidate();
+    keypad_9.setText(TypedText(T_KEYPAD_NUM_9)); keypad_9.invalidate();
 
     keypad_1.setClickAction(m_keyCallback);
     keypad_2.setClickAction(m_keyCallback);
