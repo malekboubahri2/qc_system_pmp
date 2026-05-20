@@ -56,7 +56,7 @@ void summaryView::onNextPieceClicked(const NavBtnBase& /*src*/, const touchgfx::
 {
     if (evt.getType() != touchgfx::ClickEvent::RELEASED)
         return;
-    application().gotodefects_injScreenNoTransition();
+    application().gotodefects_pmpScreenNoTransition();
 }
 
 void summaryView::onChangeProductClicked(const NavBtnBase& /*src*/, const touchgfx::ClickEvent& evt)
