@@ -602,7 +602,7 @@
           {
             "InteractionName": "goProductRef",
             "Trigger": {
-              "Type": "TriggerScreenTransitionBegins"
+              "Type": "TriggerClicked"
             },
             "Action": {
               "Type": "ActionGotoScreen",
@@ -642,7 +642,8 @@
           {
             "InteractionName": "goLogin",
             "Trigger": {
-              "Type": "TriggerScreenTransitionBegins"
+              "Type": "TriggerOnEveryTick",
+              "TickCount": 10
             },
             "Action": {
               "Type": "ActionGotoScreen",
@@ -737,7 +738,8 @@
           {
             "InteractionName": "goDefects",
             "Trigger": {
-              "Type": "TriggerScreenTransitionBegins"
+              "Type": "TriggerClicked",
+              "TriggerComponent": "next_button"
             },
             "Action": {
               "Type": "ActionGotoScreen",
@@ -1289,7 +1291,8 @@
           {
             "InteractionName": "goSummary",
             "Trigger": {
-              "Type": "TriggerScreenTransitionBegins"
+              "Type": "TriggerClicked",
+              "TriggerComponent": "next_button"
             },
             "Action": {
               "Type": "ActionGotoScreen",
@@ -2006,7 +2009,8 @@
           {
             "InteractionName": "goSummary",
             "Trigger": {
-              "Type": "TriggerScreenTransitionBegins"
+              "Type": "TriggerClicked",
+              "TriggerComponent": "next_button"
             },
             "Action": {
               "Type": "ActionGotoScreen",
@@ -3727,8 +3731,8 @@
       "Height": 272
     },
     "SelectedColorDepth": 24,
-    "StartupScreenName": "defects_pmp",
-    "SelectedStartupLanguage": "GB",
+    "StartupScreenName": "splash",
+    "SelectedStartupLanguage": "FR",
     "TouchGfxPath": "../Middlewares/ST/touchgfx",
     "UIPath": ".",
     "AvailableColorDepths": [

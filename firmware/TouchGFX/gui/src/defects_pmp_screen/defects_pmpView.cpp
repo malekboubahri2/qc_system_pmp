@@ -83,7 +83,7 @@ void defects_pmpView::updateActionButton()
             pmp::colors::success_green(), pmp::colors::dark_pressed(),
             pmp::colors::cream(), pmp::colors::cream());
         next_button.setTextColors(pmp::colors::cream(), pmp::colors::cream());
-        next_button.setText(TypedText(T_PIECE_OK)); /* "Pièce OK" */
+        next_button.setText(TypedText(T_T_PIECE_OK)); /* "Pièce OK" */
     }
     next_button.invalidate();
 }
