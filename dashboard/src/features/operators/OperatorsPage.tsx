@@ -198,11 +198,11 @@ export function OperatorsPage() {
                         <Icon icon={KeyRound} size={15} />
                       </button>
                       <button onClick={() => setOpModal({ open: true, editing: op })}
-                        className="text-ink-muted hover:text-brand transition-colors" title="Modifier">
+                        className="p-1.5 rounded text-ink-muted hover:text-brand transition-colors" title="Modifier">
                         <Icon icon={Pencil} size={15} />
                       </button>
                       <button onClick={() => handleArchive(op)}
-                        className="text-ink-muted hover:text-danger transition-colors" title="Archiver">
+                        className="p-1.5 rounded text-ink-muted hover:text-danger transition-colors" title="Archiver">
                         <Icon icon={Archive} size={15} />
                       </button>
                     </div>

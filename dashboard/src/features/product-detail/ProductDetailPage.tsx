@@ -101,14 +101,14 @@ function CategorySection({
               <>
                 <button
                   onClick={() => { setEditTarget(t); editForm.setValue('label', t.label); }}
-                  className="text-ink-muted hover:text-brand transition-colors"
+                  className="p-1.5 rounded text-ink-muted hover:text-brand transition-colors"
                   title="Modifier"
                 >
                   <Icon icon={Pencil} size={14} />
                 </button>
                 <button
                   onClick={() => handleArchive(t)}
-                  className="text-ink-muted hover:text-danger transition-colors"
+                  className="p-1.5 rounded text-ink-muted hover:text-danger transition-colors"
                   title="Archiver"
                 >
                   <Icon icon={Archive} size={14} />

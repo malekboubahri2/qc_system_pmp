@@ -54,7 +54,7 @@ function NavItem({
       end={end}
       className={({ isActive }) =>
         cn(
-          'flex items-center gap-3 py-2.5 pl-[22px] pr-3 text-sm font-medium w-full',
+          'flex items-center py-2.5 pl-5 pr-3 text-sm font-medium w-full',
           'transition-colors duration-150 border-l-2',
           'focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/60',
           isActive
@@ -66,7 +66,7 @@ function NavItem({
       <Icon icon={icon} size={20} className="flex-shrink-0" />
       <span
         className={cn(
-          'whitespace-nowrap overflow-hidden transition-[opacity,max-width] duration-200',
+          'ml-3 whitespace-nowrap overflow-hidden transition-[opacity,max-width] duration-200',
           isExpanded ? 'opacity-100 max-w-[160px]' : 'opacity-0 max-w-0',
         )}
       >
@@ -85,7 +85,7 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        'fixed top-0 left-0 h-full z-30 flex flex-col bg-brand-deep overflow-hidden',
+        'flex-shrink-0 h-full flex flex-col bg-brand-deep overflow-hidden',
         'transition-[width] duration-200 ease-out',
         isExpanded ? 'w-[220px]' : 'w-16',
       )}
@@ -126,7 +126,7 @@ export function Sidebar() {
             onClick={logout}
             title="Déconnexion"
             className={cn(
-              'flex items-center gap-3 py-2.5 pl-[22px] pr-3 text-sm w-full',
+              'flex items-center py-2.5 pl-5 pr-3 text-sm w-full',
               'text-cream/60 hover:text-cream hover:bg-brand/50 transition-colors duration-150',
               'border-l-2 border-transparent focus:outline-none',
             )}
@@ -134,7 +134,7 @@ export function Sidebar() {
             <Icon icon={LogOut} size={20} className="flex-shrink-0" />
             <span
               className={cn(
-                'whitespace-nowrap overflow-hidden transition-[opacity,max-width] duration-200 text-left',
+                'ml-3 whitespace-nowrap overflow-hidden transition-[opacity,max-width] duration-200 text-left',
                 isExpanded ? 'opacity-100 max-w-[160px]' : 'opacity-0 max-w-0',
               )}
             >

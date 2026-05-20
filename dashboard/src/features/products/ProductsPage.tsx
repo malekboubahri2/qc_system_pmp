@@ -93,7 +93,7 @@ export function ProductsPage() {
               </Link>
               <button
                 onClick={() => handleArchive(p.id, p.name)}
-                className="text-ink-muted hover:text-danger transition-colors"
+                className="p-1.5 rounded text-ink-muted hover:text-danger transition-colors"
                 title="Archiver"
               >
                 <Icon icon={Archive} size={15} />
