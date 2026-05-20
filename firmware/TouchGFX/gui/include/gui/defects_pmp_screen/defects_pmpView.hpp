@@ -19,10 +19,12 @@ public:
     virtual void tearDownScreen();
 
 private:
-    typedef touchgfx::ClickListener<
-        touchgfx::TextButtonStyle<
-            touchgfx::BoxWithBorderButtonStyle<
-                touchgfx::ClickButtonTrigger>>> DefectButton;
+    /* ButtonBase is what ClickListener<T>::setClickAction expects (const T&).
+     * DefectButton is the full mixin stack used as the widget pointer type. */
+    typedef touchgfx::TextButtonStyle<
+                touchgfx::BoxWithBorderButtonStyle<
+                    touchgfx::ClickButtonTrigger>> ButtonBase;
+    typedef touchgfx::ClickListener<ButtonBase> DefectButton;
 
     /* 7 numbered defects + Autre = 8 slots. PMP buttons are defect_4..defect_10 + defect_other. */
     static constexpr int DEFECT_COUNT = 8;
@@ -33,11 +35,11 @@ private:
     void updateDefectButton(DefectButton& btn, bool selected);
     void updateActionButton();
 
-    void onDefectClicked(const DefectButton& src, const touchgfx::ClickEvent& evt);
-    void onNextClicked(const DefectButton& src, const touchgfx::ClickEvent& evt);
+    void onDefectClicked(const ButtonBase& src, const touchgfx::ClickEvent& evt);
+    void onNextClicked(const ButtonBase& src, const touchgfx::ClickEvent& evt);
 
-    touchgfx::Callback<defects_pmpView, const DefectButton&, const touchgfx::ClickEvent&> m_defectCb;
-    touchgfx::Callback<defects_pmpView, const DefectButton&, const touchgfx::ClickEvent&> m_nextCb;
+    touchgfx::Callback<defects_pmpView, const ButtonBase&, const touchgfx::ClickEvent&> m_defectCb;
+    touchgfx::Callback<defects_pmpView, const ButtonBase&, const touchgfx::ClickEvent&> m_nextCb;
 };
 
 #endif // DEFECTS_PMPVIEW_HPP

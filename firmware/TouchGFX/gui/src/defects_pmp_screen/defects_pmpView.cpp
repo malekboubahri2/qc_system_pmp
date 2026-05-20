@@ -88,7 +88,7 @@ void defects_pmpView::updateActionButton()
     next_button.invalidate();
 }
 
-void defects_pmpView::onDefectClicked(const DefectButton& src, const touchgfx::ClickEvent& evt)
+void defects_pmpView::onDefectClicked(const ButtonBase& src, const touchgfx::ClickEvent& evt)
 {
     if (evt.getType() != touchgfx::ClickEvent::RELEASED)
         return;
@@ -100,7 +100,7 @@ void defects_pmpView::onDefectClicked(const DefectButton& src, const touchgfx::C
 
     for (int i = 0; i < DEFECT_COUNT; ++i)
     {
-        if (&src == static_cast<const DefectButton*>(btns[i]))
+        if (&src == static_cast<const ButtonBase*>(btns[i]))
         {
             m_selected[i] = !m_selected[i];
             updateDefectButton(*btns[i], m_selected[i]);
@@ -121,7 +121,7 @@ void defects_pmpView::onDefectClicked(const DefectButton& src, const touchgfx::C
     updateActionButton();
 }
 
-void defects_pmpView::onNextClicked(const DefectButton& src, const touchgfx::ClickEvent& evt)
+void defects_pmpView::onNextClicked(const ButtonBase& /*src*/, const touchgfx::ClickEvent& evt)
 {
     if (evt.getType() != touchgfx::ClickEvent::RELEASED)
         return;
@@ -132,13 +132,6 @@ void defects_pmpView::onNextClicked(const DefectButton& src, const touchgfx::Cli
 
     if (anySelected)
     {
-        /* Emit one DEFECT event per selected defect type.
-         * TODO: replace index-based ID with defect_type_id from Model config
-         * once MQTT config push is wired (ADR-014). */
-        DefectButton* btns[DEFECT_COUNT] = {
-            &defect_4, &defect_5, &defect_6, &defect_7,
-            &defect_8, &defect_9, &defect_10, &defect_other
-        };
         const char* note = ""; /* Préciser text input NYI */
         for (int i = 0; i < DEFECT_COUNT; ++i)
         {

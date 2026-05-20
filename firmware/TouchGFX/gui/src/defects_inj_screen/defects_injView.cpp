@@ -89,7 +89,7 @@ void defects_injView::updateActionButton()
     next_button.invalidate();
 }
 
-void defects_injView::onDefectClicked(const DefectButton& src, const touchgfx::ClickEvent& evt)
+void defects_injView::onDefectClicked(const ButtonBase& src, const touchgfx::ClickEvent& evt)
 {
     if (evt.getType() != touchgfx::ClickEvent::RELEASED)
         return;
@@ -102,7 +102,7 @@ void defects_injView::onDefectClicked(const DefectButton& src, const touchgfx::C
 
     for (int i = 0; i < DEFECT_COUNT; ++i)
     {
-        if (&src == static_cast<const DefectButton*>(btns[i]))
+        if (&src == static_cast<const ButtonBase*>(btns[i]))
         {
             m_selected[i] = !m_selected[i];
             updateDefectButton(*btns[i], m_selected[i]);
@@ -123,7 +123,7 @@ void defects_injView::onDefectClicked(const DefectButton& src, const touchgfx::C
     updateActionButton();
 }
 
-void defects_injView::onNextClicked(const DefectButton& src, const touchgfx::ClickEvent& evt)
+void defects_injView::onNextClicked(const ButtonBase& /*src*/, const touchgfx::ClickEvent& evt)
 {
     if (evt.getType() != touchgfx::ClickEvent::RELEASED)
         return;
@@ -134,11 +134,6 @@ void defects_injView::onNextClicked(const DefectButton& src, const touchgfx::Cli
 
     if (anySelected)
     {
-        DefectButton* btns[DEFECT_COUNT] = {
-            &defect_1, &defect_2, &defect_3, &defect_4, &defect_5,
-            &defect_6, &defect_7, &defect_8, &defect_9, &defect_10,
-            &defect_other
-        };
         const char* note = "";
         for (int i = 0; i < DEFECT_COUNT; ++i)
         {
