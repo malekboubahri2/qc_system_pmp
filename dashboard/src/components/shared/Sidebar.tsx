@@ -54,7 +54,7 @@ function NavItem({
       end={end}
       className={({ isActive }) =>
         cn(
-          'flex items-center py-2.5 pl-5 pr-3 text-sm font-medium w-full',
+          'flex items-center min-h-12 py-3 px-4 text-sm font-medium w-full',
           'transition-colors duration-150 border-l-2',
           'focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent/60',
           isActive
@@ -87,7 +87,7 @@ export function Sidebar() {
       className={cn(
         'flex-shrink-0 h-full flex flex-col bg-brand-deep overflow-hidden',
         'transition-[width] duration-200 ease-out',
-        isExpanded ? 'w-[220px]' : 'w-16',
+        isExpanded ? 'w-[240px]' : 'w-16',
       )}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
@@ -95,30 +95,30 @@ export function Sidebar() {
       onBlur={onBlur}
     >
       {/* Logo */}
-      <div className="h-16 flex items-center px-3 flex-shrink-0 border-b border-white/10">
+      <div className="flex items-center px-4 py-5 flex-shrink-0 border-b border-white/10">
         <img src="/logo.png" alt="PMP" className="w-10 h-10 object-contain flex-shrink-0" />
         <div
           className={cn(
             'ml-3 overflow-hidden transition-[opacity,max-width] duration-200',
-            isExpanded ? 'opacity-100 max-w-[140px]' : 'opacity-0 max-w-0',
+            isExpanded ? 'opacity-100 max-w-[160px]' : 'opacity-0 max-w-0',
           )}
         >
           <p className="text-sm font-semibold text-cream leading-tight whitespace-nowrap">PMP</p>
-          <p className="text-[10px] text-cream/60 leading-tight whitespace-nowrap">
+          <p className="text-[11px] text-cream/60 leading-tight whitespace-nowrap mt-1">
             Peinture et Métallisation<br />sur Plastique
           </p>
         </div>
       </div>
 
       {/* Main nav */}
-      <nav className="flex-1 py-3 flex flex-col overflow-y-auto">
+      <nav className="flex-1 py-4 flex flex-col gap-1 overflow-y-auto">
         {mainNav.map((item) => (
           <NavItem key={item.to} {...item} isExpanded={isExpanded} />
         ))}
       </nav>
 
       {/* Footer — Paramètres + logout */}
-      <div className="py-3 flex flex-col border-t border-white/10 flex-shrink-0">
+      <div className="pt-3 pb-4 flex flex-col border-t border-white/10 flex-shrink-0">
         <NavItem to="/settings" label="Paramètres" icon={Settings} isExpanded={isExpanded} />
 
         {user && (
@@ -126,7 +126,7 @@ export function Sidebar() {
             onClick={logout}
             title="Déconnexion"
             className={cn(
-              'flex items-center py-2.5 pl-5 pr-3 text-sm w-full',
+              'flex items-center min-h-12 py-3 px-4 text-sm w-full',
               'text-cream/60 hover:text-cream hover:bg-brand/50 transition-colors duration-150',
               'border-l-2 border-transparent focus:outline-none',
             )}

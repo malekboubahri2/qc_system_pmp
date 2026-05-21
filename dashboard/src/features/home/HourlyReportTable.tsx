@@ -9,7 +9,7 @@ interface HourlyReportTableProps {
 const TH = ({ children, className }: { children: React.ReactNode; className?: string }) => (
   <th
     className={cn(
-      'px-3 py-2.5 text-xs font-medium uppercase tracking-wider text-ink-muted text-right whitespace-nowrap',
+      'px-4 py-3 text-xs font-medium uppercase tracking-wider text-ink-muted text-right whitespace-nowrap',
       className,
     )}
   >
@@ -18,7 +18,7 @@ const TH = ({ children, className }: { children: React.ReactNode; className?: st
 );
 
 const TD = ({ children, className }: { children: React.ReactNode; className?: string }) => (
-  <td className={cn('px-3 py-2 text-sm text-right tabular-nums', className)}>
+  <td className={cn('px-4 py-2.5 text-sm text-right tabular-nums', className)}>
     {children}
   </td>
 );
@@ -30,25 +30,25 @@ export function HourlyReportTable({ rows }: HourlyReportTableProps) {
         <thead>
           {/* Category header row */}
           <tr className="border-b border-cream-sub">
-            <th className="px-3 py-2.5 text-xs font-medium uppercase tracking-wider text-ink-muted text-left w-14">
+            <th className="pl-6 pr-4 py-3 pb-2 text-xs font-medium uppercase tracking-wider text-ink-muted text-left w-14">
               Heure
             </th>
             <th
               colSpan={3}
-              className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-brand text-center border-l border-cream-sub"
+              className="px-4 py-3 pb-2 text-xs font-semibold uppercase tracking-wider text-brand text-center border-l border-cream-sub"
             >
               PMP Défauts
             </th>
             <th
               colSpan={3}
-              className="px-3 py-2.5 text-xs font-semibold uppercase tracking-wider text-brand text-center border-l border-cream-sub"
+              className="px-4 py-3 pb-2 text-xs font-semibold uppercase tracking-wider text-brand text-center border-l border-cream-sub"
             >
               Injection Défauts
             </th>
           </tr>
           {/* Column label row */}
           <tr className="border-b-2 border-cream-sub bg-cream/30">
-            <th className="px-3 py-2 w-14" />
+            <th className="pl-6 pr-4 py-3 w-14" />
             <TH className="border-l border-cream-sub">Total</TH>
             <TH>Défauts</TH>
             <TH>Taux NC</TH>
@@ -68,7 +68,7 @@ export function HourlyReportTable({ rows }: HourlyReportTableProps) {
                   !hasData && 'opacity-40',
                 )}
               >
-                <td className="px-3 py-2 text-sm font-mono text-ink-muted font-medium">
+                <td className="pl-6 pr-4 py-2.5 text-sm font-mono text-ink-muted font-medium">
                   {String(row.hour).padStart(2, '0')}h
                 </td>
                 <TD className="border-l border-cream/60">{row.pmp_total || '—'}</TD>

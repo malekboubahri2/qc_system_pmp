@@ -9,16 +9,16 @@ interface StatCardProps {
 function StatCard({ label, value, sub }: StatCardProps) {
   return (
     <div
-      className="bg-white rounded-lg px-5 py-4 flex flex-col gap-1"
+      className="bg-white rounded-lg p-6 flex flex-col"
       style={{ boxShadow: '0 1px 3px rgba(26,85,96,0.08)' }}
     >
       <span className="text-xs font-medium uppercase tracking-wider text-ink-muted leading-none">
         {label}
       </span>
-      <span className="text-3xl font-bold text-ink-head leading-none tracking-tightest tnum mt-1">
+      <span className="text-3xl font-bold text-ink-head leading-none tracking-tightest tnum mt-2">
         {value}
       </span>
-      {sub && <span className="text-xs text-ink-muted">{sub}</span>}
+      {sub && <span className="text-xs text-ink-muted mt-2">{sub}</span>}
     </div>
   );
 }
