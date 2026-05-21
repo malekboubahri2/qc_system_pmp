@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
-# Deploy the Painting QC stack to the Raspberry Pi.
+# Deploy the Painting QC stack.
 #
-# Usage — image-based deploy (requires GHCR images built by CI):
-#   QC_VERSION=v0.1.0 ./scripts/deploy.sh user@192.168.1.28
+# ── Modes ─────────────────────────────────────────────────────────────────────
 #
-# Usage — local-build deploy (builds images from source on the RPi, no GHCR):
+# Devcontainer / local Docker (no SSH, no rsync):
+#   LOCAL=1 ./scripts/deploy.sh
+#
+# Remote local-build (builds images from source on the RPi, no GHCR):
 #   BUILD_LOCAL=1 ./scripts/deploy.sh user@192.168.1.28
+#
+# Remote image-based (pulls GHCR images built by CI):
+#   QC_VERSION=v0.1.0 ./scripts/deploy.sh user@192.168.1.28
 #
 # When run ON the RPi itself (detected by presence of /etc/qc/.env),
 # the SSH/rsync step is skipped and commands run locally.
@@ -23,7 +28,13 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
+LOCAL="${LOCAL:-0}"
 BUILD_LOCAL="${BUILD_LOCAL:-0}"
+
+# LOCAL always builds from source
+if [[ "$LOCAL" == "1" ]]; then
+    BUILD_LOCAL=1
+fi
 
 if [[ "$BUILD_LOCAL" == "1" ]]; then
     COMPOSE_FILE="infra/docker-compose.dev.yml"
@@ -31,15 +42,22 @@ else
     COMPOSE_FILE="infra/docker-compose.prod.yml"
 fi
 
-# ── Detect whether we're already on the RPi ──────────────────────────────────
-if [[ -f /etc/qc/.env ]]; then
-    ON_RPI=1
+# ── Detect deployment target ──────────────────────────────────────────────────
+if [[ "$LOCAL" == "1" ]]; then
+    DEPLOY_MODE="local"
+    DEPLOY_DIR="$REPO_ROOT"
+    SSH_TARGET=""
+elif [[ -f /etc/qc/.env ]]; then
+    DEPLOY_MODE="on-rpi"
+    DEPLOY_DIR="$HOME/qc-deploy"
     SSH_TARGET=""
 else
-    ON_RPI=0
+    DEPLOY_MODE="ssh"
+    DEPLOY_DIR="~/qc-deploy"
     SSH_TARGET="${1:-${QC_HOST:-}}"
     if [[ -z "$SSH_TARGET" ]]; then
         echo "ERROR: set \$QC_HOST or pass user@host as the first argument" >&2
+        echo "       For a local devcontainer deploy, set LOCAL=1." >&2
         exit 2
     fi
 fi
@@ -60,20 +78,28 @@ else
         | sed -E 's#.*github\.com[:/]([^/]+/[^/.]+)(\.git)?$#\1#')"
 fi
 
-echo "==> Mode     : ${BUILD_LOCAL:+local-build}${BUILD_LOCAL:-image (GHCR)}"
+if [[ "$LOCAL" == "1" ]]; then
+    _MODE="local (devcontainer)"
+elif [[ "$BUILD_LOCAL" == "1" ]]; then
+    _MODE="remote local-build"
+else
+    _MODE="image-based (GHCR)"
+fi
+echo "==> Mode     : $_MODE"
 echo "==> Version  : $VERSION"
-echo "==> Target   : ${SSH_TARGET:-localhost (on RPi)}"
+echo "==> Target   : ${SSH_TARGET:-localhost}"
+echo "==> Work dir : $DEPLOY_DIR"
 
 run_on_target() {
-    if [[ "$ON_RPI" == "1" ]]; then
-        bash -c "$1"
-    else
+    if [[ "$DEPLOY_MODE" == "ssh" ]]; then
         ssh "$SSH_TARGET" "$1"
+    else
+        bash -c "$1"
     fi
 }
 
-# ── Sync source to the RPi ────────────────────────────────────────────────────
-if [[ "$ON_RPI" == "0" ]]; then
+# ── Sync source to remote ─────────────────────────────────────────────────────
+if [[ "$DEPLOY_MODE" == "ssh" ]]; then
     if [[ "$BUILD_LOCAL" == "1" ]]; then
         echo "==> rsync source to RPi (excluding build artifacts)"
         rsync -avz --delete \
@@ -100,8 +126,8 @@ if [[ "$ON_RPI" == "0" ]]; then
     fi
 fi
 
-# ── Install systemd service (BUILD_LOCAL only, requires sudo on target) ──────
-if [[ "$BUILD_LOCAL" == "1" && "$ON_RPI" == "0" ]]; then
+# ── Install systemd service (remote BUILD_LOCAL only, requires sudo on target) ─
+if [[ "$BUILD_LOCAL" == "1" && "$DEPLOY_MODE" == "ssh" ]]; then
     SERVICE_DEST="/etc/systemd/system/qc-stack.service"
     if run_on_target "test -f $SERVICE_DEST" 2>/dev/null; then
         echo "==> systemd service already installed — skipping"
@@ -113,10 +139,10 @@ fi
 
 # ── Build / pull images and restart the stack ─────────────────────────────────
 if [[ "$BUILD_LOCAL" == "1" ]]; then
-    echo "==> Building images and restarting (this takes a few minutes on RPi)"
+    echo "==> Building images and restarting"
     run_on_target "
         set -e
-        cd ~/qc-deploy
+        cd $DEPLOY_DIR
         docker compose -f $COMPOSE_FILE build --pull
         docker compose -f $COMPOSE_FILE up -d --remove-orphans
         docker compose -f $COMPOSE_FILE ps
@@ -125,7 +151,7 @@ else
     echo "==> Pulling images and restarting"
     run_on_target "
         set -e
-        cd ~/qc-deploy
+        cd $DEPLOY_DIR
         export QC_VERSION='$VERSION'
         export GITHUB_REPOSITORY='$GITHUB_REPO'
         docker compose -f $COMPOSE_FILE pull
@@ -134,7 +160,7 @@ else
     "
 fi
 
-# ── Health check (waits up to 90 s — ARM build takes longer to start) ────────
+# ── Health check (waits up to 90 s) ──────────────────────────────────────────
 echo "==> Waiting for server health (max 90 s)"
 for i in {1..18}; do
     sleep 5
@@ -146,5 +172,5 @@ for i in {1..18}; do
 done
 
 echo "ERROR: health check failed after 90 s" >&2
-run_on_target "docker compose -f ~/qc-deploy/$COMPOSE_FILE logs --tail=30 qc-server" || true
+run_on_target "docker compose -f $DEPLOY_DIR/$COMPOSE_FILE logs --tail=30 qc-server" || true
 exit 1
