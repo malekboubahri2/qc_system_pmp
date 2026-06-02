@@ -1,10 +1,20 @@
 import threading
+from typing import Callable
 import paho.mqtt.client as mqtt
 from loguru import logger
 from app.config import settings
 
 _client: mqtt.Client | None = None
 _connected = threading.Event()
+# Callbacks run after every successful (re)connect, from the paho network
+# thread. Used to (re)publish retained config so a device that joins — or a
+# broker that just lost its persistence DB — always gets current state.
+_on_connect_callbacks: list[Callable[[], None]] = []
+
+
+def on_connected(fn: Callable[[], None]) -> None:
+    """Register a callback fired after each successful broker connection."""
+    _on_connect_callbacks.append(fn)
 
 
 def _on_connect(client, _userdata, _flags, reason_code, _properties):
@@ -15,6 +25,11 @@ def _on_connect(client, _userdata, _flags, reason_code, _properties):
         client.subscribe("qc/device/+/defect", qos=1)  # legacy (ADR-014): logged + discarded
         _connected.set()
         logger.info("MQTT connected host={}:{}", settings.mqtt_host, settings.mqtt_port)
+        for cb in _on_connect_callbacks:
+            try:
+                cb()
+            except Exception:
+                logger.exception("MQTT on-connect callback failed")
     else:
         logger.warning("MQTT connect failed rc={}", reason_code)
 

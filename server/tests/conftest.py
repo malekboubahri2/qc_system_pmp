@@ -1,4 +1,5 @@
 import os
+from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, event
@@ -59,8 +60,14 @@ def client(db):
         yield db
 
     app.dependency_overrides[get_session] = _override
-    with TestClient(app, raise_server_exceptions=True) as c:
-        yield c
+    # Don't open a real broker connection in tests. The lifespan otherwise
+    # connect_async()es to Mosquitto and fires the on-connect republish, which
+    # queries the DB from the paho thread — unsafe against the shared in-memory
+    # StaticPool connection. Publish behavior is asserted by mocking the
+    # publisher directly (see test_operators).
+    with patch("app.mqtt.bridge.start"), patch("app.mqtt.bridge.stop"):
+        with TestClient(app, raise_server_exceptions=True) as c:
+            yield c
     app.dependency_overrides.clear()
 
 

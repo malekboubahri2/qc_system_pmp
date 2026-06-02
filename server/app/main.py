@@ -13,13 +13,19 @@ app_logging.setup_logging()
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
-    from app.mqtt.bridge import start, stop
+    from app.mqtt.bridge import start, stop, on_connected
     from app.mqtt.publisher import publish_products_config, publish_operator_list
+
+    def _republish_retained_config() -> None:
+        # Runs after every (re)connect. Publishing here — rather than right
+        # after start() — avoids the race where connect_async() hasn't
+        # completed yet and the publish is dropped with rc=NO_CONN, which left
+        # devices without operators/products until the next dashboard mutation.
+        publish_products_config()
+        publish_operator_list()
+
+    on_connected(_republish_retained_config)
     start()
-    # Re-publish retained config so devices get current state even if
-    # Mosquitto's persistence DB was wiped between restarts.
-    publish_products_config()
-    publish_operator_list()
     yield
     stop()
 
