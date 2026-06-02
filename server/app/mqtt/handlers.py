@@ -117,12 +117,16 @@ def _handle_part_inspection(topic: str, payload: dict) -> None:
         return
 
     part_id = uuid.uuid4().hex
-    now = _utc_now()
+    received = _utc_now()
+    # Honour the device's own timestamp when it has a synced clock; otherwise
+    # fall back to server receipt time (also correct for offline-queued parts
+    # that drain later but carry their original logged_at).
+    logged = data.logged_at or received
     db = SessionLocal()
     try:
         # Self-register the device so the device_id FK resolves.
         if db.get(Device, data.device_id) is None:
-            db.add(Device(id=data.device_id, last_seen=now))
+            db.add(Device(id=data.device_id, last_seen=received))
             db.flush()
 
         # The free-text note belongs to the "Autre" fallback type(s) selected.
@@ -142,14 +146,14 @@ def _handle_part_inspection(topic: str, payload: dict) -> None:
                         product_id=data.product_id, defect_type_id=did,
                         outcome="DEFECT", category_kind=category,
                         note=(data.note if did in other_ids else None),
-                        logged_at=now, part_inspection_id=part_id,
+                        logged_at=logged, part_inspection_id=part_id,
                     ))
             else:
                 db.add(InspectionLog(
                     device_id=data.device_id, operator_id=data.operator_id,
                     product_id=data.product_id, defect_type_id=None,
                     outcome="OK", category_kind=category,
-                    note=None, logged_at=now, part_inspection_id=part_id,
+                    note=None, logged_at=logged, part_inspection_id=part_id,
                 ))
 
         add_category(data.pmp_defect_type_ids, CATEGORY_KIND_PMP)

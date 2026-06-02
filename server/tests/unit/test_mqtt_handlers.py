@@ -105,6 +105,51 @@ def test_handle_inspection_stores_note(db):
     assert log.note == "bord gauche"
 
 
+def test_handle_part_inspection_honours_device_logged_at(db):
+    op, dt, product = _seed_inspection_prerequisites(db)
+    msg = _make_msg(
+        "qc/device/qc-stm32-001/inspection",
+        {
+            "schema_version": 4,
+            "device_id": "qc-stm32-001",
+            "operator_id": op.id,
+            "product_id": product.id,
+            "pmp_defect_type_ids": [dt.id],
+            "inj_defect_type_ids": [],
+            "logged_at": "2026-05-19T08:30:00Z",
+        },
+    )
+    dispatch(msg)
+    db.expire_all()
+    rows = db.query(InspectionLog).all()
+    # One PMP DEFECT row + one INJECTION OK row, both stamped with device time.
+    assert len(rows) == 2
+    assert all(r.logged_at == "2026-05-19T08:30:00Z" for r in rows)
+    assert {r.category_kind for r in rows} == {"PMP", "INJECTION"}
+
+
+def test_handle_part_inspection_falls_back_to_receipt_time(db):
+    op, dt, product = _seed_inspection_prerequisites(db)
+    msg = _make_msg(
+        "qc/device/qc-stm32-001/inspection",
+        {
+            "schema_version": 4,
+            "device_id": "qc-stm32-001",
+            "operator_id": op.id,
+            "product_id": product.id,
+            "pmp_defect_type_ids": [],
+            "inj_defect_type_ids": [],
+            # no logged_at — device has no synced clock yet
+        },
+    )
+    dispatch(msg)
+    db.expire_all()
+    rows = db.query(InspectionLog).all()
+    assert len(rows) == 2
+    for r in rows:
+        assert r.logged_at is not None and r.logged_at.endswith("Z")
+
+
 def test_handle_defect_legacy_discards_silently(db):
     """Legacy qc/device/+/defect messages are discarded with a warning, not stored."""
     op, dt, product = _seed_inspection_prerequisites(db)

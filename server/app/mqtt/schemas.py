@@ -49,6 +49,9 @@ class PartInspectionPayload(BaseModel):
     pmp_defect_type_ids: list[int] = Field(default_factory=list)
     inj_defect_type_ids: list[int] = Field(default_factory=list)
     note: Optional[str] = Field(default=None, max_length=140)
+    # Device wall-clock (UTC ISO-8601). Present once the device has an SNTP-synced
+    # clock; the handler falls back to server receipt time when it's absent.
+    logged_at: Optional[str] = None
 
 
 # Legacy schema kept for version-check rejection only
