@@ -75,6 +75,37 @@ export interface Device {
   online: boolean;
 }
 
+export interface LiveFeedEntryDTO {
+  id: number;
+  label: string;
+  category: string;
+  note: string | null;
+  logged_at: string;
+  is_other: boolean;
+}
+
+export interface LiveStationDTO {
+  device_id: string;
+  online: boolean;
+  last_seen: string | null;
+  session_active: boolean;
+  operator_id: number | null;
+  operator_name: string | null;
+  product_id: number | null;
+  product_name: string | null;
+  session_started_at: string | null;
+  defect_count: number;
+  ok_count: number;
+  today_count: number;
+  last_hour_defects: number;
+  feed: LiveFeedEntryDTO[];
+}
+
+export interface LiveStationsResponse {
+  updated_at: string;
+  stations: LiveStationDTO[];
+}
+
 export interface FeatureFlag {
   name: string;
   enabled: boolean;

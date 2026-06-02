@@ -2,7 +2,7 @@ import type {
   User, Operator, Product, CategoryConstant, DefectType, DefectLog,
   Device, FeatureFlag, PaginatedLogs,
   SummaryPoint, ByDefectPoint, ByOperatorPoint, HeatmapPoint,
-  HourlyReport,
+  HourlyReport, LiveStationsResponse,
 } from '@/types';
 
 export const FIXTURE_USER: User = {
@@ -58,6 +58,31 @@ export const FIXTURE_DEVICE: Device = {
   last_seen: '2026-05-17T09:00:00Z',
   config_version: 1,
   online: true,
+};
+
+export const FIXTURE_LIVE_STATIONS: LiveStationsResponse = {
+  updated_at: '2026-06-02T10:00:00Z',
+  stations: [
+    {
+      device_id: 'qc-stm32-001a2b3c',
+      online: true,
+      last_seen: '2026-06-02T09:59:30Z',
+      session_active: true,
+      operator_id: 1,
+      operator_name: 'Mohammed',
+      product_id: 1,
+      product_name: 'Capot moteur',
+      session_started_at: '2026-06-02T07:42:00Z',
+      defect_count: 5,
+      ok_count: 12,
+      today_count: 17,
+      last_hour_defects: 2,
+      feed: [
+        { id: 101, label: 'Coulure', category: 'PMP Défauts', note: null, logged_at: '2026-06-02T09:58:00Z', is_other: false },
+        { id: 102, label: 'Bavure', category: 'Injection Défauts', note: null, logged_at: '2026-06-02T09:50:00Z', is_other: false },
+      ],
+    },
+  ],
 };
 
 export const FIXTURE_LOG: DefectLog = {

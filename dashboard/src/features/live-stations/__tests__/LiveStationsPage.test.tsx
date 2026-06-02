@@ -3,22 +3,23 @@ import { LiveStationsPage } from '@/features/live-stations';
 import { renderWithProviders } from '@/test-utils/render';
 
 describe('LiveStationsPage', () => {
-  it('renders page heading and both station panels', async () => {
+  it('renders the page heading and the live station panel', async () => {
     renderWithProviders(<LiveStationsPage />);
     expect(await screen.findByRole('heading', { name: /Stations en direct/i })).toBeInTheDocument();
     expect(await screen.findByText('Station 1')).toBeInTheDocument();
-    expect(await screen.findByText('Station 2')).toBeInTheDocument();
+    expect(await screen.findByText('qc-stm32-001a2b3c')).toBeInTheDocument();
   });
 
-  it('renders defect feed entries from stub data', async () => {
+  it('renders the operator, product and defect feed from /devices/live', async () => {
     renderWithProviders(<LiveStationsPage />);
-    expect(await screen.findByText('Cratère')).toBeInTheDocument();
+    expect(await screen.findByText('Mohammed')).toBeInTheDocument();
+    expect(await screen.findByText('Capot moteur')).toBeInTheDocument();
+    expect(await screen.findByText('Coulure')).toBeInTheDocument();
     expect(await screen.findByText('Bavure')).toBeInTheDocument();
   });
 
-  it('renders OK inspection counts for each station', async () => {
+  it('renders the OK part count for the station', async () => {
     renderWithProviders(<LiveStationsPage />);
-    expect(await screen.findByText('34 OK')).toBeInTheDocument();
-    expect(await screen.findByText('22 OK')).toBeInTheDocument();
+    expect(await screen.findByText('12 OK')).toBeInTheDocument();
   });
 });
