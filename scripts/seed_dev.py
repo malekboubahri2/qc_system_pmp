@@ -298,6 +298,12 @@ def _seed_logs(
 
 
 def seed() -> None:
+    # Fake devices + fake inspection logs are demo-only fixtures. They are
+    # opt-in so seeding a real/demo DB loads only genuine config (users,
+    # operators, products, defect types, flags) and never injects phantom
+    # stations or history. Enable with SEED_DEMO_TELEMETRY=1 for local dev
+    # without hardware.
+    seed_telemetry = os.environ.get("SEED_DEMO_TELEMETRY", "0").lower() in ("1", "true", "yes")
     db = SessionLocal()
     try:
         print("Admin user:")
@@ -306,12 +312,15 @@ def seed() -> None:
         operators = _seed_operators(db)
         print("Products & defect types (paper taxonomy SVI-PRD-17):")
         product_types = _seed_products(db)
-        print("Devices:")
-        devices = _seed_devices(db)
         print("Feature flags:")
         _seed_flags(db)
-        print("Inspection logs:")
-        _seed_logs(db, operators, devices, product_types)
+        if seed_telemetry:
+            print("Devices (demo):")
+            devices = _seed_devices(db)
+            print("Inspection logs (demo):")
+            _seed_logs(db, operators, devices, product_types)
+        else:
+            print("Skipping demo devices + logs (set SEED_DEMO_TELEMETRY=1 to include).")
         db.commit()
         print("Done.")
     except Exception as exc:
