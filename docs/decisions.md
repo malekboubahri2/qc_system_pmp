@@ -444,3 +444,98 @@ seed data.
   the name would be actively misleading.
 - Require firmware upgrade before accepting data: rejected. Log-and-discard
   on the legacy topic is kinder to incremental deployments.
+
+---
+
+## ADR-015 — ESP-01 (ESP8266) over UART supersedes the ISM43340 transport
+
+**Date:** 2026-06-01
+**Status:** Accepted (supersedes the transport choice in ADR-004; partially
+supersedes ADR-011)
+
+**Context:** ADR-004 selected the on-board Inventek ISM43340 Wi-Fi module
+(SPI2) and ADR-011 chose the ST Network Library + es-wifi BSP as the bridge to
+a `net.h` socket abstraction. In practice that path proved slow to bring up:
+SPI solder-bridge configuration, the scan-once firmware limitation, and the
+weight of the Network Library + es-wifi vendoring. During firmware bring-up the
+transport was switched to an external **ESP-01 (ESP8266)** module driven by
+Hayes-style AT commands over **USART2** (115200 8N1, DMA receive-to-idle). This
+change was made directly in code without an ADR; this record ratifies it.
+
+**Decision:**
+1. The device's network transport is the ESP-01 over UART, not the ISM43340
+   over SPI. Driver: `netif/esp01_transport.c` — DMA RX ring buffer, `+IPD`
+   payload de-framing, `AT+CWJAP` join, `AT+CIPSTART`/`AT+CIPSEND` TCP client,
+   `CLOSED` URC detection. It implements the coreMQTT `TransportInterface_t`
+   (`recv`/`send`/`writev`) directly.
+2. MQTT uses **coreMQTT v5 (MQTT 5.0)** wrapped in a dedicated FreeRTOS agent
+   task (`netif/mqtt_agent.c`): command queue, subscription registry,
+   reconnect/back-off. This exceeds the plain-coreMQTT plan of ADR-008 (still
+   coreMQTT, still MIT, still no dynamic allocation in steady state).
+3. The planned `net.h` pluggable-backend abstraction (Wi-Fi / W5500 Ethernet /
+   host) was **not** built. coreMQTT talks to the ESP-01 transport directly.
+
+**Consequences:**
+- ADR-005 still holds in spirit: the ESP-01 owns its own TCP/IP stack; the H7B3
+  runs no LwIP and only uses a TCP client socket via AT commands.
+- The ISM43340-specific guidance in `firmware/CLAUDE.md` and
+  `docs/firmware-versions.md` (SPI2 pins, es-wifi BSP, Network Library,
+  C3.5.2.6 module firmware) is **historical**, not current. It should be
+  marked as superseded.
+- Losing `net.h` means the "swap Wi-Fi for wired Ethernet is one file" promise
+  (ADR-004 consequence) no longer holds; a future transport change now touches
+  `esp01_transport.c` and the agent wiring. Acceptable at PoC scale; revisit if
+  Ethernet becomes a requirement.
+- ESP-01 has less RAM/flash and a smaller MTU than the ISM43340; large retained
+  config payloads must be chunked/bounded (`CONFIG_JSON_MAX_SIZE` is 4 KB in
+  `mqtt_config_callbacks.c`).
+- Wi-Fi credentials + broker config still come from the Octo-SPI provisioning
+  store (`config_store.c`); the hardcoded fallback in `main.c` must be removed
+  before pilot (see `docs/post-poc-todo.md`).
+- The firmware project lives at `C:\TouchGFXProjects\qc_node` (outside this
+  repo). As of 2026-06-01 it is under git locally; it should be moved into / or
+  mirrored under `firmware/` so the monorepo is the source of truth.
+
+**Alternatives considered:**
+- Persevere with ISM43340 + ST Network Library: rejected for PoC velocity; the
+  SPI bring-up and module-firmware sensitivity were not paying for themselves.
+- Keep the `net.h` abstraction around the ESP-01: deferred, not rejected — a
+  thin `net.h` over the AT driver would restore portability cheaply and is a
+  reasonable follow-up if a second transport is ever needed.
+
+---
+
+## ADR-016 — Per-part full inspection (supersedes ADR-014 per-tap events)
+
+**Date:** 2026-06-02
+**Status:** Accepted
+
+**Context:** ADR-014 logged one `inspection_logs` row per UI tap (each defect, and
+each "Pièce OK"). A category-level "Pièce OK" carried no defect, so it had no
+category — and the hourly Taux NC report attributed every OK to BOTH PMP and
+INJECTION. The natural unit of the workflow (and of Taux NC = NC parts ÷ parts)
+is the **part**, which is inspected once for PMP and once for INJECTION.
+
+**Decision:** The device publishes one message per part on the summary screen
+(`qc/device/{id}/inspection`, `schema_version 4`):
+`{device_id, operator_id, product_id, pmp_defect_type_ids:[…],
+inj_defect_type_ids:[…], note}`. An empty list = the part passed (OK) for that
+category. The server expands it into `inspection_logs` rows — one per selected
+defect, or one OK row for an empty category — each stamped with an explicit
+`category_kind` and a shared `part_inspection_id` (uuid). The hourly report
+counts **distinct parts** per category (NC = parts with ≥1 defect in that
+category). Migration `0005` adds `category_kind` + `part_inspection_id`.
+
+**Consequences:**
+- Category is explicit on every row (including OK); no more counting an OK in
+  both categories.
+- One publish per part instead of N — fewer sends over the flaky ESP-01 link,
+  and the part result is atomic.
+- The firmware accumulates PMP/INJ selections in the Model between screens and
+  flushes once on the summary; the per-tap path (and the schema-3 single handler)
+  is retired but the server still accepts schema 3 for backward compatibility.
+- `defect_type_id`/`device_id` foreign keys still apply; the server self-registers
+  the device. Top-defect Pareto still works (count DEFECT rows); the rate report
+  counts parts.
+- The INJ grid has 7 regular slots but the SVI-PRD-17 INJECTION taxonomy has 10
+  types — the last 3 are not reachable on the grid yet (UI follow-up).
