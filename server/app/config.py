@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = Field(default="INFO")
 
+    # Plant-local timezone for dashboard display + hourly bucketing.
+    # Storage stays UTC; this only controls how days/hours are presented.
+    plant_tz: str = Field(default="Africa/Tunis")
+
     # CORS — comma-separated list of allowed origins
     cors_allowed_origins: str = Field(default="http://localhost:5173")
 

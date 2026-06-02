@@ -1,11 +1,12 @@
 import csv
 import io
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Iterator, Optional
+from zoneinfo import ZoneInfo
 
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.models.defect import InspectionLog, DefectType
 from app.models.operator import Operator
 from app.models.product import Product
@@ -14,6 +15,47 @@ from app.schemas.log import _DefectTypeRef, _OperatorRef, _ProductRef
 from app.constants import CATEGORY_KIND_PMP, CATEGORY_KIND_INJECTION
 
 _MAX_PER_PAGE = 200
+_ISO = "%Y-%m-%dT%H:%M:%SZ"
+
+
+def _plant_tz() -> ZoneInfo:
+    return ZoneInfo(settings.plant_tz)
+
+
+def _parse_utc(value: str) -> datetime:
+    """Parse a stored UTC timestamp ('YYYY-MM-DDTHH:MM:SSZ') into an aware datetime."""
+    try:
+        return datetime.strptime(value, _ISO).replace(tzinfo=timezone.utc)
+    except (ValueError, TypeError):
+        dt = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+def _local_day_start_utc(d: date) -> str:
+    """UTC instant ('...Z') at which the given plant-local calendar day begins."""
+    return (
+        datetime.combine(d, time.min, tzinfo=_plant_tz())
+        .astimezone(timezone.utc)
+        .strftime(_ISO)
+    )
+
+
+def _date_filter_bounds(from_: Optional[str], to: Optional[str]):
+    """Translate dashboard date filters (plant-local 'YYYY-MM-DD') into a UTC
+    window. `from` is inclusive at local 00:00; `to` is inclusive of the whole
+    local day (via an exclusive next-day start) -- without this, comparing a
+    full timestamp against a bare date string drops the entire `to` day. Full
+    ISO timestamps passed directly are used as-is (upper bound inclusive)."""
+    lo = hi = None
+    hi_exclusive = True
+    if from_:
+        lo = _local_day_start_utc(date.fromisoformat(from_)) if len(from_) == 10 else from_
+    if to:
+        if len(to) == 10:
+            hi = _local_day_start_utc(date.fromisoformat(to) + timedelta(days=1))
+        else:
+            hi, hi_exclusive = to, False
+    return lo, hi, hi_exclusive
 
 
 def _base_query(
@@ -39,10 +81,11 @@ def _base_query(
         .outerjoin(DefectType, InspectionLog.defect_type_id == DefectType.id)
         .join(Product, InspectionLog.product_id == Product.id)
     )
-    if from_:
-        q = q.filter(InspectionLog.logged_at >= from_)
-    if to:
-        q = q.filter(InspectionLog.logged_at <= to)
+    lo, hi, hi_exclusive = _date_filter_bounds(from_, to)
+    if lo:
+        q = q.filter(InspectionLog.logged_at >= lo)
+    if hi:
+        q = q.filter(InspectionLog.logged_at < hi if hi_exclusive else InspectionLog.logged_at <= hi)
     if operator_id is not None:
         q = q.filter(InspectionLog.operator_id == operator_id)
     if defect_type_id is not None:
@@ -136,10 +179,17 @@ def iter_csv_rows(
 
 
 def compute_hourly_rates(db: Session, report_date: Optional[date] = None) -> HourlyReport:
-    """Return a 24-row hourly NC-rate report for the given date (UTC, defaults to today)."""
+    """24-row hourly NC-rate report for the given plant-local date (defaults to
+    today in the plant timezone). Rows are stored in UTC and bucketed by their
+    plant-local hour, so the chart matches the wall clock on the floor."""
+    tz = _plant_tz()
     if report_date is None:
-        report_date = datetime.now(timezone.utc).date()
+        report_date = datetime.now(tz).date()
     date_str = report_date.isoformat()
+
+    # Pull the rows whose UTC instant falls inside the plant-local day.
+    lo = _local_day_start_utc(report_date)
+    hi = _local_day_start_utc(report_date + timedelta(days=1))
 
     # Per-part model: each row carries category_kind directly and a
     # part_inspection_id shared by the rows from one part. Taux NC counts
@@ -147,13 +197,13 @@ def compute_hourly_rates(db: Session, report_date: Optional[date] = None) -> Hou
     # rows (category_kind NULL) are excluded.
     rows = (
         db.query(
-            func.strftime("%H", InspectionLog.logged_at).label("hour_str"),
+            InspectionLog.logged_at.label("logged_at"),
             InspectionLog.category_kind.label("category_kind"),
             InspectionLog.outcome.label("outcome"),
             InspectionLog.part_inspection_id.label("part_id"),
             InspectionLog.id.label("row_id"),
         )
-        .filter(func.strftime("%Y-%m-%d", InspectionLog.logged_at) == date_str)
+        .filter(InspectionLog.logged_at >= lo, InspectionLog.logged_at < hi)
         .filter(InspectionLog.category_kind.isnot(None))
         .all()
     )
@@ -161,7 +211,7 @@ def compute_hourly_rates(db: Session, report_date: Optional[date] = None) -> Hou
     # {hour: {category: {"parts": set(part_id), "nc": set(part_id)}}}
     acc: dict[int, dict] = {h: {} for h in range(24)}
     for r in rows:
-        hour = int(r.hour_str)
+        hour = _parse_utc(r.logged_at).astimezone(tz).hour
         bucket = acc[hour].setdefault(r.category_kind, {"parts": set(), "nc": set()})
         # Fall back to the row id if a part id is somehow missing.
         pid = r.part_id if r.part_id is not None else f"row{r.row_id}"

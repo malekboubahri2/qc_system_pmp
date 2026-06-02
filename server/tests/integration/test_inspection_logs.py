@@ -32,15 +32,31 @@ def seed(db):
     db.flush()
 
     common = dict(device_id=dev.id, operator_id=op.id, product_id=product.id)
+    # Per-part model (ADR-016): each part expands to one row per category, with
+    # an explicit category_kind and a shared part_inspection_id.
     logs = [
-        InspectionLog(**common, defect_type_id=pmp_dt.id, outcome="DEFECT", logged_at="2026-05-15T08:10:00Z"),
-        InspectionLog(**common, defect_type_id=None, outcome="OK", logged_at="2026-05-15T08:20:00Z"),
-        InspectionLog(**common, defect_type_id=inj_dt.id, outcome="DEFECT", logged_at="2026-05-15T08:30:00Z"),
-        InspectionLog(**common, defect_type_id=None, outcome="OK", logged_at="2026-05-15T08:40:00Z"),
+        # Part 1 @ 08:10Z — PMP defect, INJ ok
+        InspectionLog(**common, defect_type_id=pmp_dt.id, outcome="DEFECT",
+                      category_kind="PMP", part_inspection_id="p1", logged_at="2026-05-15T08:10:00Z"),
+        InspectionLog(**common, defect_type_id=None, outcome="OK",
+                      category_kind="INJECTION", part_inspection_id="p1", logged_at="2026-05-15T08:10:00Z"),
+        # Part 2 @ 08:30Z — PMP ok, INJ defect
+        InspectionLog(**common, defect_type_id=inj_dt.id, outcome="DEFECT",
+                      category_kind="INJECTION", part_inspection_id="p2", logged_at="2026-05-15T08:30:00Z"),
+        InspectionLog(**common, defect_type_id=None, outcome="OK",
+                      category_kind="PMP", part_inspection_id="p2", logged_at="2026-05-15T08:30:00Z"),
     ]
     db.add_all(logs)
     db.commit()
     return {"product": product, "pmp_dt": pmp_dt, "inj_dt": inj_dt, "op": op, "dev": dev}
+
+
+@pytest.fixture(autouse=True)
+def _default_plant_tz(monkeypatch):
+    """Pin the plant timezone to UTC so hourly buckets line up with the raw
+    UTC hour in tests that don't exercise the timezone conversion itself."""
+    from app.config import settings
+    monkeypatch.setattr(settings, "plant_tz", "UTC")
 
 
 def test_list_inspection_logs(client, auth_headers, seed):
@@ -83,13 +99,26 @@ def test_hourly_report_structure(client, auth_headers, seed):
 def test_hourly_report_counts_correct(client, auth_headers, seed):
     resp = client.get("/inspection-logs/reports/hourly?date=2026-05-15", headers=auth_headers)
     body = resp.json()
-    # All 4 logs are at hour 08
+    # Both parts are at UTC hour 08 (plant_tz pinned to UTC by the fixture).
     hour8 = next(r for r in body["rows"] if r["hour"] == 8)
-    # PMP: 1 DEFECT + 2 OK (OK logs counted for both categories)
+    # Taux NC counts *parts* per category: 2 parts inspected, 1 NC each.
+    assert hour8["pmp_total"] == 2
     assert hour8["pmp_defects"] == 1
-    assert hour8["pmp_total"] == 3
+    assert hour8["inj_total"] == 2
     assert hour8["inj_defects"] == 1
-    assert hour8["inj_total"] == 3
+
+
+def test_hourly_report_respects_plant_timezone(client, auth_headers, seed, monkeypatch):
+    from app.config import settings
+    monkeypatch.setattr(settings, "plant_tz", "Africa/Tunis")  # UTC+1, no DST
+    resp = client.get("/inspection-logs/reports/hourly?date=2026-05-15", headers=auth_headers)
+    body = resp.json()
+    # 08:10Z / 08:30Z fall in plant-local hour 09; hour 08 is empty.
+    hour8 = next(r for r in body["rows"] if r["hour"] == 8)
+    hour9 = next(r for r in body["rows"] if r["hour"] == 9)
+    assert hour8["pmp_total"] == 0 and hour8["inj_total"] == 0
+    assert hour9["pmp_total"] == 2 and hour9["pmp_defects"] == 1
+    assert hour9["inj_total"] == 2 and hour9["inj_defects"] == 1
 
 
 def test_hourly_report_empty_day(client, auth_headers):
