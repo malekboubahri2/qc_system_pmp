@@ -89,17 +89,95 @@ def _handle_status(topic: str, payload: dict) -> None:
 
 @register("qc/device/+/inspection")
 def _handle_inspection(topic: str, payload: dict) -> None:
+    from app.mqtt.schemas import SCHEMA_VERSION_INSPECTION, SCHEMA_VERSION_PART_INSPECTION
+
+    schema = payload.get("schema_version")
+    if schema == SCHEMA_VERSION_PART_INSPECTION:
+        _handle_part_inspection(topic, payload)
+    elif schema == SCHEMA_VERSION_INSPECTION:
+        _handle_single_inspection(topic, payload)
+    else:
+        logger.warning("MQTT inspection unknown schema_version={} topic={}", schema, topic)
+
+
+def _handle_part_inspection(topic: str, payload: dict) -> None:
+    """schema_version 4: one full part (PMP + INJ) → expand to inspection_logs
+    rows, each with an explicit category_kind and a shared part_inspection_id."""
+    import uuid
     from app.db import SessionLocal
-    from app.models.defect import InspectionLog
-    from app.mqtt.schemas import InspectionPayload, SCHEMA_VERSION_INSPECTION
+    from app.models.defect import InspectionLog, DefectType
+    from app.models.device import Device
+    from app.mqtt.schemas import PartInspectionPayload
+    from app.constants import CATEGORY_KIND_PMP, CATEGORY_KIND_INJECTION
+
+    try:
+        data = PartInspectionPayload.model_validate(payload)
+    except Exception as exc:
+        logger.warning("MQTT part inspection invalid topic={} err={}", topic, exc)
+        return
+
+    part_id = uuid.uuid4().hex
+    now = _utc_now()
+    db = SessionLocal()
+    try:
+        # Self-register the device so the device_id FK resolves.
+        if db.get(Device, data.device_id) is None:
+            db.add(Device(id=data.device_id, last_seen=now))
+            db.flush()
+
+        # The free-text note belongs to the "Autre" fallback type(s) selected.
+        all_ids = list(data.pmp_defect_type_ids) + list(data.inj_defect_type_ids)
+        other_ids: set[int] = set()
+        if all_ids:
+            for (did,) in db.query(DefectType.id).filter(
+                DefectType.id.in_(all_ids), DefectType.is_other_fallback.is_(True)
+            ):
+                other_ids.add(did)
+
+        def add_category(defect_ids: list[int], category: str) -> None:
+            if defect_ids:
+                for did in defect_ids:
+                    db.add(InspectionLog(
+                        device_id=data.device_id, operator_id=data.operator_id,
+                        product_id=data.product_id, defect_type_id=did,
+                        outcome="DEFECT", category_kind=category,
+                        note=(data.note if did in other_ids else None),
+                        logged_at=now, part_inspection_id=part_id,
+                    ))
+            else:
+                db.add(InspectionLog(
+                    device_id=data.device_id, operator_id=data.operator_id,
+                    product_id=data.product_id, defect_type_id=None,
+                    outcome="OK", category_kind=category,
+                    note=None, logged_at=now, part_inspection_id=part_id,
+                ))
+
+        add_category(data.pmp_defect_type_ids, CATEGORY_KIND_PMP)
+        add_category(data.inj_defect_type_ids, CATEGORY_KIND_INJECTION)
+        db.commit()
+        logger.info(
+            "part inspection logged device={} part={} pmp={} inj={}",
+            data.device_id, part_id,
+            len(data.pmp_defect_type_ids), len(data.inj_defect_type_ids),
+        )
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
+def _handle_single_inspection(topic: str, payload: dict) -> None:
+    """Legacy schema_version 3 (single tap). Kept for backward compatibility."""
+    from app.db import SessionLocal
+    from app.models.defect import InspectionLog, DefectType
+    from app.models.device import Device
+    from app.mqtt.schemas import InspectionPayload
 
     try:
         data = InspectionPayload.model_validate(payload)
     except Exception as exc:
         logger.warning("MQTT inspection payload invalid topic={} err={}", topic, exc)
-        return
-    if data.schema_version != SCHEMA_VERSION_INSPECTION:
-        logger.warning("MQTT inspection unknown schema_version={}", data.schema_version)
         return
     if data.outcome == "DEFECT" and data.defect_type_id is None:
         logger.warning("MQTT inspection DEFECT outcome missing defect_type_id topic={}", topic)
@@ -107,6 +185,13 @@ def _handle_inspection(topic: str, payload: dict) -> None:
 
     db = SessionLocal()
     try:
+        if db.get(Device, data.device_id) is None:
+            db.add(Device(id=data.device_id, last_seen=_utc_now()))
+            db.flush()
+        category = None
+        if data.defect_type_id is not None:
+            dt = db.get(DefectType, data.defect_type_id)
+            category = dt.category_kind if dt else None
         db.add(InspectionLog(
             device_id=data.device_id,
             operator_id=data.operator_id,
@@ -114,7 +199,8 @@ def _handle_inspection(topic: str, payload: dict) -> None:
             product_id=data.product_id,
             outcome=data.outcome,
             note=data.note,
-            logged_at=data.logged_at,
+            category_kind=category,
+            logged_at=data.logged_at or _utc_now(),
         ))
         db.commit()
         logger.info(

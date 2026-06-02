@@ -75,6 +75,12 @@ class InspectionLog(Base):
         String(8), nullable=False, default="DEFECT", server_default="DEFECT"
     )
     note: Mapped[Optional[str]] = mapped_column(String(140), nullable=True)
+    # Category this row belongs to (PMP/INJECTION). Set directly from the
+    # per-part inspection (ADR per-part model) so OK rows have a category too;
+    # NULL on legacy schema-3 rows.
+    category_kind: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    # Groups the rows expanded from one full part inspection (a UUID hex).
+    part_inspection_id: Mapped[Optional[str]] = mapped_column(String, nullable=True, index=True)
     logged_at: Mapped[str] = mapped_column(String, nullable=False)
     received_at: Mapped[str] = mapped_column(
         String,

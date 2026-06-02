@@ -141,53 +141,44 @@ def compute_hourly_rates(db: Session, report_date: Optional[date] = None) -> Hou
         report_date = datetime.now(timezone.utc).date()
     date_str = report_date.isoformat()
 
-    # Count total and defect inspections per (hour, category_kind) for the date.
-    # OK inspections have no defect_type, so we left-join and filter by category via DefectType.
-    # For OK rows category_kind is NULL — they count as totals for ALL categories.
+    # Per-part model: each row carries category_kind directly and a
+    # part_inspection_id shared by the rows from one part. Taux NC counts
+    # *parts*, so a part with several defects in a category counts once. Legacy
+    # rows (category_kind NULL) are excluded.
     rows = (
         db.query(
             func.strftime("%H", InspectionLog.logged_at).label("hour_str"),
-            DefectType.category_kind.label("category_kind"),
+            InspectionLog.category_kind.label("category_kind"),
             InspectionLog.outcome.label("outcome"),
-            func.count().label("cnt"),
+            InspectionLog.part_inspection_id.label("part_id"),
+            InspectionLog.id.label("row_id"),
         )
-        .outerjoin(DefectType, InspectionLog.defect_type_id == DefectType.id)
         .filter(func.strftime("%Y-%m-%d", InspectionLog.logged_at) == date_str)
-        .group_by("hour_str", "category_kind", "outcome")
+        .filter(InspectionLog.category_kind.isnot(None))
         .all()
     )
 
-    # Accumulate into hour buckets
-    # Structure: {hour: {category: {outcome: count}}}
-    buckets: dict[int, dict] = {h: {} for h in range(24)}
+    # {hour: {category: {"parts": set(part_id), "nc": set(part_id)}}}
+    acc: dict[int, dict] = {h: {} for h in range(24)}
     for r in rows:
         hour = int(r.hour_str)
-        cat = r.category_kind  # may be None for OK rows
-        outcome = r.outcome
-        cnt = int(r.cnt)
-
-        if cat is None and outcome == "OK":
-            # OK with no defect_type — attribute to both categories
-            for c in (CATEGORY_KIND_PMP, CATEGORY_KIND_INJECTION):
-                buckets[hour].setdefault(c, {})
-                buckets[hour][c]["OK"] = buckets[hour][c].get("OK", 0) + cnt
-        else:
-            buckets[hour].setdefault(cat, {})
-            buckets[hour][cat][outcome] = buckets[hour][cat].get(outcome, 0) + cnt
+        bucket = acc[hour].setdefault(r.category_kind, {"parts": set(), "nc": set()})
+        # Fall back to the row id if a part id is somehow missing.
+        pid = r.part_id if r.part_id is not None else f"row{r.row_id}"
+        bucket["parts"].add(pid)
+        if r.outcome == "DEFECT":
+            bucket["nc"].add(pid)
 
     hourly_rows: list[HourlyRow] = []
     for h in range(24):
-        b = buckets[h]
-        pmp = b.get(CATEGORY_KIND_PMP, {})
-        inj = b.get(CATEGORY_KIND_INJECTION, {})
+        b = acc[h]
+        pmp = b.get(CATEGORY_KIND_PMP, {"parts": set(), "nc": set()})
+        inj = b.get(CATEGORY_KIND_INJECTION, {"parts": set(), "nc": set()})
 
-        pmp_defects = pmp.get("DEFECT", 0)
-        pmp_ok = pmp.get("OK", 0)
-        pmp_total = pmp_defects + pmp_ok
-
-        inj_defects = inj.get("DEFECT", 0)
-        inj_ok = inj.get("OK", 0)
-        inj_total = inj_defects + inj_ok
+        pmp_total = len(pmp["parts"])      # parts inspected for PMP
+        pmp_defects = len(pmp["nc"])       # non-conforming parts (>=1 PMP defect)
+        inj_total = len(inj["parts"])
+        inj_defects = len(inj["nc"])
 
         hourly_rows.append(HourlyRow(
             hour=h,

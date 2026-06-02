@@ -10,7 +10,9 @@ _connected = threading.Event()
 def _on_connect(client, _userdata, _flags, reason_code, _properties):
     if reason_code == 0:
         client.subscribe("qc/device/+/status", qos=0)
-        client.subscribe("qc/device/+/defect", qos=1)
+        client.subscribe("qc/device/+/inspection", qos=1)
+        client.subscribe("qc/device/+/session", qos=1)
+        client.subscribe("qc/device/+/defect", qos=1)  # legacy (ADR-014): logged + discarded
         _connected.set()
         logger.info("MQTT connected host={}:{}", settings.mqtt_host, settings.mqtt_port)
     else:

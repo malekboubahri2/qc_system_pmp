@@ -2,8 +2,9 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field
 
 SCHEMA_VERSION_STATUS = 1
-SCHEMA_VERSION_DEFECT = 2        # legacy — reject with warning
-SCHEMA_VERSION_INSPECTION = 3    # current
+SCHEMA_VERSION_DEFECT = 2          # legacy — reject with warning
+SCHEMA_VERSION_INSPECTION = 3      # single-tap inspection (legacy)
+SCHEMA_VERSION_PART_INSPECTION = 4 # current: one full part (PMP + INJ)
 SCHEMA_VERSION_CMD = 1
 SCHEMA_VERSION_CONFIG = 2
 SCHEMA_VERSION_OPERATORS = 1
@@ -30,7 +31,24 @@ class InspectionPayload(BaseModel):
     # Required for DEFECT, absent for OK; validated in handler
     defect_type_id: Optional[int] = None
     note: Optional[str] = Field(default=None, max_length=140)
-    logged_at: str
+    # Optional: the device has no synced clock (SNTP pending), so it omits
+    # logged_at and the handler falls back to server receipt time.
+    logged_at: Optional[str] = None
+
+
+class PartInspectionPayload(BaseModel):
+    """One full part inspection (schema_version 4): both categories' results.
+
+    An empty list for a category means the part passed (OK) for it. The server
+    expands this into inspection_logs rows with an explicit category_kind.
+    """
+    schema_version: int
+    device_id: str
+    operator_id: int
+    product_id: int
+    pmp_defect_type_ids: list[int] = Field(default_factory=list)
+    inj_defect_type_ids: list[int] = Field(default_factory=list)
+    note: Optional[str] = Field(default=None, max_length=140)
 
 
 # Legacy schema kept for version-check rejection only
