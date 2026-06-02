@@ -50,10 +50,10 @@ export function HourlyReportTable({ rows }: HourlyReportTableProps) {
           <tr className="border-b-2 border-cream-sub bg-cream/30">
             <th className="pl-6 pr-4 py-3 w-14" />
             <TH className="border-l border-cream-sub">Total</TH>
-            <TH>Défauts</TH>
+            <TH>Pièces NC</TH>
             <TH>Taux NC</TH>
             <TH className="border-l border-cream-sub">Total</TH>
-            <TH>Défauts</TH>
+            <TH>Pièces NC</TH>
             <TH>Taux NC</TH>
           </tr>
         </thead>

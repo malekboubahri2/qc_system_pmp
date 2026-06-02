@@ -46,12 +46,14 @@ class LogList(BaseModel):
 
 
 class HourlyRow(BaseModel):
-    hour: int  # 0-23 UTC
-    pmp_total: int
-    pmp_defects: int
+    hour: int  # 0-23 plant-local
+    pmp_total: int          # parts inspected for PMP
+    pmp_defects: int        # non-conforming parts (>=1 PMP defect) -> drives the rate
+    pmp_defect_total: int   # individual PMP defects logged (a part may have several)
     pmp_rate: float  # 0.0-1.0
     inj_total: int
     inj_defects: int
+    inj_defect_total: int
     inj_rate: float
 
 

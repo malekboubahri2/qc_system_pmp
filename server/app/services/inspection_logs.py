@@ -208,22 +208,26 @@ def compute_hourly_rates(db: Session, report_date: Optional[date] = None) -> Hou
         .all()
     )
 
-    # {hour: {category: {"parts": set(part_id), "nc": set(part_id)}}}
+    # {hour: {category: {"parts": set(part_id), "nc": set(part_id), "defects": int}}}
+    def _empty() -> dict:
+        return {"parts": set(), "nc": set(), "defects": 0}
+
     acc: dict[int, dict] = {h: {} for h in range(24)}
     for r in rows:
         hour = _parse_utc(r.logged_at).astimezone(tz).hour
-        bucket = acc[hour].setdefault(r.category_kind, {"parts": set(), "nc": set()})
+        bucket = acc[hour].setdefault(r.category_kind, _empty())
         # Fall back to the row id if a part id is somehow missing.
         pid = r.part_id if r.part_id is not None else f"row{r.row_id}"
         bucket["parts"].add(pid)
         if r.outcome == "DEFECT":
-            bucket["nc"].add(pid)
+            bucket["nc"].add(pid)         # the part is non-conforming (count once)
+            bucket["defects"] += 1        # every individual defect (a part may add several)
 
     hourly_rows: list[HourlyRow] = []
     for h in range(24):
         b = acc[h]
-        pmp = b.get(CATEGORY_KIND_PMP, {"parts": set(), "nc": set()})
-        inj = b.get(CATEGORY_KIND_INJECTION, {"parts": set(), "nc": set()})
+        pmp = b.get(CATEGORY_KIND_PMP, _empty())
+        inj = b.get(CATEGORY_KIND_INJECTION, _empty())
 
         pmp_total = len(pmp["parts"])      # parts inspected for PMP
         pmp_defects = len(pmp["nc"])       # non-conforming parts (>=1 PMP defect)
@@ -234,9 +238,11 @@ def compute_hourly_rates(db: Session, report_date: Optional[date] = None) -> Hou
             hour=h,
             pmp_total=pmp_total,
             pmp_defects=pmp_defects,
+            pmp_defect_total=pmp["defects"],
             pmp_rate=round(pmp_defects / pmp_total, 4) if pmp_total else 0.0,
             inj_total=inj_total,
             inj_defects=inj_defects,
+            inj_defect_total=inj["defects"],
             inj_rate=round(inj_defects / inj_total, 4) if inj_total else 0.0,
         ))
 

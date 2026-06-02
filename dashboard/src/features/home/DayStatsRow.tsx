@@ -28,10 +28,12 @@ interface DayStatsRowProps {
 }
 
 export function DayStatsRow({ rows }: DayStatsRowProps) {
-  const pmpTotal    = rows.reduce((s, r) => s + r.pmp_total, 0);
-  const pmpDefects  = rows.reduce((s, r) => s + r.pmp_defects, 0);
-  const injTotal    = rows.reduce((s, r) => s + r.inj_total, 0);
-  const injDefects  = rows.reduce((s, r) => s + r.inj_defects, 0);
+  const pmpTotal       = rows.reduce((s, r) => s + r.pmp_total, 0);
+  const pmpDefects     = rows.reduce((s, r) => s + r.pmp_defects, 0);         // NC parts
+  const pmpDefectTotal = rows.reduce((s, r) => s + r.pmp_defect_total, 0);    // individual defects
+  const injTotal       = rows.reduce((s, r) => s + r.inj_total, 0);
+  const injDefects     = rows.reduce((s, r) => s + r.inj_defects, 0);
+  const injDefectTotal = rows.reduce((s, r) => s + r.inj_defect_total, 0);
 
   const pmpRate = pmpTotal > 0 ? (pmpDefects / pmpTotal * 100).toFixed(1) + '%' : '—';
   const injRate = injTotal > 0 ? (injDefects / injTotal * 100).toFixed(1) + '%' : '—';
@@ -41,7 +43,7 @@ export function DayStatsRow({ rows }: DayStatsRowProps) {
       <StatCard
         label="PMP — Inspections"
         value={pmpTotal}
-        sub={`${pmpDefects} défaut${pmpDefects !== 1 ? 's' : ''}`}
+        sub={`${pmpDefectTotal} défaut${pmpDefectTotal !== 1 ? 's' : ''} · ${pmpDefects} NC`}
       />
       <StatCard
         label="PMP — Taux NC"
@@ -51,7 +53,7 @@ export function DayStatsRow({ rows }: DayStatsRowProps) {
       <StatCard
         label="Injection — Inspections"
         value={injTotal}
-        sub={`${injDefects} défaut${injDefects !== 1 ? 's' : ''}`}
+        sub={`${injDefectTotal} défaut${injDefectTotal !== 1 ? 's' : ''} · ${injDefects} NC`}
       />
       <StatCard
         label="Injection — Taux NC"

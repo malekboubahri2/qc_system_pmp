@@ -56,10 +56,12 @@ export interface DefectLog {
 export interface HourlyRow {
   hour: number;
   pmp_total: number;
-  pmp_defects: number;
+  pmp_defects: number;       // non-conforming parts (drives the rate)
+  pmp_defect_total: number;  // individual defects logged
   pmp_rate: number;
   inj_total: number;
   inj_defects: number;
+  inj_defect_total: number;
   inj_rate: number;
 }
 

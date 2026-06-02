@@ -106,6 +106,31 @@ def test_hourly_report_counts_correct(client, auth_headers, seed):
     assert hour8["pmp_defects"] == 1
     assert hour8["inj_total"] == 2
     assert hour8["inj_defects"] == 1
+    # One defect logged per category here, so the total matches the NC parts.
+    assert hour8["pmp_defect_total"] == 1
+    assert hour8["inj_defect_total"] == 1
+
+
+def test_hourly_defect_total_counts_individual_defects(client, auth_headers, seed, db):
+    # One part with two PMP defects + an INJECTION OK, on a separate day.
+    common = dict(device_id=seed["dev"].id, operator_id=seed["op"].id, product_id=seed["product"].id)
+    db.add_all([
+        InspectionLog(**common, defect_type_id=seed["pmp_dt"].id, outcome="DEFECT",
+                      category_kind="PMP", part_inspection_id="m1", logged_at="2026-05-16T09:00:00Z"),
+        InspectionLog(**common, defect_type_id=seed["pmp_dt"].id, outcome="DEFECT",
+                      category_kind="PMP", part_inspection_id="m1", logged_at="2026-05-16T09:00:00Z"),
+        InspectionLog(**common, defect_type_id=None, outcome="OK",
+                      category_kind="INJECTION", part_inspection_id="m1", logged_at="2026-05-16T09:00:00Z"),
+    ])
+    db.commit()
+
+    resp = client.get("/inspection-logs/reports/hourly?date=2026-05-16", headers=auth_headers)
+    body = resp.json()
+    h9 = next(r for r in body["rows"] if r["hour"] == 9)
+    assert h9["pmp_total"] == 1          # one part inspected
+    assert h9["pmp_defects"] == 1        # one non-conforming part
+    assert h9["pmp_defect_total"] == 2   # two individual defects
+    assert h9["inj_total"] == 1 and h9["inj_defects"] == 0 and h9["inj_defect_total"] == 0
 
 
 def test_hourly_report_respects_plant_timezone(client, auth_headers, seed, monkeypatch):

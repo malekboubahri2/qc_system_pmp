@@ -2,7 +2,7 @@ import type {
   User, Operator, Product, CategoryConstant, DefectType, DefectLog,
   Device, FeatureFlag, PaginatedLogs,
   SummaryPoint, ByDefectPoint, ByOperatorPoint, HeatmapPoint,
-  HourlyReport, LiveStationsResponse,
+  HourlyReport, HourlyRow, LiveStationsResponse,
 } from '@/types';
 
 export const FIXTURE_USER: User = {
@@ -98,15 +98,15 @@ export const FIXTURE_LOG: DefectLog = {
 };
 
 // 24-row stub — hours 7 and 8 have realistic data, rest are zero
-const _EMPTY_ROW = (h: number) => ({
-  hour: h, pmp_total: 0, pmp_defects: 0, pmp_rate: 0,
-  inj_total: 0, inj_defects: 0, inj_rate: 0,
+const _EMPTY_ROW = (h: number): HourlyRow => ({
+  hour: h, pmp_total: 0, pmp_defects: 0, pmp_defect_total: 0, pmp_rate: 0,
+  inj_total: 0, inj_defects: 0, inj_defect_total: 0, inj_rate: 0,
 });
 export const FIXTURE_HOURLY_REPORT: HourlyReport = {
   date: '2026-05-19',
-  rows: Array.from({ length: 24 }, (_, h) => {
-    if (h === 7) return { hour: 7, pmp_total: 12, pmp_defects: 2, pmp_rate: 0.1667, inj_total: 12, inj_defects: 1, inj_rate: 0.0833 };
-    if (h === 8) return { hour: 8, pmp_total: 18, pmp_defects: 4, pmp_rate: 0.2222, inj_total: 18, inj_defects: 2, inj_rate: 0.1111 };
+  rows: Array.from({ length: 24 }, (_, h): HourlyRow => {
+    if (h === 7) return { hour: 7, pmp_total: 12, pmp_defects: 2, pmp_defect_total: 3, pmp_rate: 0.1667, inj_total: 12, inj_defects: 1, inj_defect_total: 1, inj_rate: 0.0833 };
+    if (h === 8) return { hour: 8, pmp_total: 18, pmp_defects: 4, pmp_defect_total: 5, pmp_rate: 0.2222, inj_total: 18, inj_defects: 2, inj_defect_total: 3, inj_rate: 0.1111 };
     return _EMPTY_ROW(h);
   }),
 };
