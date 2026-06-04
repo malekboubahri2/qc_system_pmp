@@ -28,3 +28,17 @@ def get_current_user(
     if user is None or not user.active:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
     return user
+
+
+def require_roles(*roles: str):
+    """Dependency factory: allow only users whose role is in `roles`.
+
+    Used for endpoints the inspection tablet (`station` role) hits, which an
+    `admin` may also use, e.g. require_roles("station", "admin").
+    """
+    def _dep(user: User = Depends(get_current_user)) -> User:
+        if user.role not in roles:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
+        return user
+
+    return _dep

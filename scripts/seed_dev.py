@@ -44,6 +44,8 @@ from app.constants import (  # noqa: E402
 # ---------------------------------------------------------------------------
 
 _ADMIN = {"email": "admin@qc.local", "password": "admin123"}
+# Low-privilege account the inspection tablet (PWA) authenticates as.
+_STATION = {"email": "station@qc.local", "password": "station123", "role": "station"}
 
 _OPERATORS = [
     {"name": "Mohammed Benali", "pin": "1234"},
@@ -111,12 +113,17 @@ def _rand_ts() -> str:
 
 
 def _seed_user(db) -> None:
-    email = _ADMIN["email"]
-    if not db.scalar(select(User).where(User.email == email)):
-        db.add(User(email=email, password_hash=hash_password(_ADMIN["password"]), role="admin"))
-        print(f"  + user {email}  (password: {_ADMIN['password']})")
-    else:
-        print(f"  ~ user {email} (exists)")
+    for u in (_ADMIN, _STATION):
+        email = u["email"]
+        if not db.scalar(select(User).where(User.email == email)):
+            db.add(User(
+                email=email,
+                password_hash=hash_password(u["password"]),
+                role=u.get("role", "admin"),
+            ))
+            print(f"  + user {email}  (password: {u['password']}, role: {u.get('role', 'admin')})")
+        else:
+            print(f"  ~ user {email} (exists)")
 
 
 def _seed_operators(db) -> list[Operator]:
