@@ -42,5 +42,9 @@ class Settings(BaseSettings):
     # Feature flags
     feature_flags_refresh_secs: int = Field(default=30)
 
+    # Operator credentials — length of the auto-generated numeric PIN.
+    # Kept within the 4–8 range the firmware/login UI accept.
+    operator_pin_length: int = Field(default=6, ge=4, le=8)
+
 
 settings = Settings()  # type: ignore[call-arg]  # pydantic-settings reads from env

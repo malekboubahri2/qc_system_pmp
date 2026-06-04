@@ -44,11 +44,13 @@ All endpoints require a valid JWT except:
 | POST | `/auth/login` | — | Get JWT |
 | GET | `/auth/me` | ✓ | Current user info |
 | GET | `/operators` | ✓ | List operators (active by default) |
-| POST | `/operators` | ✓ | Create operator (no PIN) |
+| POST | `/operators` | ✓ | Create operator (mint unique PIN, return once) |
 | GET | `/operators/{id}` | ✓ | Get operator |
 | PATCH | `/operators/{id}` | ✓ | Update operator |
 | DELETE | `/operators/{id}` | ✓ | Soft-delete operator |
-| POST | `/operators/{id}/pin` | ✓ | Set operator PIN |
+| POST | `/operators/{id}/pin` | ✓ | Set a specific operator PIN |
+| POST | `/operators/{id}/regenerate-pin` | ✓ | Rotate PIN, return plaintext once |
+| POST | `/operators/verify-pin` | station, admin | Verify `{operator_id, pin}` → 204/401 |
 | GET | `/products` | ✓ | List products (active by default) |
 | POST | `/products` | ✓ | Create product (auto-creates Other fallbacks) |
 | GET | `/products/{product_id}` | ✓ | Get product |
@@ -104,8 +106,11 @@ curl -X POST http://localhost:8000/auth/login \
 
 ## Operators
 
-An operator without a PIN is not eligible for STM32 login. Set a PIN
-before expecting the operator to appear on devices.
+Creating an operator mints a unique numeric PIN server-side and returns it
+**once** — the responsable relays it to the operator. Only the hash is stored;
+the raw PIN cannot be retrieved afterwards, only regenerated. Operators with a
+PIN appear in the retained `qc/config/operators` message and can log in on the
+PWA / STM32.
 
 ### `GET /operators`
 
@@ -131,8 +136,11 @@ operators with `pin_set: true` appear in the STM32 operator list.
 
 ### `POST /operators`
 
-Creates an operator without a PIN (`pin_set: false`). Set a PIN
-separately via `POST /operators/{id}/pin`.
+Creates an operator and mints a unique numeric PIN (CSPRNG, unique among
+active operators). The plaintext `pin` is returned **once** in this response
+and never again — show it to the operator immediately. A retained
+`qc/config/operators` message is published. Length is set by
+`OPERATOR_PIN_LENGTH` (default 6).
 
 ```json
 // Request
@@ -142,12 +150,35 @@ separately via `POST /operators/{id}/pin`.
 {
   "id": 2,
   "name": "Aïcha",
-  "pin_set": false,
+  "pin_set": true,
   "active": true,
   "created_at": "2026-05-19T09:05:00Z",
-  "archived_at": null
+  "archived_at": null,
+  "pin": "048213"
 }
 ```
+
+### `POST /operators/{id}/regenerate-pin`
+
+Rotates the operator's PIN to a fresh unique value and returns the new
+plaintext `pin` **once** (same shape as `POST /operators`). The old PIN stops
+working immediately; a retained `qc/config/operators` message is published.
+
+### `POST /operators/verify-pin`
+
+Server-side PIN check for the PWA login step (the hash never leaves the
+server). Auth: `station` or `admin`.
+
+```json
+// Request
+{ "operator_id": 2, "pin": "048213" }
+
+// Response 204 on match, 401 otherwise
+```
+
+A missing operator, an archived operator, an operator with no PIN, and a wrong
+PIN all return the same `401` — the endpoint does not reveal which operator
+ids exist.
 
 ### `PATCH /operators/{id}`
 

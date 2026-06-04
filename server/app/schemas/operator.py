@@ -28,3 +28,9 @@ class OperatorRead(BaseModel):
     archived_at: Optional[str] = None
 
     model_config = {"from_attributes": True}
+
+
+class OperatorWithPin(OperatorRead):
+    """Returned ONCE on create / regenerate-pin. `pin` is plaintext and must be
+    shown to the responsable a single time — the server only stores its hash."""
+    pin: str

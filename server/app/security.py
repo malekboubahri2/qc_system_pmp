@@ -45,6 +45,13 @@ def hash_pin(pin: str) -> str:
     return f"sha256:{salt}:{digest}"
 
 
+def generate_numeric_pin(length: int) -> str:
+    """Return a cryptographically-random numeric PIN of the given length.
+    Uses `secrets` (CSPRNG); leading zeros are kept so every PIN is exactly
+    `length` digits. Uniqueness across operators is enforced by the caller."""
+    return "".join(secrets.choice("0123456789") for _ in range(length))
+
+
 def verify_pin(pin: str, pin_hash: str) -> bool:
     try:
         algo, salt, expected = pin_hash.split(":")

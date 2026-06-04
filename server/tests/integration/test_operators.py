@@ -15,14 +15,22 @@ def test_list_operators_empty(client, auth_headers):
     assert resp.json() == []
 
 
-def test_create_operator_without_pin_returns_pin_set_false(client, auth_headers):
+def test_create_operator_returns_pin_once(client, auth_headers):
     resp = _create(client, auth_headers)
     assert resp.status_code == 201
     body = resp.json()
     assert body["name"] == "Mohammed"
     assert body["active"] is True
-    assert body["pin_set"] is False
+    assert body["pin_set"] is True
     assert "pin_hash" not in body
+    # PIN is returned in plaintext exactly once, on creation.
+    assert body["pin"].isdigit() and len(body["pin"]) == 6
+
+
+def test_created_operators_get_distinct_pins(client, auth_headers):
+    a = _create(client, auth_headers, "A").json()
+    b = _create(client, auth_headers, "B").json()
+    assert a["pin"] != b["pin"]
 
 
 def test_create_operator(client, auth_headers):
@@ -76,11 +84,13 @@ def test_set_pin_triggers_mqtt_publish(client, auth_headers):
         mock_pub.assert_called_once()
 
 
-def test_create_operator_does_not_trigger_mqtt_publish(client, auth_headers):
+def test_create_operator_triggers_mqtt_publish(client, auth_headers):
+    # The operator is eligible immediately (it has an auto-generated PIN),
+    # so the retained operators config must be republished.
     with patch("app.services.mqtt_payloads.publish_operator_list") as mock_pub:
         resp = _create(client, auth_headers, "Charlie")
         assert resp.status_code == 201
-        mock_pub.assert_not_called()
+        mock_pub.assert_called_once()
 
 
 def test_pin_must_be_numeric_4_to_8_digits(client, auth_headers):
@@ -151,3 +161,35 @@ def test_verify_pin_no_pin_set(client, db, auth_headers):
     resp = client.post("/operators/verify-pin",
                        json={"operator_id": op.id, "pin": "1234"}, headers=auth_headers)
     assert resp.status_code == 401
+
+
+# ── Regenerate PIN (reveal once) ─────────────────────────────────────────────
+
+def _regen(client, headers, operator_id):
+    return client.post(f"/operators/{operator_id}/regenerate-pin", headers=headers)
+
+
+def test_regenerate_pin_rotates_credential(client, auth_headers):
+    op = _create(client, auth_headers, "Rotate").json()
+    old_pin = op["pin"]
+    new_pin = _regen(client, auth_headers, op["id"]).json()["pin"]
+    assert new_pin != old_pin
+    # Old PIN no longer authenticates; new one does.
+    assert client.post("/operators/verify-pin",
+                       json={"operator_id": op["id"], "pin": old_pin},
+                       headers=auth_headers).status_code == 401
+    assert client.post("/operators/verify-pin",
+                       json={"operator_id": op["id"], "pin": new_pin},
+                       headers=auth_headers).status_code == 204
+
+
+def test_regenerate_pin_triggers_mqtt_publish(client, auth_headers):
+    op = _create(client, auth_headers, "RotatePub").json()
+    with patch("app.services.mqtt_payloads.publish_operator_list") as mock_pub:
+        resp = _regen(client, auth_headers, op["id"])
+        assert resp.status_code == 200
+        mock_pub.assert_called_once()
+
+
+def test_regenerate_pin_unknown_operator(client, auth_headers):
+    assert _regen(client, auth_headers, 99999).status_code == 404
