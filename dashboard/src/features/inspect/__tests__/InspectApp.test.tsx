@@ -35,7 +35,8 @@ describe('InspectApp (inspection PWA)', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /activer le poste/i }));
 
-    expect(await screen.findByText('Poste activé')).toBeInTheDocument();
+    // Once activated, the inspector flow begins at the operator picker.
+    expect(await screen.findByText('Qui êtes-vous ?')).toBeInTheDocument();
     expect(localStorage.getItem('qc_station_token')).toBe('station-token');
   });
 });
