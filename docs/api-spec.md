@@ -70,6 +70,7 @@ All endpoints require a valid JWT except:
 | GET | `/stats/by-defect` | ✓ | Counts grouped by defect type |
 | GET | `/stats/by-operator` | ✓ | Counts grouped by operator |
 | GET | `/stats/heatmap` | ✓ | Hour-of-day × defect heatmap |
+| GET | `/kpi` | station, admin | One-day KPI snapshot (taux NC, parts) |
 | GET | `/flags` | ✓ | List live feature flags |
 | PUT | `/flags/{name}` | ✓ | Toggle a live feature flag |
 | GET | `/health` | — | Liveness check |
@@ -535,6 +536,36 @@ Hour-of-day (0–23) × defect count. Useful for spotting shift patterns.
   { "hour": 14, "count": 58 }
 ]
 ```
+
+---
+
+## KPI
+
+### `GET /kpi?date=YYYY-MM-DD&product_id=1`
+
+Single-day quality snapshot for the andon board and the dashboard hero tiles.
+`date` is plant-local (defaults to today); `product_id` is optional. Auth:
+`station` or `admin`.
+
+Everything is counted **per part** (one full inspection, grouped by
+`part_inspection_id`): a part with three defects is one inspected part and one
+NC part. `taux NC` = `nc_parts / inspected_parts`.
+
+```json
+// Response 200
+{
+  "date": "2026-06-04",
+  "inspected_parts": 3,
+  "nc_parts": 2,
+  "ok_parts": 1,
+  "nc_rate": 0.6667,
+  "defect_count": 3,
+  "last_hour_parts": 3,
+  "updated_at": "2026-06-04T13:20:00Z"
+}
+```
+
+An unparseable `date` returns `400`.
 
 ---
 
