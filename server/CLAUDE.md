@@ -2,6 +2,33 @@
 
 FastAPI backend + MQTT bridge running on the RPi, inside a Docker container.
 
+## Inspection ingest, KPIs & credentials (ADR-017)
+
+The inspection client is now the **web PWA**, logging over **REST**. Keep one
+transport-agnostic path:
+
+- **`services/inspections.record_part(...)`** is the *single* place a schema-4
+  part is expanded into `inspection_logs` rows (category_kind, shared
+  `part_inspection_id`, device/operator/product resolution, optional
+  `logged_at`). Both `POST /inspections` **and** the legacy MQTT handler call
+  it — never duplicate the logic per transport.
+- **`POST /inspections`** — the PWA endpoint (auth: `station` role).
+  **`POST /operators/verify-pin`** `{operator_id, pin}` → 204/401 (server-side
+  PIN check; hashes never leave the server).
+  **`GET /kpi?date=`** → KPI snapshot for the andon board + dashboard (reuse the
+  hourly/live aggregation). Optionally also publish retained `qc/display/kpi`.
+- **`station` role/token:** low-privilege — read config, verify PINs, POST
+  inspections, GET /kpi. Nothing else. The tablet authenticates once as this.
+- **Operator credentials (planned):** `POST /operators {name}` mints a unique
+  numeric PIN server-side (CSPRNG, unique among active operators), stores only
+  the hash, and returns the plaintext **once**; `POST /operators/{id}/
+  regenerate-pin` rotates it (reveal once). **Republish the retained operators
+  config on create/regenerate** (same hook that fixed "operators not refreshed
+  until a PIN change") — the bridge does this via the on-connect callback.
+
+Mosquitto is retained but lightly used; it is no longer on the inspection
+critical path.
+
 ## Layout
 
 ```

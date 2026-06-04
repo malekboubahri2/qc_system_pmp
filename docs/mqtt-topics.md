@@ -1,9 +1,17 @@
 # MQTT Topics
 
+> **ADR-017 update.** The inspection client is now a web PWA logging over
+> **REST** (`POST /inspections`), so the device→server inspection topics below
+> are **legacy** (kept for the retired STM32 terminal). MQTT is retained but
+> lightly used. The one new topic is **`qc/display/kpi`** (server→andon board,
+> retained, QoS 1) — a KPI snapshot for the wall display; even that is optional,
+> since the board's default is HTTP `GET /kpi`. Both REST and MQTT inspection
+> ingest go through the one `services/inspections` module.
+
 Mosquitto broker on the RPi, port 1883 (cleartext for PoC).
 See `docs/decisions.md` ADR-002 for why MQTT instead of HTTP for device
-comms, ADR-003 for the retained-message pattern, and ADR-013 for the
-product-scoped payload schema introduced in `qc/config/products`.
+comms, ADR-003 for the retained-message pattern, ADR-013 for the
+product-scoped payload schema, and ADR-017 for the web pivot.
 
 ---
 

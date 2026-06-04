@@ -26,6 +26,19 @@ All endpoints require a valid JWT except:
 
 ## Quick Reference
 
+> **ADR-017 (web pivot) — planned endpoints** powering the inspection PWA and
+> the andon board. Inspection ingest is now REST; `record_part` is shared with
+> the MQTT handler.
+>
+> | Method | Path | Auth | Purpose |
+> |---|---|---|---|
+> | POST | `/inspections` | station | Log one part inspection (schema 4) → rows |
+> | POST | `/operators/verify-pin` | station | Verify `{operator_id, pin}` → 204/401 |
+> | GET | `/kpi` | station/✓ | KPI snapshot (Taux NC, parts, NC, defects) |
+> | POST | `/operators` | ✓ | Create operator → **mint unique PIN, return once** |
+> | POST | `/operators/{id}/regenerate-pin` | ✓ | Rotate PIN, return plaintext once |
+> | GET | `/reports/pdf` | ✓ | Period quality report as PDF |
+
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
 | POST | `/auth/login` | — | Get JWT |

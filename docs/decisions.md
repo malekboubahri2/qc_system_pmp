@@ -539,3 +539,90 @@ category). Migration `0005` adds `category_kind` + `part_inspection_id`.
   counts parts.
 - The INJ grid has 7 regular slots but the SVI-PRD-17 INJECTION taxonomy has 10
   types — the last 3 are not reachable on the grid yet (UI follow-up).
+
+---
+
+## ADR-017 — Web PWA inspection client; STM32 demoted to a KPI andon board
+
+**Date:** 2026-06-04
+**Status:** Accepted (supersedes the premise — established since Day 1 and in
+ADR-013 — that the STM32 is the inspection terminal; complements ADR-015)
+
+**Context:** The inspection terminal was an STM32H7B3I-DK running TouchGFX, with
+the operator flow (login → product → defect grid → summary) on the device. In
+practice every hard, recurring problem in this project lived *below* the
+inspection UI, in the embedded client:
+
+- ESP-01 AT-over-UART link is flaky and timing-sensitive (CIPSEND prompts,
+  SEND OK timeouts, keep-alive, broker-auth/passwd drift) — see ADR-015.
+- The Octo-SPI offline queue conflicts with TouchGFX DMA2D asset reads (an
+  OSPI/rendering hazard with no clean fix on this hardware).
+- TouchGFX has no dynamic text without a Designer round-trip; a Designer
+  regen wiped a whole screen and renamed typed-text ids, and dynamic defect
+  grids / dates / counts are painful (wildcards, fonts, custom containers).
+- Per-board flashing, Wi-Fi creds in Octo-SPI, SNTP-over-AT, no real offline
+  story — all bespoke and fragile.
+
+None of these touch the server, data model, API, auth, or dashboard, which are
+solid. The inspection client is just one consumer of a stable contract, and the
+contract — not the device — is the asset.
+
+**Decision:** Move the inspection UI to a **web PWA hosted inside the existing
+dashboard**, run on **wall/stand-mounted tablets** (one per station, kiosk-
+locked), and **demote the STM32 to a passive KPI "andon" board** that displays
+big-number metrics (Taux NC, parts inspected, NC count) for the room.
+
+1. **Inspection client = PWA** (`dashboard/`, a touch-optimised `inspect/`
+   route + layout): login → product → PMP grid → INJ grid → summary → submit.
+   Defect grids are dynamic from `GET /products/{id}/defect-types`. Offline via
+   service worker + IndexedDB, drained on reconnect.
+2. **Logging via REST.** The PWA `POST`s the schema-4 part inspection to a new
+   `POST /inspections`. The per-part expansion logic is refactored into a shared
+   `services/inspections` module that both the REST endpoint and the existing
+   MQTT handler call — one code path, two transports.
+3. **Inspectors = the existing `operators` + PIN.** The tablet holds one
+   low-privilege "station" account (JWT); the inspector picks their name and
+   enters their PIN, verified server-side (`POST /operators/verify-pin`).
+   `operator_id` lands on the inspection — identical audit trail, no data-model
+   change. The ADR-013/016 model (product-scoped defects, per-part schema 4)
+   is reused verbatim.
+4. **STM32 = andon KPI board.** Firmware strips to: Wi-Fi connect → fetch KPIs
+   → render big numbers via TouchGFX. **Default transport: HTTP polling** of a
+   new `GET /kpi` every few seconds (simplest; no broker dependency). MQTT
+   (subscribe to a retained `qc/display/kpi`) is an option if HTTP-over-AT is
+   awkward. Deleted: login, product/defect grids, commit flow, offline queue,
+   SNTP. ~80% less firmware.
+5. **Mosquitto is retained** but lightly used (future device add-ons, optional
+   KPI push). It is no longer on the inspection critical path.
+
+**Consequences:**
+- Upholds the project's core principles better, not worse:
+  - *Reusability through clear contracts:* the REST/MQTT inspection schema is
+    the stable interface; clients (web, embedded, future) are swappable.
+  - *Portability:* a browser PWA runs on any tablet/phone with no per-device
+    build; the andon board's transport is a config choice (HTTP or MQTT).
+  - *Modularity:* one `inspections` service, called by REST and MQTT; the PWA
+    is a self-contained dashboard feature slice; the board is display-only.
+- Serves the three PoC goals better: a tablet UI is faster than the 4.3" device
+  (goal 1); config changes appear instantly via live API fetch, no MQTT push
+  (goal 2); the dashboard/andon add ambient pattern visibility (goal 3).
+- Retires the riskiest subsystems (ESP-01 input path, OSPI queue, TouchGFX
+  dynamic-UI). The embedded investment is *repurposed*, not discarded — the
+  Wi-Fi + TouchGFX rendering live on in the andon board.
+- New surface area: tablet fleet needs kiosk mode + light MDM + powered mounts;
+  the PWA needs a service worker + IndexedDB offline queue; one new low-priv
+  `station` role and a `verify-pin` endpoint.
+- Migration is **reversible and parallel:** the STM32 terminal and the PWA can
+  both log to the same API/data during the pilot; cut over only when proven.
+
+**Alternatives considered:**
+- *Keep pushing the STM32 inspection terminal:* rejected — the OSPI/TouchGFX
+  hazard and ESP-01 flakiness have no clean fix on this hardware, and dynamic
+  config-driven UI fights the toolchain.
+- *Per-inspector web logins (drop operators/PIN):* deferred — reusing
+  operators + PIN preserves the audit model and the familiar select-name→PIN
+  UX with near-zero change.
+- *Retire Mosquitto entirely (HTTP everywhere):* deferred, not rejected — kept
+  for future device add-ons; the inspection path no longer needs it.
+- *BYOD phones / shared handhelds:* rejected for the pilot in favour of fixed,
+  kiosk-locked station tablets (ruggedness, always-on, hygiene, control).

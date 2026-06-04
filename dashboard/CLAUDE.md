@@ -1,6 +1,29 @@
 # Dashboard — Claude Code Context
 
-React + Vite + TS frontend for the QC responsable, served by Caddy from a Docker container.
+React + Vite + TS frontend, served by Caddy from a Docker container. Hosts
+**two surfaces** in one codebase (ADR-017):
+
+1. **Admin dashboard** — for the QC responsable: products/defect-types config,
+   operators, analytics, Journaux, live-stations, settings.
+2. **Inspection PWA** (`features/inspect/`) — the touch/kiosk app inspectors use
+   on station tablets: operator+PIN → product → PMP/INJ defect grids (dynamic
+   from config) → summary → `POST /inspections`. Installable, offline (service
+   worker + IndexedDB queue), fullscreen kiosk.
+
+> The web surface is the **product's primary selling point** — invest in
+> interactive, animated, polished UX. Keep motion/interaction primitives in
+> `lib/` (e.g. `lib/motion`, shared components) so they're reusable and never
+> leak into business logic. See root `CLAUDE.md`, ADR-017, and `docs/roadmap.md`.
+
+**Keep the two surfaces strictly separate:** distinct route trees and layouts
+(`features/inspect/` is touch-first, no admin chrome), ideally a separate PWA
+entry/build so the kiosk bundle stays small and locked-down. They share only
+`api/`, `hooks/`, `lib/`, `types/` — never each other's internals.
+
+**Inspector auth:** the tablet holds one low-privilege `station` JWT; the
+operator picks their name + PIN, verified via `POST /operators/verify-pin`
+(server-side). `operator_id` goes on the inspection. PIN hashes never reach the
+client. Operators are the existing `operators` (ADR-013/017).
 
 ## Layout
 
