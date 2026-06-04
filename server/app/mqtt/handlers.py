@@ -101,14 +101,11 @@ def _handle_inspection(topic: str, payload: dict) -> None:
 
 
 def _handle_part_inspection(topic: str, payload: dict) -> None:
-    """schema_version 4: one full part (PMP + INJ) → expand to inspection_logs
-    rows, each with an explicit category_kind and a shared part_inspection_id."""
-    import uuid
+    """schema_version 4: one full part (PMP + INJ). Delegates to the shared
+    inspections service so REST and MQTT ingest are identical."""
     from app.db import SessionLocal
-    from app.models.defect import InspectionLog, DefectType
-    from app.models.device import Device
     from app.mqtt.schemas import PartInspectionPayload
-    from app.constants import CATEGORY_KIND_PMP, CATEGORY_KIND_INJECTION
+    from app.services.inspections import record_part
 
     try:
         data = PartInspectionPayload.model_validate(payload)
@@ -116,53 +113,17 @@ def _handle_part_inspection(topic: str, payload: dict) -> None:
         logger.warning("MQTT part inspection invalid topic={} err={}", topic, exc)
         return
 
-    part_id = uuid.uuid4().hex
-    received = _utc_now()
-    # Honour the device's own timestamp when it has a synced clock; otherwise
-    # fall back to server receipt time (also correct for offline-queued parts
-    # that drain later but carry their original logged_at).
-    logged = data.logged_at or received
     db = SessionLocal()
     try:
-        # Self-register the device so the device_id FK resolves.
-        if db.get(Device, data.device_id) is None:
-            db.add(Device(id=data.device_id, last_seen=received))
-            db.flush()
-
-        # The free-text note belongs to the "Autre" fallback type(s) selected.
-        all_ids = list(data.pmp_defect_type_ids) + list(data.inj_defect_type_ids)
-        other_ids: set[int] = set()
-        if all_ids:
-            for (did,) in db.query(DefectType.id).filter(
-                DefectType.id.in_(all_ids), DefectType.is_other_fallback.is_(True)
-            ):
-                other_ids.add(did)
-
-        def add_category(defect_ids: list[int], category: str) -> None:
-            if defect_ids:
-                for did in defect_ids:
-                    db.add(InspectionLog(
-                        device_id=data.device_id, operator_id=data.operator_id,
-                        product_id=data.product_id, defect_type_id=did,
-                        outcome="DEFECT", category_kind=category,
-                        note=(data.note if did in other_ids else None),
-                        logged_at=logged, part_inspection_id=part_id,
-                    ))
-            else:
-                db.add(InspectionLog(
-                    device_id=data.device_id, operator_id=data.operator_id,
-                    product_id=data.product_id, defect_type_id=None,
-                    outcome="OK", category_kind=category,
-                    note=None, logged_at=logged, part_inspection_id=part_id,
-                ))
-
-        add_category(data.pmp_defect_type_ids, CATEGORY_KIND_PMP)
-        add_category(data.inj_defect_type_ids, CATEGORY_KIND_INJECTION)
-        db.commit()
-        logger.info(
-            "part inspection logged device={} part={} pmp={} inj={}",
-            data.device_id, part_id,
-            len(data.pmp_defect_type_ids), len(data.inj_defect_type_ids),
+        record_part(
+            db,
+            device_id=data.device_id,
+            operator_id=data.operator_id,
+            product_id=data.product_id,
+            pmp_defect_type_ids=data.pmp_defect_type_ids,
+            inj_defect_type_ids=data.inj_defect_type_ids,
+            note=data.note,
+            logged_at=data.logged_at,
         )
     except Exception:
         db.rollback()
