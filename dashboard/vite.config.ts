@@ -9,6 +9,16 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
+  build: {
+    rollupOptions: {
+      // Two entry bundles: the admin dashboard (index.html) and the touch-first
+      // inspection PWA (inspect.html). Kept separate so the kiosk bundle is lean.
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        inspect: path.resolve(__dirname, 'inspect.html'),
+      },
+    },
+  },
   server: {
     port: 5173,
     proxy: {

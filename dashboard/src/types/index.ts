@@ -18,6 +18,37 @@ export interface Operator {
   archived_at?: string;
 }
 
+// Returned once on create / regenerate-pin — `pin` is plaintext, shown once.
+export interface OperatorWithPin extends Operator {
+  pin: string;
+}
+
+// PWA inspection submission (schema 4): one part → many rows server-side.
+export interface InspectionCreate {
+  device_id?: string;
+  operator_id: number;
+  product_id: number;
+  pmp_defect_type_ids: number[];
+  inj_defect_type_ids: number[];
+  note?: string | null;
+  logged_at?: string | null;
+}
+
+export interface InspectionCreateResponse {
+  part_inspection_id: string;
+}
+
+export interface KpiSnapshot {
+  date: string;
+  inspected_parts: number;
+  nc_parts: number;
+  ok_parts: number;
+  nc_rate: number;
+  defect_count: number;
+  last_hour_parts: number;
+  updated_at: string;
+}
+
 export interface Product {
   id: number;
   name: string;
