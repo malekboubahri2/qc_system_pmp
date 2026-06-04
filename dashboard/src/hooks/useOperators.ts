@@ -35,6 +35,14 @@ export function useSetPin() {
   });
 }
 
+export function useRegeneratePin() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => api.regeneratePin(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
+  });
+}
+
 export function useArchiveOperator() {
   const qc = useQueryClient();
   return useMutation({

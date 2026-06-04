@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { Plus, Pencil, Archive, KeyRound, Eye, EyeOff, Users } from 'lucide-react';
+import { Plus, Pencil, Archive, RefreshCw, Users, Copy, Check, KeyRound } from 'lucide-react';
 import {
   useOperators, useCreateOperator, useUpdateOperator,
-  useSetPin, useArchiveOperator,
+  useRegeneratePin, useArchiveOperator,
 } from '@/hooks/useOperators';
-import { operatorSchema, pinSchema, type OperatorForm, type PinForm } from '@/lib/schemas';
+import { operatorSchema, type OperatorForm } from '@/lib/schemas';
 import { Button } from '@/components/shared/Button';
 import { Modal } from '@/components/shared/Modal';
 import { FormField } from '@/components/shared/FormField';
@@ -15,7 +15,7 @@ import { Icon } from '@/components/Icon';
 import { PageHeader, EmptyState, Pill } from '@/components/ui';
 import type { Operator } from '@/types';
 
-// ── Operator form modal ──────────────────────────────────────────
+// ── Operator name modal (create / rename) ────────────────────────
 function OperatorModal({
   open, onClose, initial, onSave,
 }: {
@@ -40,6 +40,11 @@ function OperatorModal({
     <Modal open={open} onClose={onClose} title={initial ? "Modifier l'opérateur" : 'Nouvel opérateur'} size="sm">
       <form onSubmit={handleSubmit(submit)} className="flex flex-col gap-4">
         <FormField label="Nom" required error={errors.name?.message} placeholder="ex. Ahmed Ben Ali" {...register('name')} />
+        {!initial && (
+          <p className="text-sm text-ink-muted">
+            Un code PIN unique sera généré automatiquement et affiché une seule fois.
+          </p>
+        )}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" size="sm" onClick={onClose}>Annuler</Button>
           <Button type="submit" size="sm" loading={isSubmitting}>{initial ? 'Enregistrer' : 'Créer'}</Button>
@@ -49,60 +54,44 @@ function OperatorModal({
   );
 }
 
-// ── PIN modal ────────────────────────────────────────────────────
-function PinModal({
-  open, onClose, operator, onSave,
+// ── Reveal-once PIN modal ────────────────────────────────────────
+function RevealPinModal({
+  open, onClose, name, pin,
 }: {
   open: boolean;
   onClose: () => void;
-  operator: Operator | null;
-  onSave: (pin: string) => Promise<void>;
+  name: string;
+  pin: string;
 }) {
-  const [show, setShow] = useState(false);
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } =
-    useForm<PinForm>({ resolver: zodResolver(pinSchema) });
+  const [copied, setCopied] = useState(false);
 
-  async function submit(data: PinForm) {
-    await onSave(data.pin);
-    reset();
-    setShow(false);
-    onClose();
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(pin);
+      setCopied(true);
+    } catch {
+      /* clipboard unavailable — the PIN is shown on screen anyway */
+    }
   }
 
   return (
-    <Modal open={open} onClose={() => { onClose(); reset(); setShow(false); }}
-      title={`PIN — ${operator?.name ?? ''}`} size="sm">
-      <form onSubmit={handleSubmit(submit)} className="flex flex-col gap-4">
+    <Modal open={open} onClose={onClose} title={`PIN — ${name}`} size="sm">
+      <div className="flex flex-col gap-4">
         <p className="text-sm text-ink-muted">
-          {operator?.pin_set ? 'Modifier le PIN de cet opérateur.' : 'Définir un PIN pour cet opérateur.'}
+          Communiquez ce code à l&apos;opérateur. Il ne sera affiché qu&apos;une seule fois ;
+          en cas de perte, régénérez-le.
         </p>
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-ink-head">
-            Nouveau PIN <span className="text-danger">*</span>
-          </label>
-          <div className="relative">
-            <input
-              type={show ? 'text' : 'password'}
-              inputMode="numeric"
-              maxLength={8}
-              placeholder="4 à 8 chiffres"
-              className={`w-full bg-white border rounded-lg px-3 py-2.5 pr-10 text-sm font-mono tracking-widest
-                transition-colors focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent
-                ${errors.pin ? 'border-danger' : 'border-cream-subtle'}`}
-              {...register('pin')}
-            />
-            <button type="button" onClick={() => setShow((v) => !v)}
-              className="absolute inset-y-0 right-0 px-3 text-ink-muted hover:text-ink transition-colors" tabIndex={-1}>
-              <Icon icon={show ? EyeOff : Eye} size={16} />
-            </button>
-          </div>
-          {errors.pin && <p className="text-sm text-danger">{errors.pin.message}</p>}
+        <div className="flex items-center justify-center bg-cream-subtle rounded-lg py-6">
+          <span className="text-4xl font-mono tracking-[0.35em] text-brand pl-[0.35em]">{pin}</span>
         </div>
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="secondary" size="sm" onClick={() => { onClose(); reset(); setShow(false); }}>Annuler</Button>
-          <Button type="submit" size="sm" loading={isSubmitting}>Enregistrer</Button>
+        <div className="flex justify-between gap-2">
+          <Button type="button" variant="secondary" size="sm" onClick={copy}>
+            <Icon icon={copied ? Check : Copy} size={15} />
+            {copied ? 'Copié' : 'Copier'}
+          </Button>
+          <Button type="button" size="sm" onClick={onClose}>Terminé</Button>
         </div>
-      </form>
+      </div>
     </Modal>
   );
 }
@@ -112,26 +101,28 @@ export function OperatorsPage() {
   const { data: operators = [], isLoading } = useOperators();
   const createOp = useCreateOperator();
   const updateOp = useUpdateOperator();
-  const setPin = useSetPin();
+  const regenOp = useRegeneratePin();
   const archiveOp = useArchiveOperator();
 
   const [opModal, setOpModal] = useState<{ open: boolean; editing?: Operator }>({ open: false });
-  const [pinModal, setPinModal] = useState<{ open: boolean; operator: Operator | null }>({ open: false, operator: null });
+  const [reveal, setReveal] = useState<{ open: boolean; name: string; pin: string }>({ open: false, name: '', pin: '' });
 
   async function handleSaveOp(name: string) {
     if (opModal.editing) {
       await updateOp.mutateAsync({ id: opModal.editing.id, name });
       toast.success('Opérateur modifié');
     } else {
-      await createOp.mutateAsync(name);
-      toast.success('Opérateur créé — définissez son PIN pour l\'activer');
+      const created = await createOp.mutateAsync(name);
+      toast.success('Opérateur créé');
+      setReveal({ open: true, name: created.name, pin: created.pin });
     }
   }
 
-  async function handleSetPin(pin: string) {
-    if (!pinModal.operator) return;
-    await setPin.mutateAsync({ id: pinModal.operator.id, pin });
-    toast.success('PIN enregistré — opérateur actif sur le terminal');
+  async function handleRegen(op: Operator) {
+    if (!confirm(`Régénérer le PIN de « ${op.name} » ? L'ancien code cessera de fonctionner.`)) return;
+    const updated = await regenOp.mutateAsync(op.id);
+    setReveal({ open: true, name: updated.name, pin: updated.pin });
+    toast.success('Nouveau PIN généré');
   }
 
   async function handleArchive(op: Operator) {
@@ -145,7 +136,7 @@ export function OperatorsPage() {
       <PageHeader
         breadcrumb={[{ label: 'Opérateurs' }]}
         title="Opérateurs"
-        subtitle="Chaque opérateur doit avoir un PIN pour utiliser le terminal"
+        subtitle="Un PIN unique est généré à la création — affiché une seule fois"
         right={
           <Button onClick={() => setOpModal({ open: true })}>
             <Icon icon={Plus} size={16} />
@@ -193,9 +184,10 @@ export function OperatorsPage() {
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-2 justify-end">
-                      <button onClick={() => setPinModal({ open: true, operator: op })}
-                        className="p-1.5 rounded text-ink-muted hover:text-brand transition-colors" title="Définir PIN">
-                        <Icon icon={KeyRound} size={15} />
+                      <button onClick={() => handleRegen(op)}
+                        className="p-1.5 rounded text-ink-muted hover:text-brand transition-colors"
+                        title={op.pin_set ? 'Régénérer le PIN' : 'Générer un PIN'}>
+                        <Icon icon={op.pin_set ? RefreshCw : KeyRound} size={15} />
                       </button>
                       <button onClick={() => setOpModal({ open: true, editing: op })}
                         className="p-1.5 rounded text-ink-muted hover:text-brand transition-colors" title="Modifier">
@@ -215,7 +207,7 @@ export function OperatorsPage() {
       </div>
 
       <OperatorModal open={opModal.open} onClose={() => setOpModal({ open: false })} initial={opModal.editing} onSave={handleSaveOp} />
-      <PinModal open={pinModal.open} onClose={() => setPinModal({ open: false, operator: null })} operator={pinModal.operator} onSave={handleSetPin} />
+      <RevealPinModal open={reveal.open} onClose={() => setReveal({ open: false, name: '', pin: '' })} name={reveal.name} pin={reveal.pin} />
     </div>
   );
 }
