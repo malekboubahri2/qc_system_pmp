@@ -21,3 +21,10 @@ createRoot(document.getElementById('root')!).render(
     <InspectApp />
   </StrictMode>,
 );
+
+// Cache the app shell so the kiosk still loads offline.
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/inspect-sw.js').catch(() => {});
+  });
+}

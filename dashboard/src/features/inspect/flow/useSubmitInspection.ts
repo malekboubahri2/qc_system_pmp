@@ -1,11 +1,11 @@
 import { useMutation } from '@tanstack/react-query';
-import { createInspection } from '@/api/inspections';
 import type { InspectionCreate } from '@/types';
+import { submitOrQueue, type SubmitResult } from '../offline/submitOrQueue';
 
-// Submits one part inspection. The offline queue (next slice) will wrap this so
-// submissions survive Wi-Fi drops; for now it posts directly.
+// Submits one part inspection, falling back to the offline queue when the
+// network is down. Real server errors propagate so the UI can surface them.
 export function useSubmitInspection() {
-  return useMutation({
-    mutationFn: (body: InspectionCreate) => createInspection(body),
+  return useMutation<SubmitResult, unknown, InspectionCreate>({
+    mutationFn: (body) => submitOrQueue(body),
   });
 }

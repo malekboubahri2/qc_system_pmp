@@ -3,6 +3,7 @@ import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { StationSessionProvider, useStationSession } from './station-session';
+import { OfflineProvider } from './offline/OfflineContext';
 import { InspectionFlowProvider } from './flow/InspectionFlowContext';
 import { StationLoginScreen } from './screens/StationLoginScreen';
 import { OperatorPickerScreen } from './screens/OperatorPickerScreen';
@@ -30,6 +31,7 @@ export function InspectApp() {
   return (
     <QueryClientProvider client={queryClient}>
       <StationSessionProvider>
+        <OfflineProvider>
         <InspectionFlowProvider>
           <HashRouter>
             <Routes>
@@ -54,6 +56,7 @@ export function InspectApp() {
             </Routes>
           </HashRouter>
         </InspectionFlowProvider>
+        </OfflineProvider>
         <Toaster position="top-center" />
       </StationSessionProvider>
     </QueryClientProvider>

@@ -24,14 +24,18 @@ export function SummaryScreen() {
 
   async function onSave() {
     try {
-      await submit.mutateAsync({
+      const res = await submit.mutateAsync({
         operator_id: operator!.id,
         product_id: product!.id,
         pmp_defect_type_ids: pmp,
         inj_defect_type_ids: inj,
         note: note.trim() ? note.trim() : null,
       });
-      toast.success(conform ? 'Pièce conforme enregistrée' : 'Pièce enregistrée');
+      toast.success(
+        res.queued
+          ? 'Enregistrée hors ligne — synchronisation à la reconnexion'
+          : conform ? 'Pièce conforme enregistrée' : 'Pièce enregistrée',
+      );
       resetPart();
       navigate('/inspect');
     } catch {

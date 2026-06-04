@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
+import { ConnectivityBadge } from './ConnectivityBadge';
 
 interface InspectScreenProps {
   title?: string;
   subtitle?: string;
-  /** Top-right slot (e.g. station status, logout). */
+  /** Top-right slot (e.g. back/logout). The connectivity badge is always shown. */
   action?: ReactNode;
   /** Bottom sticky bar (e.g. primary CTA). */
   footer?: ReactNode;
@@ -16,17 +17,18 @@ export function InspectScreen({
 }: InspectScreenProps) {
   return (
     <div className="min-h-dvh flex flex-col bg-cream">
-      {(title || action) && (
-        <header className="flex items-start justify-between gap-4 px-6 pt-6 pb-4">
-          <div>
-            {title && (
-              <h1 className="text-2xl font-bold text-brand tracking-tighter">{title}</h1>
-            )}
-            {subtitle && <p className="text-ink-muted mt-1">{subtitle}</p>}
-          </div>
+      <header className="flex items-start justify-between gap-4 px-6 pt-6 pb-4">
+        <div>
+          {title && (
+            <h1 className="text-2xl font-bold text-brand tracking-tighter">{title}</h1>
+          )}
+          {subtitle && <p className="text-ink-muted mt-1">{subtitle}</p>}
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
           {action}
-        </header>
-      )}
+          <ConnectivityBadge />
+        </div>
+      </header>
 
       <main className="flex-1 px-6 pb-6 overflow-y-auto">{children}</main>
 
