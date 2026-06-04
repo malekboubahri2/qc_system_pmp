@@ -76,6 +76,9 @@ services:
       - alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - ../server/app:/app/app  # bind-mount source for --reload
+      # Mount migrations too so `alembic upgrade head` (run on container start)
+      # picks up new revisions after a `git pull` — without a server rebuild.
+      - ../server/alembic:/app/alembic
       - qc-data:/var/lib/qc
     ports:
       - "8000:8000"
