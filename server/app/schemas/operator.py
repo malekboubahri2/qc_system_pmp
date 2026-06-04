@@ -14,6 +14,11 @@ class OperatorSetPin(BaseModel):
     pin: str = Field(min_length=4, max_length=8, pattern=r"^\d+$")
 
 
+class OperatorVerifyPin(BaseModel):
+    operator_id: int
+    pin: str = Field(min_length=1, max_length=12)
+
+
 class OperatorRead(BaseModel):
     id: int
     name: str

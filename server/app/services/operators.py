@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from app.models.operator import Operator
 from app.schemas.operator import OperatorCreate, OperatorUpdate
-from app.security import hash_pin
+from app.security import hash_pin, verify_pin as _pin_matches
 from app.services import mqtt_payloads
 
 
@@ -50,6 +50,16 @@ def set_pin(db: Session, operator_id: int, pin: str) -> None:
     op.pin_hash = hash_pin(pin)
     db.commit()
     mqtt_payloads.publish_operator_list()
+
+
+def verify_pin(db: Session, operator_id: int, pin: str) -> bool:
+    """True iff `pin` matches an active operator's stored hash. Used by the PWA
+    login step. Same negative result for a missing operator and a wrong PIN, so
+    it does not leak which operators exist."""
+    op = db.get(Operator, operator_id)
+    if op is None or not op.active or op.pin_hash is None:
+        return False
+    return _pin_matches(pin, op.pin_hash)
 
 
 def archive(db: Session, operator_id: int) -> None:

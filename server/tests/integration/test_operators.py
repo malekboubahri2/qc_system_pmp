@@ -116,3 +116,38 @@ def test_list_operators_includes_archived_when_requested(client, auth_headers):
 
 def test_requires_auth(client):
     assert client.get("/operators").status_code == 401
+
+
+# ── PIN verification (PWA login step) ───────────────────────────────────────
+
+def test_verify_pin_correct(client, auth_headers):
+    op = _create(client, auth_headers, "Dana").json()
+    _set_pin(client, auth_headers, op["id"], "4321")
+    resp = client.post("/operators/verify-pin",
+                       json={"operator_id": op["id"], "pin": "4321"}, headers=auth_headers)
+    assert resp.status_code == 204
+
+
+def test_verify_pin_wrong(client, auth_headers):
+    op = _create(client, auth_headers, "Eli").json()
+    _set_pin(client, auth_headers, op["id"], "4321")
+    resp = client.post("/operators/verify-pin",
+                       json={"operator_id": op["id"], "pin": "0000"}, headers=auth_headers)
+    assert resp.status_code == 401
+
+
+def test_verify_pin_unknown_operator(client, auth_headers):
+    resp = client.post("/operators/verify-pin",
+                       json={"operator_id": 99999, "pin": "1234"}, headers=auth_headers)
+    assert resp.status_code == 401
+
+
+def test_verify_pin_no_pin_set(client, db, auth_headers):
+    from app.models.operator import Operator
+    op = Operator(name="NoPin", pin_hash=None)
+    db.add(op)
+    db.commit()
+    db.refresh(op)
+    resp = client.post("/operators/verify-pin",
+                       json={"operator_id": op.id, "pin": "1234"}, headers=auth_headers)
+    assert resp.status_code == 401
