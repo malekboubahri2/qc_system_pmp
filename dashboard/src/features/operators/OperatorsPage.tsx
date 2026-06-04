@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { toast } from 'sonner';
-import { Plus, Pencil, Archive, RefreshCw, Users, Copy, Check, KeyRound } from 'lucide-react';
+import { Plus, Pencil, Archive, RefreshCw, Users, Copy, Check } from 'lucide-react';
 import {
   useOperators, useCreateOperator, useUpdateOperator,
-  useRegeneratePin, useArchiveOperator,
+  useRegeneratePassword, useArchiveOperator,
 } from '@/hooks/useOperators';
 import { operatorSchema, type OperatorForm } from '@/lib/schemas';
 import { Button } from '@/components/shared/Button';
@@ -14,6 +14,8 @@ import { FormField } from '@/components/shared/FormField';
 import { Icon } from '@/components/Icon';
 import { PageHeader, EmptyState, Pill } from '@/components/ui';
 import type { Operator } from '@/types';
+
+interface Creds { name: string; username: string; password: string }
 
 // ── Operator name modal (create / rename) ────────────────────────
 function OperatorModal({
@@ -42,7 +44,8 @@ function OperatorModal({
         <FormField label="Nom" required error={errors.name?.message} placeholder="ex. Ahmed Ben Ali" {...register('name')} />
         {!initial && (
           <p className="text-sm text-ink-muted">
-            Un code PIN unique sera généré automatiquement et affiché une seule fois.
+            Un identifiant et un mot de passe seront générés automatiquement et
+            affichés une seule fois.
           </p>
         )}
         <div className="flex justify-end gap-2">
@@ -54,35 +57,44 @@ function OperatorModal({
   );
 }
 
-// ── Reveal-once PIN modal ────────────────────────────────────────
-function RevealPinModal({
-  open, onClose, name, pin,
+// ── Reveal-once credentials modal ────────────────────────────────
+function RevealCredentialsModal({
+  open, onClose, creds,
 }: {
   open: boolean;
   onClose: () => void;
-  name: string;
-  pin: string;
+  creds: Creds | null;
 }) {
   const [copied, setCopied] = useState(false);
 
   async function copy() {
+    if (!creds) return;
     try {
-      await navigator.clipboard.writeText(pin);
+      await navigator.clipboard.writeText(
+        `Identifiant: ${creds.username}\nMot de passe: ${creds.password}`,
+      );
       setCopied(true);
     } catch {
-      /* clipboard unavailable — the PIN is shown on screen anyway */
+      /* clipboard unavailable — values are on screen anyway */
     }
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={`PIN — ${name}`} size="sm">
+    <Modal open={open} onClose={onClose} title={`Identifiants — ${creds?.name ?? ''}`} size="sm">
       <div className="flex flex-col gap-4">
         <p className="text-sm text-ink-muted">
-          Communiquez ce code à l&apos;opérateur. Il ne sera affiché qu&apos;une seule fois ;
-          en cas de perte, régénérez-le.
+          Communiquez ces identifiants à l&apos;opérateur. Ils ne seront affichés
+          qu&apos;une seule fois ; en cas de perte, régénérez le mot de passe.
         </p>
-        <div className="flex items-center justify-center bg-cream-subtle rounded-lg py-6">
-          <span className="text-4xl font-mono tracking-[0.35em] text-brand pl-[0.35em]">{pin}</span>
+        <div className="bg-cream-subtle rounded-lg p-4 flex flex-col gap-3">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Identifiant</div>
+            <div className="text-lg font-mono text-brand">{creds?.username}</div>
+          </div>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Mot de passe</div>
+            <div className="text-lg font-mono text-brand tracking-wider">{creds?.password}</div>
+          </div>
         </div>
         <div className="flex justify-between gap-2">
           <Button type="button" variant="secondary" size="sm" onClick={copy}>
@@ -101,11 +113,11 @@ export function OperatorsPage() {
   const { data: operators = [], isLoading } = useOperators();
   const createOp = useCreateOperator();
   const updateOp = useUpdateOperator();
-  const regenOp = useRegeneratePin();
+  const regenOp = useRegeneratePassword();
   const archiveOp = useArchiveOperator();
 
   const [opModal, setOpModal] = useState<{ open: boolean; editing?: Operator }>({ open: false });
-  const [reveal, setReveal] = useState<{ open: boolean; name: string; pin: string }>({ open: false, name: '', pin: '' });
+  const [reveal, setReveal] = useState<{ open: boolean; creds: Creds | null }>({ open: false, creds: null });
 
   async function handleSaveOp(name: string) {
     if (opModal.editing) {
@@ -114,15 +126,15 @@ export function OperatorsPage() {
     } else {
       const created = await createOp.mutateAsync(name);
       toast.success('Opérateur créé');
-      setReveal({ open: true, name: created.name, pin: created.pin });
+      setReveal({ open: true, creds: { name: created.name, username: created.username ?? '', password: created.password } });
     }
   }
 
   async function handleRegen(op: Operator) {
-    if (!confirm(`Régénérer le PIN de « ${op.name} » ? L'ancien code cessera de fonctionner.`)) return;
+    if (!confirm(`Régénérer le mot de passe de « ${op.name} » ? L'ancien cessera de fonctionner.`)) return;
     const updated = await regenOp.mutateAsync(op.id);
-    setReveal({ open: true, name: updated.name, pin: updated.pin });
-    toast.success('Nouveau PIN généré');
+    setReveal({ open: true, creds: { name: updated.name, username: updated.username ?? '', password: updated.password } });
+    toast.success('Nouveau mot de passe généré');
   }
 
   async function handleArchive(op: Operator) {
@@ -136,7 +148,7 @@ export function OperatorsPage() {
       <PageHeader
         breadcrumb={[{ label: 'Opérateurs' }]}
         title="Opérateurs"
-        subtitle="Un PIN unique est généré à la création — affiché une seule fois"
+        subtitle="Chaque opérateur reçoit un identifiant + mot de passe, affichés une seule fois"
         right={
           <Button onClick={() => setOpModal({ open: true })}>
             <Icon icon={Plus} size={16} />
@@ -163,7 +175,7 @@ export function OperatorsPage() {
             <thead>
               <tr className="bg-cream-subtle text-xs font-semibold uppercase tracking-wider text-ink-muted">
                 <th className="px-5 py-4 text-left">Nom</th>
-                <th className="px-5 py-4 text-left">PIN</th>
+                <th className="px-5 py-4 text-left">Identifiant</th>
                 <th className="px-5 py-4 text-left">Statut</th>
                 <th className="px-5 py-4 text-right">Actions</th>
               </tr>
@@ -173,9 +185,11 @@ export function OperatorsPage() {
                 <tr key={op.id} className={i % 2 === 0 ? 'bg-white' : 'bg-cream/30'}>
                   <td className="px-5 py-4 font-medium text-sm text-ink">{op.name}</td>
                   <td className="px-5 py-4">
-                    <Pill variant={op.pin_set ? 'success' : 'warning'} dot>
-                      {op.pin_set ? 'Défini' : 'Non défini'}
-                    </Pill>
+                    {op.has_login ? (
+                      <span className="font-mono text-ink-muted">{op.username}</span>
+                    ) : (
+                      <Pill variant="warning" dot>Aucun accès</Pill>
+                    )}
                   </td>
                   <td className="px-5 py-4">
                     <Pill variant={op.active ? 'success' : 'danger'} dot>
@@ -186,8 +200,8 @@ export function OperatorsPage() {
                     <div className="flex items-center gap-2 justify-end">
                       <button onClick={() => handleRegen(op)}
                         className="p-1.5 rounded text-ink-muted hover:text-brand transition-colors"
-                        title={op.pin_set ? 'Régénérer le PIN' : 'Générer un PIN'}>
-                        <Icon icon={op.pin_set ? RefreshCw : KeyRound} size={15} />
+                        title={op.has_login ? 'Régénérer le mot de passe' : 'Générer un accès'}>
+                        <Icon icon={RefreshCw} size={15} />
                       </button>
                       <button onClick={() => setOpModal({ open: true, editing: op })}
                         className="p-1.5 rounded text-ink-muted hover:text-brand transition-colors" title="Modifier">
@@ -207,7 +221,7 @@ export function OperatorsPage() {
       </div>
 
       <OperatorModal open={opModal.open} onClose={() => setOpModal({ open: false })} initial={opModal.editing} onSave={handleSaveOp} />
-      <RevealPinModal open={reveal.open} onClose={() => setReveal({ open: false, name: '', pin: '' })} name={reveal.name} pin={reveal.pin} />
+      <RevealCredentialsModal open={reveal.open} onClose={() => setReveal({ open: false, creds: null })} creds={reveal.creds} />
     </div>
   );
 }

@@ -13,7 +13,7 @@ import type { User } from '@/types';
 interface AuthContextValue {
   user: User | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
   logout: () => void;
 }
 
@@ -38,10 +38,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [token]);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string): Promise<User> => {
     const auth = await apiLogin(email, password);
+    // Write synchronously so the immediate getMe() carries the token.
+    localStorage.setItem('qc_token', auth.access_token);
     setToken(auth.access_token);
-    await queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
+    const me = await getMe();
+    queryClient.setQueryData(['auth', 'me'], me);
+    return me;
   }, [queryClient]);
 
   const logout = useCallback(() => {

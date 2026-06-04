@@ -1,7 +1,10 @@
 export interface User {
   id: number;
   email: string;
-  name: string;
+  role: string;
+  // Linked operator for role `operator` (the PWA attributes inspections to it).
+  operator_id?: number | null;
+  operator_name?: string | null;
 }
 
 export interface AuthToken {
@@ -12,21 +15,24 @@ export interface AuthToken {
 export interface Operator {
   id: number;
   name: string;
+  username?: string | null;
+  has_login: boolean;
   pin_set: boolean;
   active: boolean;
   created_at: string;
   archived_at?: string;
 }
 
-// Returned once on create / regenerate-pin — `pin` is plaintext, shown once.
-export interface OperatorWithPin extends Operator {
-  pin: string;
+// Returned once on create / regenerate-password — plaintext login, shown once.
+export interface OperatorWithCredentials extends Operator {
+  password: string;
 }
 
 // PWA inspection submission (schema 4): one part → many rows server-side.
+// `operator_id` is omitted by operators (the server uses their own linked one).
 export interface InspectionCreate {
   device_id?: string;
-  operator_id: number;
+  operator_id?: number;
   product_id: number;
   pmp_defect_type_ids: number[];
   inj_defect_type_ids: number[];

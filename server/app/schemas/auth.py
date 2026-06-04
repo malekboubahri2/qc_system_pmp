@@ -19,5 +19,6 @@ class UserRead(BaseModel):
     # The linked operator for role `operator` (the PWA attributes inspections to
     # it); null for admins/stations. (ADR-018)
     operator_id: Optional[int] = None
+    operator_name: Optional[str] = None
 
     model_config = {"from_attributes": True}

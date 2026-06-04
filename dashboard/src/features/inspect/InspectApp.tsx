@@ -2,63 +2,65 @@ import type { ReactNode } from 'react';
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
-import { StationSessionProvider, useStationSession } from './station-session';
 import { OfflineProvider } from './offline/OfflineContext';
 import { InspectionFlowProvider } from './flow/InspectionFlowContext';
-import { StationLoginScreen } from './screens/StationLoginScreen';
-import { OperatorPickerScreen } from './screens/OperatorPickerScreen';
+import { useInspectSession, hasToken, logoutToLogin } from './session';
 import { ProductPickerScreen } from './screens/ProductPickerScreen';
-import { DefectGridScreen } from './screens/DefectGridScreen';
+import { CategoryPage } from './screens/CategoryPage';
 import { SummaryScreen } from './screens/SummaryScreen';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
 });
 
-function RequireStation({ children }: { children: ReactNode }) {
-  const { isAuthed } = useStationSession();
-  if (!isAuthed) return <Navigate to="/station-login" replace />;
-  return <>{children}</>;
+function Splash() {
+  return (
+    <div className="h-dvh flex items-center justify-center bg-cream">
+      <div className="w-8 h-8 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
 }
 
-function StationLoginRoute() {
-  const { isAuthed } = useStationSession();
-  if (isAuthed) return <Navigate to="/" replace />;
-  return <StationLoginScreen />;
+// Only an authenticated `operator` may use the PWA. Anyone else is sent to the
+// unified login (or the admin dashboard for an admin).
+function RequireOperator({ children }: { children: ReactNode }) {
+  const { data: me, isLoading, isError } = useInspectSession();
+
+  if (!hasToken()) {
+    logoutToLogin();
+    return <Splash />;
+  }
+  if (isLoading) return <Splash />;
+  if (isError || !me) {
+    logoutToLogin();
+    return <Splash />;
+  }
+  if (me.role !== 'operator') {
+    window.location.href = '/';
+    return <Splash />;
+  }
+  return <>{children}</>;
 }
 
 export function InspectApp() {
   return (
     <QueryClientProvider client={queryClient}>
-      <StationSessionProvider>
-        <OfflineProvider>
+      <OfflineProvider>
         <InspectionFlowProvider>
           <HashRouter>
-            <Routes>
-              <Route path="/station-login" element={<StationLoginRoute />} />
-              <Route
-                path="/"
-                element={<RequireStation><OperatorPickerScreen /></RequireStation>}
-              />
-              <Route
-                path="/product"
-                element={<RequireStation><ProductPickerScreen /></RequireStation>}
-              />
-              <Route
-                path="/inspect"
-                element={<RequireStation><DefectGridScreen /></RequireStation>}
-              />
-              <Route
-                path="/summary"
-                element={<RequireStation><SummaryScreen /></RequireStation>}
-              />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+            <RequireOperator>
+              <Routes>
+                <Route path="/" element={<ProductPickerScreen />} />
+                <Route path="/pmp" element={<CategoryPage category="PMP" />} />
+                <Route path="/inj" element={<CategoryPage category="INJECTION" />} />
+                <Route path="/summary" element={<SummaryScreen />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </RequireOperator>
           </HashRouter>
         </InspectionFlowProvider>
-        </OfflineProvider>
-        <Toaster position="top-center" />
-      </StationSessionProvider>
+      </OfflineProvider>
+      <Toaster position="top-center" />
     </QueryClientProvider>
   );
 }

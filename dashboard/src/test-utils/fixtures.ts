@@ -8,13 +8,16 @@ import type {
 export const FIXTURE_USER: User = {
   id: 1,
   email: 'admin@qc.local',
-  name: 'Admin',
+  role: 'admin',
+  operator_id: null,
 };
 
 export const FIXTURE_OPERATOR: Operator = {
   id: 1,
   name: 'Mohammed',
-  pin_set: true,
+  username: 'mohammed',
+  has_login: true,
+  pin_set: false,
   active: true,
   created_at: '2026-05-01T08:00:00Z',
 };

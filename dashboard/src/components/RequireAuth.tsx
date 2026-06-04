@@ -16,5 +16,10 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
   }
 
   if (!user) return <Navigate to="/login" replace />;
+  if (user.role === 'operator') {
+    // An operator landed on an admin route — send them to the PWA.
+    window.location.href = '/inspect.html';
+    return null;
+  }
   return <>{children}</>;
 }

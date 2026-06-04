@@ -22,8 +22,8 @@ def me(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    operator_id = (
-        operators_svc.operator_id_for_user(db, current_user.id)
+    op = (
+        operators_svc.operator_for_user(db, current_user.id)
         if current_user.role == "operator"
         else None
     )
@@ -31,5 +31,6 @@ def me(
         id=current_user.id,
         email=current_user.email,
         role=current_user.role,
-        operator_id=operator_id,
+        operator_id=op.id if op else None,
+        operator_name=op.name if op else None,
     )

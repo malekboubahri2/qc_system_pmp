@@ -1,26 +1,26 @@
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Package, LogOut } from 'lucide-react';
 import { useProducts } from '@/hooks/useProducts';
 import { useInspectionFlow } from '../flow/InspectionFlowContext';
+import { useInspectSession, logoutToLogin } from '../session';
 import { InspectScreen } from '../components/InspectScreen';
 import { TouchButton } from '../components/TouchButton';
 
 export function ProductPickerScreen() {
   const navigate = useNavigate();
-  const { operator, setProduct, endSession } = useInspectionFlow();
+  const { setProduct } = useInspectionFlow();
+  const { data: me } = useInspectSession();
   const { data: products = [], isLoading } = useProducts();
-
-  if (!operator) return <Navigate to="/" replace />;
 
   const active = products.filter((p) => p.active);
 
   return (
     <InspectScreen
       title="Quel produit ?"
-      subtitle={`Opérateur : ${operator.name}`}
+      subtitle={me?.operator_name ? `Opérateur : ${me.operator_name}` : undefined}
       action={
-        <TouchButton variant="ghost" onClick={() => { endSession(); navigate('/'); }}>
-          <LogOut size={18} /> Changer
+        <TouchButton variant="ghost" onClick={logoutToLogin}>
+          <LogOut size={18} /> Quitter
         </TouchButton>
       }
     >
@@ -31,11 +31,11 @@ export function ProductPickerScreen() {
           Aucun produit configuré. Demandez au responsable qualité.
         </p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto pt-2">
           {active.map((p) => (
             <button
               key={p.id}
-              onClick={() => { setProduct({ id: p.id, name: p.name }); navigate('/inspect'); }}
+              onClick={() => { setProduct({ id: p.id, name: p.name }); navigate('/pmp'); }}
               className="min-h-[80px] rounded-xl bg-white border border-cream-subtle p-4
                 flex items-center gap-3 text-left
                 hover:border-accent hover:shadow-card transition-all active:scale-[0.99]"

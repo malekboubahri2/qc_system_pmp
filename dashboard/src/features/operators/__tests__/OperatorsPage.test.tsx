@@ -13,14 +13,15 @@ describe('OperatorsPage', () => {
     expect(await screen.findByText('Mohammed')).toBeInTheDocument();
   });
 
-  it('reveals the one-time generated PIN after creating an operator', async () => {
+  it('reveals the one-time generated credentials after creating an operator', async () => {
     server.use(
       http.post('/api/operators', async ({ request }) => {
         const body = (await request.json()) as { name: string };
         return HttpResponse.json(
           {
-            id: 9, name: body.name, pin_set: true, active: true,
-            created_at: '2026-06-04T00:00:00Z', pin: '048213',
+            id: 9, name: body.name, username: 'sofia', has_login: true,
+            pin_set: false, active: true, created_at: '2026-06-04T00:00:00Z',
+            password: 'kf7mq2pa',
           },
           { status: 201 },
         );
@@ -35,6 +36,8 @@ describe('OperatorsPage', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'Créer' }));
 
-    expect(await screen.findByText('048213')).toBeInTheDocument();
+    // Username and one-time password are both revealed.
+    expect(await screen.findByText('sofia')).toBeInTheDocument();
+    expect(screen.getByText('kf7mq2pa')).toBeInTheDocument();
   });
 });

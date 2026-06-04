@@ -27,18 +27,10 @@ export function useUpdateOperator() {
   });
 }
 
-export function useSetPin() {
+export function useRegeneratePassword() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, pin }: { id: number; pin: string }) => api.setPin(id, pin),
-    onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
-  });
-}
-
-export function useRegeneratePin() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: number) => api.regeneratePin(id),
+    mutationFn: (id: number) => api.regeneratePassword(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
   });
 }

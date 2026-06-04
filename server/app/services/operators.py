@@ -54,9 +54,13 @@ def get_by_id(db: Session, operator_id: int) -> Operator:
     return op
 
 
-def operator_id_for_user(db: Session, user_id: int) -> Optional[int]:
+def operator_for_user(db: Session, user_id: int) -> Optional[Operator]:
     """The operator owned by a login user, or None (e.g. for admins)."""
-    op = db.query(Operator).filter(Operator.user_id == user_id).first()
+    return db.query(Operator).filter(Operator.user_id == user_id).first()
+
+
+def operator_id_for_user(db: Session, user_id: int) -> Optional[int]:
+    op = operator_for_user(db, user_id)
     return op.id if op else None
 
 

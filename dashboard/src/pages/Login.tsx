@@ -31,7 +31,12 @@ export function LoginPage() {
   async function onSubmit(values: FormValues) {
     setApiError(null);
     try {
-      await login(values.email, values.password);
+      const me = await login(values.email, values.password);
+      if (me.role === 'operator') {
+        // Operators belong in the inspection PWA, not the admin dashboard.
+        window.location.href = '/inspect.html';
+        return;
+      }
       navigate('/', { replace: true });
     } catch {
       setApiError('Identifiants incorrects. Veuillez réessayer.');
