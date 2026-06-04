@@ -33,7 +33,7 @@ from app.models.feature_flag import FeatureFlag  # noqa: E402
 from app.models.operator import Operator  # noqa: E402
 from app.models.product import Product  # noqa: E402
 from app.models.user import User  # noqa: E402
-from app.security import hash_password, hash_pin  # noqa: E402
+from app.security import hash_password  # noqa: E402
 from app.constants import (  # noqa: E402
     CATEGORY_KIND_PMP, CATEGORY_KIND_INJECTION,
     OTHER_FALLBACK_LABEL,
@@ -47,11 +47,13 @@ _ADMIN = {"email": "admin@qc.local", "password": "admin123"}
 # Low-privilege account the inspection tablet (PWA) authenticates as.
 _STATION = {"email": "station@qc.local", "password": "station123", "role": "station"}
 
+# Operators are login accounts (role `operator`) — ADR-018. Dev password is
+# shared for convenience; production mints unique ones via the dashboard.
 _OPERATORS = [
-    {"name": "Mohammed Benali", "pin": "1234"},
-    {"name": "Karim Trabelsi",  "pin": "5678"},
-    {"name": "Fatima Nasri",    "pin": None},   # supervisor — no PIN
-    {"name": "Youssef Chabbi",  "pin": "9012"},
+    {"name": "Mohammed Benali", "username": "mohammed", "password": "operator123"},
+    {"name": "Karim Trabelsi",  "username": "karim",    "password": "operator123"},
+    {"name": "Fatima Nasri",    "username": "fatima",   "password": "operator123"},
+    {"name": "Youssef Chabbi",  "username": "youssef",  "password": "operator123"},
 ]
 
 # Paper taxonomy from SVI-PRD-17 (PMP 7 types, INJECTION 10 types).
@@ -131,10 +133,18 @@ def _seed_operators(db) -> list[Operator]:
     for data in _OPERATORS:
         op = db.scalar(select(Operator).where(Operator.name == data["name"]))
         if op is None:
-            pin_hash = hash_pin(data["pin"]) if data["pin"] else None
-            op = Operator(name=data["name"], pin_hash=pin_hash)
+            user = db.scalar(select(User).where(User.email == data["username"]))
+            if user is None:
+                user = User(
+                    email=data["username"],
+                    password_hash=hash_password(data["password"]),
+                    role="operator",
+                )
+                db.add(user)
+                db.flush()
+            op = Operator(name=data["name"], user_id=user.id)
             db.add(op)
-            print(f"  + operator '{data['name']}'")
+            print(f"  + operator '{data['name']}' (login: {data['username']} / {data['password']})")
         else:
             print(f"  ~ operator '{data['name']}' (exists)")
         ops.append(op)

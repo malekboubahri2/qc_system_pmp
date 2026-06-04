@@ -32,11 +32,10 @@ All endpoints require a valid JWT except:
 >
 > | Method | Path | Auth | Purpose |
 > |---|---|---|---|
-> | POST | `/inspections` | station | Log one part inspection (schema 4) → rows |
-> | POST | `/operators/verify-pin` | station | Verify `{operator_id, pin}` → 204/401 |
-> | GET | `/kpi` | station/✓ | KPI snapshot (Taux NC, parts, NC, defects) |
-> | POST | `/operators` | ✓ | Create operator → **mint unique PIN, return once** |
-> | POST | `/operators/{id}/regenerate-pin` | ✓ | Rotate PIN, return plaintext once |
+> | POST | `/inspections` | operator/station/✓ | Log one part inspection (schema 4) → rows |
+> | GET | `/kpi` | operator/station/✓ | KPI snapshot (Taux NC, parts, NC, defects) |
+> | POST | `/operators` | ✓ | Create operator + login → **username/password once** |
+> | POST | `/operators/{id}/regenerate-password` | ✓ | Rotate password, return once |
 > | GET | `/reports/pdf` | ✓ | Period quality report as PDF |
 
 | Method | Path | Auth | Purpose |
@@ -44,13 +43,11 @@ All endpoints require a valid JWT except:
 | POST | `/auth/login` | — | Get JWT |
 | GET | `/auth/me` | ✓ | Current user info |
 | GET | `/operators` | ✓ | List operators (active by default) |
-| POST | `/operators` | ✓ | Create operator (mint unique PIN, return once) |
+| POST | `/operators` | ✓ | Create operator + login (mint username/password once) |
 | GET | `/operators/{id}` | ✓ | Get operator |
 | PATCH | `/operators/{id}` | ✓ | Update operator |
-| DELETE | `/operators/{id}` | ✓ | Soft-delete operator |
-| POST | `/operators/{id}/pin` | ✓ | Set a specific operator PIN |
-| POST | `/operators/{id}/regenerate-pin` | ✓ | Rotate PIN, return plaintext once |
-| POST | `/operators/verify-pin` | station, admin | Verify `{operator_id, pin}` → 204/401 |
+| DELETE | `/operators/{id}` | ✓ | Soft-delete operator (+ disable login) |
+| POST | `/operators/{id}/regenerate-password` | ✓ | Rotate password, return plaintext once |
 | GET | `/products` | ✓ | List products (active by default) |
 | POST | `/products` | ✓ | Create product (auto-creates Other fallbacks) |
 | GET | `/products/{product_id}` | ✓ | Get product |
@@ -70,7 +67,7 @@ All endpoints require a valid JWT except:
 | GET | `/stats/by-defect` | ✓ | Counts grouped by defect type |
 | GET | `/stats/by-operator` | ✓ | Counts grouped by operator |
 | GET | `/stats/heatmap` | ✓ | Hour-of-day × defect heatmap |
-| GET | `/kpi` | station, admin | One-day KPI snapshot (taux NC, parts) |
+| GET | `/kpi` | operator, station, admin | One-day KPI snapshot (taux NC, parts) |
 | GET | `/flags` | ✓ | List live feature flags |
 | PUT | `/flags/{name}` | ✓ | Toggle a live feature flag |
 | GET | `/health` | — | Liveness check |
@@ -99,19 +96,23 @@ curl -X POST http://localhost:8000/auth/login \
 ### `GET /auth/me`
 
 ```json
-// Response 200
-{ "id": 1, "email": "qc@plant.local", "role": "admin" }
+// Response 200 (admin)
+{ "id": 1, "email": "qc@plant.local", "role": "admin", "operator_id": null }
+
+// Response 200 (operator) — operator_id links to the operators row
+{ "id": 7, "email": "aicha", "role": "operator", "operator_id": 2 }
 ```
 
 ---
 
-## Operators
+## Operators (ADR-018)
 
-Creating an operator mints a unique numeric PIN server-side and returns it
-**once** — the responsable relays it to the operator. Only the hash is stored;
-the raw PIN cannot be retrieved afterwards, only regenerated. Operators with a
-PIN appear in the retained `qc/config/operators` message and can log in on the
-PWA / STM32.
+An operator **is a login account** (role `operator`) linked 1:1 to an
+`operators` row for attribution. Creating one mints a unique **username**
+(slug of the name) and **password**, returned in plaintext **once** — the
+responsable relays them to the operator. Only the password hash is stored; it
+cannot be retrieved afterwards, only regenerated. The operator then signs in on
+the unified login page and is routed to the inspection PWA.
 
 ### `GET /operators`
 
@@ -124,7 +125,9 @@ to include archived operators.
   {
     "id": 1,
     "name": "Mohammed",
-    "pin_set": true,
+    "username": "mohammed",
+    "has_login": true,
+    "pin_set": false,
     "active": true,
     "created_at": "2026-05-19T09:00:00Z",
     "archived_at": null
@@ -132,16 +135,14 @@ to include archived operators.
 ]
 ```
 
-`pin_set` is `true` if the operator has a hashed PIN stored. Only
-operators with `pin_set: true` appear in the STM32 operator list.
+`has_login` is `true` when the operator has a linked login account; `password`
+is never returned on reads.
 
 ### `POST /operators`
 
-Creates an operator and mints a unique numeric PIN (CSPRNG, unique among
-active operators). The plaintext `pin` is returned **once** in this response
-and never again — show it to the operator immediately. A retained
-`qc/config/operators` message is published. Length is set by
-`OPERATOR_PIN_LENGTH` (default 6).
+Creates an operator **and** its login user, returning the plaintext
+`username` + `password` **once** — show them to the operator immediately.
+Password length is set by `OPERATOR_PASSWORD_LENGTH` (default 8).
 
 ```json
 // Request
@@ -151,35 +152,21 @@ and never again — show it to the operator immediately. A retained
 {
   "id": 2,
   "name": "Aïcha",
-  "pin_set": true,
+  "username": "aicha",
+  "has_login": true,
+  "pin_set": false,
   "active": true,
   "created_at": "2026-05-19T09:05:00Z",
   "archived_at": null,
-  "pin": "048213"
+  "password": "kf7mq2pa"
 }
 ```
 
-### `POST /operators/{id}/regenerate-pin`
+### `POST /operators/{id}/regenerate-password`
 
-Rotates the operator's PIN to a fresh unique value and returns the new
-plaintext `pin` **once** (same shape as `POST /operators`). The old PIN stops
-working immediately; a retained `qc/config/operators` message is published.
-
-### `POST /operators/verify-pin`
-
-Server-side PIN check for the PWA login step (the hash never leaves the
-server). Auth: `station` or `admin`.
-
-```json
-// Request
-{ "operator_id": 2, "pin": "048213" }
-
-// Response 204 on match, 401 otherwise
-```
-
-A missing operator, an archived operator, an operator with no PIN, and a wrong
-PIN all return the same `401` — the endpoint does not reveal which operator
-ids exist.
+Rotates the operator's login password and returns the new `password` **once**
+(same shape as `POST /operators`). The old password stops working immediately.
+Back-fills a login account for legacy operators that predate ADR-018.
 
 ### `PATCH /operators/{id}`
 
@@ -192,21 +179,9 @@ ids exist.
 
 ### `DELETE /operators/{id}`
 
-Soft-delete: sets `active=false` and `archived_at`. Returns 204.
-The operator remains readable in log history.
-
-### `POST /operators/{id}/pin`
-
-```json
-// Request
-{ "pin": "1234" }
-
-// Response 204
-```
-
-PIN must be 4–8 numeric digits. Hashed server-side; the raw PIN is
-never stored. After this call, a new `qc/config/operators` MQTT message
-is published with updated hashes. See `docs/mqtt-topics.md`.
+Soft-delete: sets `active=false` and `archived_at`, and **deactivates the
+linked login** (the operator can no longer sign in). Returns 204. The operator
+remains readable in log history.
 
 ---
 
@@ -545,7 +520,7 @@ Hour-of-day (0–23) × defect count. Useful for spotting shift patterns.
 
 Single-day quality snapshot for the andon board and the dashboard hero tiles.
 `date` is plant-local (defaults to today); `product_id` is optional. Auth:
-`station` or `admin`.
+`operator`, `station`, or `admin`.
 
 Everything is counted **per part** (one full inspection, grouped by
 `part_inspection_id`): a part with three defects is one inspected part and one

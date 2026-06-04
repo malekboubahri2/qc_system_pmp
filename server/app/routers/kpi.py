@@ -17,10 +17,10 @@ def get_kpi(
     date: Optional[str] = Query(None, description="Plant-local day YYYY-MM-DD; default today"),
     product_id: Optional[int] = Query(None),
     db: Session = Depends(get_db),
-    _: User = Depends(require_roles("station", "admin")),
+    _: User = Depends(require_roles("operator", "station", "admin")),
 ):
     """KPI snapshot for the andon board + dashboard hero tiles. Read-only,
-    available to the low-privilege `station` token and to `admin`."""
+    available to operators (PWA summary), the `station` token, and `admin`."""
     day = None
     if date is not None:
         try:

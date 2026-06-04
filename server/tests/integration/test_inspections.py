@@ -72,3 +72,27 @@ def test_post_inspection_forbidden_for_other_role(client, db, insp_seed):
         "product_id": insp_seed["product"].id,
     })
     assert resp.status_code == 403
+
+
+def test_operator_posts_own_inspection(client, db, auth_headers, insp_seed):
+    # An operator logs in and submits without operator_id; the server attributes
+    # the part to their own linked operator (body cannot spoof it).
+    s = insp_seed
+    created = client.post("/operators", json={"name": "Bob"}, headers=auth_headers).json()
+    login = client.post(
+        "/auth/login",
+        json={"email": created["username"], "password": created["password"]},
+    ).json()
+    op_headers = {"Authorization": f"Bearer {login['access_token']}"}
+
+    resp = client.post("/inspections", headers=op_headers, json={
+        "product_id": s["product"].id,
+        "pmp_defect_type_ids": [s["pmp"].id],
+        "inj_defect_type_ids": [],
+    })
+    assert resp.status_code == 201
+    part_id = resp.json()["part_inspection_id"]
+    db.expire_all()
+    rows = db.query(InspectionLog).filter(InspectionLog.part_inspection_id == part_id).all()
+    assert rows
+    assert all(r.operator_id == created["id"] for r in rows)

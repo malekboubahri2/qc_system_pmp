@@ -626,3 +626,65 @@ big-number metrics (Taux NC, parts inspected, NC count) for the room.
   for future device add-ons; the inspection path no longer needs it.
 - *BYOD phones / shared handhelds:* rejected for the pilot in favour of fixed,
   kiosk-locked station tablets (ruggedness, always-on, hygiene, control).
+
+---
+
+## ADR-018 — Operators are login accounts (username + password); retire the station+PIN flow
+
+**Date:** 2026-06-04
+**Status:** Accepted (supersedes ADR-017 §3 and accepts the "per-inspector web
+logins" alternative ADR-017 deferred)
+
+**Context:** ADR-017 shipped a two-step inspector sign-in: the tablet held one
+shared low-privilege `station` JWT, and each operator then entered a name + PIN
+(`POST /operators/verify-pin`). On the device this tested poorly: a "log in to
+the account, *then* enter a PIN" sequence read as two logins and confused users,
+and the PIN's purpose wasn't obvious. The product owner asked for a single,
+conventional **username + password per operator**, with one login page that
+redirects by role.
+
+**Decision:** Make operators **login users** (role `operator`) and drop the PIN
+from the inspection path.
+
+1. **One auth source.** Keep the `operators` table for attribution (so
+   `inspection_logs.operator_id` and every stats/query path are untouched) and
+   add a nullable `operators.user_id → users.id` link (migration 0006). An
+   operator is a `users` row with role `operator`, 1:1 with an `operators` row.
+2. **Credentials minted on create.** `POST /operators {name}` creates the
+   operator *and* its login user, generating a unique **username** (slug of the
+   name) and a **password**, returned in plaintext **once**
+   (`OperatorWithCredentials`); only the hash is stored. `POST
+   /operators/{id}/regenerate-password` rotates it (reveal once) and back-fills
+   a login for legacy operators. This reuses the reveal-once pattern that
+   ADR-017's auto-PIN introduced — PIN → password.
+3. **Self-attribution.** `/auth/me` returns `operator_id` for role `operator`.
+   `POST /inspections` accepts role `operator` and attributes the part to *their
+   own* linked operator — the request body cannot spoof `operator_id`.
+   Admin/station callers still pass `operator_id` explicitly.
+4. **Unified login + redirect.** One dashboard login page; `admin` → admin
+   dashboard, `operator` → inspection PWA. The PWA no longer has its own station
+   login or name-grid/PIN-pad; it enters from the shared login token and reads
+   `operator_id` from `/auth/me`.
+5. **PIN retired.** `verify-pin`, `set-pin` and the operator PIN generation are
+   removed from the web contract. `operators.pin_hash` stays nullable for the
+   historical MQTT operators config only; the `station` role is kept for the
+   andon board / tooling.
+
+**Consequences:**
+- Simpler, conventional UX: one sign-in, one login page, role-based routing.
+- Cost: on a *shared* wall tablet, per-operator credential entry is slower per
+  hand-off than a name-tap + PIN. Accepted by the product owner; revisit with a
+  fast-switch affordance if shift hand-offs prove painful.
+- Data model change is additive and low-risk (one nullable FK column); no
+  inspection-log migration. Legacy operators are login-less until a password is
+  regenerated for them.
+- The reveal-once credential machinery and `station` role from ADR-017 are
+  reused, not discarded.
+
+**Alternatives considered:**
+- *Keep station+PIN, just hide the station step (single visible PIN):* would
+  preserve fast switching, but the owner explicitly wanted username+password.
+- *Merge operators into `users` (drop the operators table):* rejected — would
+  force a risky FK/data migration on `inspection_logs` for no functional gain.
+- *Hybrid one-field login (admin email+pwd OR operator id+PIN):* rejected as
+  more login logic for the same outcome.

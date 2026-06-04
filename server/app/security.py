@@ -52,6 +52,16 @@ def generate_numeric_pin(length: int) -> str:
     return "".join(secrets.choice("0123456789") for _ in range(length))
 
 
+# Password alphabet without visually ambiguous characters (0/O, 1/l/I) so the
+# one-time operator password is easy to read off the reveal modal and type.
+_PASSWORD_ALPHABET = "abcdefghijkmnpqrstuvwxyz23456789"
+
+
+def generate_password(length: int) -> str:
+    """Return a cryptographically-random, easy-to-type password."""
+    return "".join(secrets.choice(_PASSWORD_ALPHABET) for _ in range(length))
+
+
 def verify_pin(pin: str, pin_hash: str) -> bool:
     try:
         algo, salt, expected = pin_hash.split(":")

@@ -10,18 +10,11 @@ class OperatorUpdate(BaseModel):
     name: Optional[str] = None
 
 
-class OperatorSetPin(BaseModel):
-    pin: str = Field(min_length=4, max_length=8, pattern=r"^\d+$")
-
-
-class OperatorVerifyPin(BaseModel):
-    operator_id: int
-    pin: str = Field(min_length=1, max_length=12)
-
-
 class OperatorRead(BaseModel):
     id: int
     name: str
+    username: Optional[str] = None
+    has_login: bool
     pin_set: bool
     active: bool
     created_at: str
@@ -30,7 +23,7 @@ class OperatorRead(BaseModel):
     model_config = {"from_attributes": True}
 
 
-class OperatorWithPin(OperatorRead):
-    """Returned ONCE on create / regenerate-pin. `pin` is plaintext and must be
-    shown to the responsable a single time — the server only stores its hash."""
-    pin: str
+class OperatorWithCredentials(OperatorRead):
+    """Returned ONCE on create / regenerate-password. `username` + `password`
+    are the operator's login; only the password hash is stored (ADR-018)."""
+    password: str

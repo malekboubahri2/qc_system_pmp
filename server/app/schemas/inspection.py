@@ -10,7 +10,9 @@ class InspectionCreate(BaseModel):
     the client wall-clock (UTC ISO); omit to let the server stamp receipt time.
     """
     device_id: str = Field(default="qc-web", min_length=1, max_length=64)
-    operator_id: int
+    # Optional: ignored for `operator` callers (server uses their own linked
+    # operator); required for admin/station callers (ADR-018).
+    operator_id: Optional[int] = None
     product_id: int
     pmp_defect_type_ids: list[int] = Field(default_factory=list)
     inj_defect_type_ids: list[int] = Field(default_factory=list)

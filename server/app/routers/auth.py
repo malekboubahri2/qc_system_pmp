@@ -4,6 +4,7 @@ from app.deps import get_db, get_current_user
 from app.models.user import User
 from app.schemas.auth import LoginRequest, TokenResponse, UserRead
 from app.services import auth as auth_svc
+from app.services import operators as operators_svc
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -17,5 +18,18 @@ def login(body: LoginRequest, db: Session = Depends(get_db)):
 
 
 @router.get("/me", response_model=UserRead)
-def me(current_user: User = Depends(get_current_user)):
-    return current_user
+def me(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    operator_id = (
+        operators_svc.operator_id_for_user(db, current_user.id)
+        if current_user.role == "operator"
+        else None
+    )
+    return UserRead(
+        id=current_user.id,
+        email=current_user.email,
+        role=current_user.role,
+        operator_id=operator_id,
+    )

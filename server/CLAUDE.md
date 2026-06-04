@@ -2,7 +2,7 @@
 
 FastAPI backend + MQTT bridge running on the RPi, inside a Docker container.
 
-## Inspection ingest, KPIs & credentials (ADR-017)
+## Inspection ingest, KPIs & credentials (ADR-017/018)
 
 The inspection client is now the **web PWA**, logging over **REST**. Keep one
 transport-agnostic path:
@@ -12,19 +12,25 @@ transport-agnostic path:
   `part_inspection_id`, device/operator/product resolution, optional
   `logged_at`). Both `POST /inspections` **and** the legacy MQTT handler call
   it — never duplicate the logic per transport.
-- **`POST /inspections`** — the PWA endpoint (auth: `station` role).
-  **`POST /operators/verify-pin`** `{operator_id, pin}` → 204/401 (server-side
-  PIN check; hashes never leave the server).
+- **`POST /inspections`** — the PWA endpoint (auth roles: `operator`, `station`,
+  `admin`). For an `operator` caller the server attributes the part to *their
+  own* linked operator (body `operator_id` is ignored / cannot spoof).
   **`GET /kpi?date=`** → KPI snapshot for the andon board + dashboard (reuse the
   hourly/live aggregation). Optionally also publish retained `qc/display/kpi`.
-- **`station` role/token:** low-privilege — read config, verify PINs, POST
-  inspections, GET /kpi. Nothing else. The tablet authenticates once as this.
-- **Operator credentials (planned):** `POST /operators {name}` mints a unique
-  numeric PIN server-side (CSPRNG, unique among active operators), stores only
-  the hash, and returns the plaintext **once**; `POST /operators/{id}/
-  regenerate-pin` rotates it (reveal once). **Republish the retained operators
-  config on create/regenerate** (same hook that fixed "operators not refreshed
-  until a PIN change") — the bridge does this via the on-connect callback.
+- **Operators are login users (ADR-018).** An operator = a `users` row (role
+  `operator`) linked 1:1 to an `operators` row via `operators.user_id`
+  (attribution stays in `operators`, so `inspection_logs` is untouched).
+  `/auth/me` returns `operator_id` for operators; the unified login page routes
+  `admin` → dashboard, `operator` → PWA.
+- **Operator credentials:** `POST /operators {name}` creates the operator **and**
+  its login user, generating a unique `username` (slug) + `password`, returned
+  **once** (`OperatorWithCredentials`); only the hash is stored. `POST
+  /operators/{id}/regenerate-password` rotates it (reveal once). Archiving an
+  operator disables its login. **Republish the retained operators config on
+  create/regenerate** via `mqtt_payloads.publish_operator_list()`.
+- **`station` role/token:** still valid (andon board / tooling) — read config,
+  POST inspections with an explicit `operator_id`, GET /kpi. The PIN endpoints
+  (`verify-pin`, `set-pin`) are **retired** from the web contract.
 
 Mosquitto is retained but lightly used; it is no longer on the inspection
 critical path.

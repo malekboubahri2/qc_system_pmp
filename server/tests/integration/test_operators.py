@@ -5,8 +5,8 @@ def _create(client, headers, name="Mohammed"):
     return client.post("/operators", json={"name": name}, headers=headers)
 
 
-def _set_pin(client, headers, operator_id, pin="1234"):
-    return client.post(f"/operators/{operator_id}/pin", json={"pin": pin}, headers=headers)
+def _login(client, username, password):
+    return client.post("/auth/login", json={"email": username, "password": password})
 
 
 def test_list_operators_empty(client, auth_headers):
@@ -15,181 +15,104 @@ def test_list_operators_empty(client, auth_headers):
     assert resp.json() == []
 
 
-def test_create_operator_returns_pin_once(client, auth_headers):
+def test_create_operator_returns_credentials_once(client, auth_headers):
     resp = _create(client, auth_headers)
     assert resp.status_code == 201
     body = resp.json()
     assert body["name"] == "Mohammed"
     assert body["active"] is True
-    assert body["pin_set"] is True
-    assert "pin_hash" not in body
-    # PIN is returned in plaintext exactly once, on creation.
-    assert body["pin"].isdigit() and len(body["pin"]) == 6
+    assert body["has_login"] is True
+    assert body["username"]                 # generated login id
+    assert body["password"]                 # plaintext, returned once
+    assert "password_hash" not in body
 
 
-def test_created_operators_get_distinct_pins(client, auth_headers):
-    a = _create(client, auth_headers, "A").json()
-    b = _create(client, auth_headers, "B").json()
-    assert a["pin"] != b["pin"]
-
-
-def test_create_operator(client, auth_headers):
-    resp = _create(client, auth_headers)
-    assert resp.status_code == 201
-    assert resp.json()["name"] == "Mohammed"
-
-
-def test_get_operator(client, auth_headers):
-    created = _create(client, auth_headers, "Yasmine").json()
-    resp = client.get(f"/operators/{created['id']}", headers=auth_headers)
+def test_created_operator_can_log_in(client, auth_headers):
+    body = _create(client, auth_headers, "Sofia").json()
+    resp = _login(client, body["username"], body["password"])
     assert resp.status_code == 200
-    assert resp.json()["name"] == "Yasmine"
+    assert "access_token" in resp.json()
+
+
+def test_usernames_are_unique_for_same_name(client, auth_headers):
+    a = _create(client, auth_headers, "Ali").json()
+    b = _create(client, auth_headers, "Ali").json()
+    assert a["username"] != b["username"]
+
+
+def test_get_operator_exposes_login_not_password(client, auth_headers):
+    created = _create(client, auth_headers, "Yasmine").json()
+    got = client.get(f"/operators/{created['id']}", headers=auth_headers).json()
+    assert got["name"] == "Yasmine"
+    assert got["has_login"] is True
+    assert got["username"] == created["username"]
+    assert "password" not in got
 
 
 def test_get_operator_not_found(client, auth_headers):
-    resp = client.get("/operators/9999", headers=auth_headers)
-    assert resp.status_code == 404
+    assert client.get("/operators/9999", headers=auth_headers).status_code == 404
 
 
 def test_update_operator_name(client, auth_headers):
     created = _create(client, auth_headers, "OldName").json()
     resp = client.patch(
-        f"/operators/{created['id']}",
-        json={"name": "NewName"},
-        headers=auth_headers,
+        f"/operators/{created['id']}", json={"name": "NewName"}, headers=auth_headers,
     )
     assert resp.status_code == 200
     assert resp.json()["name"] == "NewName"
 
 
-def test_set_pin_returns_204_no_body(client, auth_headers):
-    created = _create(client, auth_headers, "Alice").json()
-    resp = _set_pin(client, auth_headers, created["id"])
-    assert resp.status_code == 204
-    assert resp.content == b""
+def test_regenerate_password_rotates_login(client, auth_headers):
+    op = _create(client, auth_headers, "Rotate").json()
+    old = op["password"]
+    resp = client.post(f"/operators/{op['id']}/regenerate-password", headers=auth_headers)
+    assert resp.status_code == 200
+    new = resp.json()["password"]
+    assert new != old
+    assert _login(client, op["username"], old).status_code == 401
+    assert _login(client, op["username"], new).status_code == 200
 
 
-def test_set_pin(client, auth_headers):
-    created = _create(client, auth_headers, "Alice").json()
-    _set_pin(client, auth_headers, created["id"], "9999")
-    updated = client.get(f"/operators/{created['id']}", headers=auth_headers).json()
-    assert updated["pin_set"] is True
-
-
-def test_set_pin_triggers_mqtt_publish(client, auth_headers):
-    created = _create(client, auth_headers, "Bob").json()
-    with patch("app.services.mqtt_payloads.publish_operator_list") as mock_pub:
-        resp = _set_pin(client, auth_headers, created["id"])
-        assert resp.status_code == 204
-        mock_pub.assert_called_once()
+def test_archive_blocks_operator_login(client, auth_headers):
+    op = _create(client, auth_headers, "Temp").json()
+    assert _login(client, op["username"], op["password"]).status_code == 200
+    assert client.delete(f"/operators/{op['id']}", headers=auth_headers).status_code == 204
+    assert _login(client, op["username"], op["password"]).status_code == 401
 
 
 def test_create_operator_triggers_mqtt_publish(client, auth_headers):
-    # The operator is eligible immediately (it has an auto-generated PIN),
-    # so the retained operators config must be republished.
     with patch("app.services.mqtt_payloads.publish_operator_list") as mock_pub:
-        resp = _create(client, auth_headers, "Charlie")
-        assert resp.status_code == 201
+        assert _create(client, auth_headers, "Charlie").status_code == 201
         mock_pub.assert_called_once()
 
 
-def test_pin_must_be_numeric_4_to_8_digits(client, auth_headers):
-    created = _create(client, auth_headers).json()
-    op_id = created["id"]
-    assert _set_pin(client, auth_headers, op_id, "abc").status_code == 422
-    assert _set_pin(client, auth_headers, op_id, "123").status_code == 422
-    assert _set_pin(client, auth_headers, op_id, "123456789").status_code == 422
-    assert _set_pin(client, auth_headers, op_id, "1234").status_code == 204
-
-
-def test_archive_operator(client, auth_headers):
-    created = _create(client, auth_headers, "TempOp").json()
-    resp = client.delete(f"/operators/{created['id']}", headers=auth_headers)
-    assert resp.status_code == 204
-    listing = client.get("/operators", headers=auth_headers).json()
-    assert all(op["id"] != created["id"] for op in listing)
-
-
-def test_list_operators_excludes_archived_by_default(client, auth_headers):
+def test_list_excludes_archived_by_default(client, auth_headers):
     created = _create(client, auth_headers, "ToArchive").json()
     client.delete(f"/operators/{created['id']}", headers=auth_headers)
     listing = client.get("/operators", headers=auth_headers).json()
     assert all(op["id"] != created["id"] for op in listing)
 
 
-def test_list_operators_includes_archived_when_requested(client, auth_headers):
+def test_list_includes_archived_when_requested(client, auth_headers):
     created = _create(client, auth_headers, "Archived").json()
     client.delete(f"/operators/{created['id']}", headers=auth_headers)
     listing = client.get("/operators?include_archived=true", headers=auth_headers).json()
     assert any(op["id"] == created["id"] for op in listing)
 
 
+def test_operator_me_returns_operator_id(client, auth_headers):
+    op = _create(client, auth_headers, "Mehdi").json()
+    token = _login(client, op["username"], op["password"]).json()["access_token"]
+    me = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"}).json()
+    assert me["role"] == "operator"
+    assert me["operator_id"] == op["id"]
+
+
+def test_admin_me_has_no_operator_id(client, auth_headers):
+    me = client.get("/auth/me", headers=auth_headers).json()
+    assert me["role"] == "admin"
+    assert me["operator_id"] is None
+
+
 def test_requires_auth(client):
     assert client.get("/operators").status_code == 401
-
-
-# ── PIN verification (PWA login step) ───────────────────────────────────────
-
-def test_verify_pin_correct(client, auth_headers):
-    op = _create(client, auth_headers, "Dana").json()
-    _set_pin(client, auth_headers, op["id"], "4321")
-    resp = client.post("/operators/verify-pin",
-                       json={"operator_id": op["id"], "pin": "4321"}, headers=auth_headers)
-    assert resp.status_code == 204
-
-
-def test_verify_pin_wrong(client, auth_headers):
-    op = _create(client, auth_headers, "Eli").json()
-    _set_pin(client, auth_headers, op["id"], "4321")
-    resp = client.post("/operators/verify-pin",
-                       json={"operator_id": op["id"], "pin": "0000"}, headers=auth_headers)
-    assert resp.status_code == 401
-
-
-def test_verify_pin_unknown_operator(client, auth_headers):
-    resp = client.post("/operators/verify-pin",
-                       json={"operator_id": 99999, "pin": "1234"}, headers=auth_headers)
-    assert resp.status_code == 401
-
-
-def test_verify_pin_no_pin_set(client, db, auth_headers):
-    from app.models.operator import Operator
-    op = Operator(name="NoPin", pin_hash=None)
-    db.add(op)
-    db.commit()
-    db.refresh(op)
-    resp = client.post("/operators/verify-pin",
-                       json={"operator_id": op.id, "pin": "1234"}, headers=auth_headers)
-    assert resp.status_code == 401
-
-
-# ── Regenerate PIN (reveal once) ─────────────────────────────────────────────
-
-def _regen(client, headers, operator_id):
-    return client.post(f"/operators/{operator_id}/regenerate-pin", headers=headers)
-
-
-def test_regenerate_pin_rotates_credential(client, auth_headers):
-    op = _create(client, auth_headers, "Rotate").json()
-    old_pin = op["pin"]
-    new_pin = _regen(client, auth_headers, op["id"]).json()["pin"]
-    assert new_pin != old_pin
-    # Old PIN no longer authenticates; new one does.
-    assert client.post("/operators/verify-pin",
-                       json={"operator_id": op["id"], "pin": old_pin},
-                       headers=auth_headers).status_code == 401
-    assert client.post("/operators/verify-pin",
-                       json={"operator_id": op["id"], "pin": new_pin},
-                       headers=auth_headers).status_code == 204
-
-
-def test_regenerate_pin_triggers_mqtt_publish(client, auth_headers):
-    op = _create(client, auth_headers, "RotatePub").json()
-    with patch("app.services.mqtt_payloads.publish_operator_list") as mock_pub:
-        resp = _regen(client, auth_headers, op["id"])
-        assert resp.status_code == 200
-        mock_pub.assert_called_once()
-
-
-def test_regenerate_pin_unknown_operator(client, auth_headers):
-    assert _regen(client, auth_headers, 99999).status_code == 404
