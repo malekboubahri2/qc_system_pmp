@@ -171,3 +171,48 @@ h1, h2, h3, h4, h5, h6 {
 ::-webkit-scrollbar-thumb:hover {
   background: #1A5560;
 }
+
+/* ── Fluid typography (scales with the viewport, clamped) ─────── */
+/* For the inspection kiosk: phones → wall tablets without breakpoints.        */
+@utility text-fluid-sm      { font-size: clamp(0.82rem, 1.4vw, 0.95rem);  line-height: 1.4; }
+@utility text-fluid-base    { font-size: clamp(0.95rem, 1.9vw, 1.15rem);  line-height: 1.45; }
+@utility text-fluid-lg      { font-size: clamp(1.1rem, 2.6vw, 1.45rem);   line-height: 1.3; }
+@utility text-fluid-xl      { font-size: clamp(1.35rem, 3.4vw, 2rem);     line-height: 1.2; }
+@utility text-fluid-2xl     { font-size: clamp(1.7rem, 4.4vw, 2.6rem);    line-height: 1.15; }
+@utility text-fluid-display { font-size: clamp(3rem, 11vw, 6rem);         line-height: 1; letter-spacing: -0.02em; }
+
+/* ── Entrance / interaction animations ───────────────────────── */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes pop-in {
+  0%   { opacity: 0; transform: scale(0.8); }
+  60%  { opacity: 1; transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+@utility animate-fade-in-up { animation: fade-in-up 360ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+@utility animate-scale-in   { animation: scale-in 300ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+@utility animate-pop-in     { animation: pop-in 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+
+/* Staggered children: set `--stagger` on each item (e.g. inline index*40ms). */
+@utility stagger-item {
+  animation: fade-in-up 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--stagger, 0ms);
+}
+
+/* Respect users who prefer less motion — kill the decorative entrances only
+   (spinners and functional animations keep working). */
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in-up,
+  .animate-scale-in,
+  .animate-pop-in,
+  .stagger-item {
+    animation: none !important;
+  }
+}

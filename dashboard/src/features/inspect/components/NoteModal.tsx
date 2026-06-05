@@ -20,14 +20,14 @@ export function NoteModal({ open, initial, onConfirm, onCancel }: NoteModalProps
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-6 animate-fade-in-up"
       onClick={onCancel}
     >
       <div
-        className="w-full max-w-md bg-cream rounded-2xl shadow-elevated p-6 flex flex-col gap-4"
+        className="w-full max-w-md bg-cream rounded-3xl shadow-popover p-[clamp(1.25rem,4vw,1.75rem)] flex flex-col gap-4 animate-scale-in"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-lg font-semibold text-brand">Préciser le défaut</h2>
+        <h2 className="text-fluid-lg font-bold text-brand">Préciser le défaut</h2>
         <textarea
           autoFocus
           value={text}
@@ -35,7 +35,7 @@ export function NoteModal({ open, initial, onConfirm, onCancel }: NoteModalProps
           maxLength={140}
           rows={3}
           placeholder="Décrivez le défaut…"
-          className="bg-white border border-cream-subtle rounded-lg px-3 py-3 text-base resize-none
+          className="bg-white border-2 border-cream-subtle rounded-xl px-3.5 py-3 text-fluid-base resize-none
             focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent"
         />
         <div className="flex gap-3">

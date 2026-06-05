@@ -25,25 +25,26 @@ export function ProductPickerScreen() {
       }
     >
       {isLoading ? (
-        <p className="text-ink-muted py-12 text-center">Chargement…</p>
+        <p className="text-ink-muted py-12 text-center text-fluid-base">Chargement…</p>
       ) : active.length === 0 ? (
-        <p className="text-ink-muted py-12 text-center">
+        <p className="text-ink-muted py-12 text-center text-fluid-base">
           Aucun produit configuré. Demandez au responsable qualité.
         </p>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-2xl mx-auto pt-2">
-          {active.map((p) => (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-[clamp(0.75rem,2vw,1.25rem)] max-w-3xl mx-auto pt-2">
+          {active.map((p, i) => (
             <button
               key={p.id}
               onClick={() => { setProduct({ id: p.id, name: p.name }); navigate('/pmp'); }}
-              className="min-h-[80px] rounded-xl bg-white border border-cream-subtle p-4
-                flex items-center gap-3 text-left
-                hover:border-accent hover:shadow-card transition-all active:scale-[0.99]"
+              style={{ ['--stagger' as string]: `${Math.min(i, 8) * 40}ms` }}
+              className="stagger-item min-h-[clamp(80px,14vh,108px)] rounded-2xl bg-white border-2 border-cream-subtle
+                p-[clamp(1rem,3vw,1.5rem)] flex items-center gap-4 text-left
+                hover:border-accent hover:shadow-elevated transition-all duration-150 active:scale-[0.98]"
             >
-              <span className="w-11 h-11 rounded-lg bg-brand/10 text-brand flex items-center justify-center shrink-0">
-                <Package size={22} />
+              <span className="w-[clamp(2.75rem,7vw,3.5rem)] h-[clamp(2.75rem,7vw,3.5rem)] rounded-xl bg-brand/10 text-brand flex items-center justify-center shrink-0">
+                <Package size={26} />
               </span>
-              <span className="font-semibold text-ink text-lg leading-tight">{p.name}</span>
+              <span className="font-semibold text-ink text-fluid-lg leading-tight">{p.name}</span>
             </button>
           ))}
         </div>

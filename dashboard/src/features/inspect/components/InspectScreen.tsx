@@ -20,26 +20,31 @@ export function InspectScreen({
 }: InspectScreenProps) {
   return (
     <div className="h-dvh flex flex-col bg-cream">
-      <header className="flex items-start justify-between gap-4 px-6 pt-5 pb-3 shrink-0">
+      <header className="flex items-center justify-between gap-4 px-[clamp(1.25rem,4vw,2.5rem)] pt-[clamp(1rem,2.5vh,1.75rem)] pb-[clamp(0.75rem,1.5vh,1.25rem)] shrink-0">
         <div className="min-w-0">
           {title && (
-            <h1 className="text-2xl font-bold text-brand tracking-tighter truncate">{title}</h1>
+            <h1 className="text-fluid-xl font-bold text-brand tracking-tighter truncate">{title}</h1>
           )}
-          {subtitle && <p className="text-ink-muted mt-0.5 truncate">{subtitle}</p>}
+          {subtitle && <p className="text-fluid-sm text-ink-muted mt-0.5 truncate">{subtitle}</p>}
         </div>
-        <div className="flex items-center gap-4 shrink-0">
+        <div className="flex items-center gap-[clamp(0.75rem,2vw,1.5rem)] shrink-0">
           {action}
           <ConnectivityBadge />
           <Clock />
         </div>
       </header>
 
-      <main className={['flex-1 min-h-0 px-6 pb-4', fill ? 'overflow-hidden' : 'overflow-y-auto'].join(' ')}>
-        {children}
+      <main
+        className={[
+          'flex-1 min-h-0 px-[clamp(1.25rem,4vw,2.5rem)] pb-[clamp(1rem,2vh,1.5rem)]',
+          fill ? 'overflow-hidden' : 'overflow-y-auto',
+        ].join(' ')}
+      >
+        <div className="h-full animate-fade-in-up">{children}</div>
       </main>
 
       {footer && (
-        <footer className="shrink-0 px-6 py-4 bg-cream/95 backdrop-blur border-t border-cream-subtle">
+        <footer className="shrink-0 px-[clamp(1.25rem,4vw,2.5rem)] py-[clamp(0.875rem,2vh,1.25rem)] bg-cream/95 backdrop-blur border-t border-cream-subtle">
           {footer}
         </footer>
       )}
