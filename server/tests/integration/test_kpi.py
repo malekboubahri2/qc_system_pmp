@@ -95,3 +95,33 @@ def test_kpi_requires_auth(client):
 def test_kpi_forbidden_for_other_role(client, db):
     resp = client.get("/kpi", headers=_headers_for(db, "viewer"))
     assert resp.status_code == 403
+
+
+def test_kpi_is_scoped_to_the_calling_operator(client, auth_headers, kpi_seed):
+    s = kpi_seed
+
+    def op_headers(name):
+        created = client.post("/operators", json={"name": name}, headers=auth_headers).json()
+        login = client.post(
+            "/auth/login",
+            json={"email": created["username"], "password": created["password"]},
+        ).json()
+        return {"Authorization": f"Bearer {login['access_token']}"}
+
+    ha = op_headers("OpA")
+    hb = op_headers("OpB")
+
+    # A: 2 parts (1 NC). B: 1 part (OK). No operator_id in the body — derived.
+    client.post("/inspections", headers=ha, json={"product_id": s["product"].id, "pmp_defect_type_ids": [s["pmp"].id], "inj_defect_type_ids": []})
+    client.post("/inspections", headers=ha, json={"product_id": s["product"].id, "pmp_defect_type_ids": [], "inj_defect_type_ids": []})
+    client.post("/inspections", headers=hb, json={"product_id": s["product"].id, "pmp_defect_type_ids": [], "inj_defect_type_ids": []})
+
+    kpi_a = client.get("/kpi", headers=ha).json()
+    assert kpi_a["inspected_parts"] == 2 and kpi_a["nc_parts"] == 1
+
+    kpi_b = client.get("/kpi", headers=hb).json()
+    assert kpi_b["inspected_parts"] == 1 and kpi_b["nc_parts"] == 0
+
+    # Admin sees the global view (all 3 parts).
+    kpi_admin = client.get("/kpi", headers=auth_headers).json()
+    assert kpi_admin["inspected_parts"] == 3 and kpi_admin["nc_parts"] == 1

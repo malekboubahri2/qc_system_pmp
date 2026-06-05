@@ -27,6 +27,7 @@ def compute_kpi(
     *,
     day: Optional[date_cls] = None,
     product_id: Optional[int] = None,
+    operator_id: Optional[int] = None,
 ) -> KpiSnapshot:
     tz = ZoneInfo(settings.plant_tz)
     now = datetime.now(timezone.utc)
@@ -45,6 +46,8 @@ def compute_kpi(
     ).filter(InspectionLog.logged_at >= lo, InspectionLog.logged_at < hi)
     if product_id is not None:
         q = q.filter(InspectionLog.product_id == product_id)
+    if operator_id is not None:
+        q = q.filter(InspectionLog.operator_id == operator_id)
 
     parts: set[str] = set()
     nc_parts: set[str] = set()

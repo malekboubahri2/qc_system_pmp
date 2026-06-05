@@ -17,7 +17,8 @@ export function SummaryScreen() {
   const { data: types = [] } = useDefectTypes(product?.id ?? 0);
   const submit = useSubmitInspection();
   const [done, setDone] = useState(false);
-  const kpi = useQuery({ queryKey: ['kpi'], queryFn: () => getKpi(), enabled: done });
+  // staleTime 0 so each saved part shows up-to-date numbers, not a cached snapshot.
+  const kpi = useQuery({ queryKey: ['kpi'], queryFn: () => getKpi(), enabled: done, staleTime: 0 });
 
   if (!product) return <Navigate to="/" replace />;
 
@@ -55,13 +56,13 @@ export function SummaryScreen() {
           <CheckCircle2 size={72} className="text-success" />
           <p className="text-2xl font-semibold text-brand">Pièce enregistrée</p>
           <div className="bg-white rounded-2xl border border-cream-subtle px-12 py-6">
-            <div className="text-xs uppercase tracking-wider text-ink-muted">Taux NC du jour</div>
+            <div className="text-xs uppercase tracking-wider text-ink-muted">Votre taux NC du jour</div>
             <div className="text-6xl font-bold text-brand tabular-nums mt-1">
               {kpi.isError ? '—' : rate === null ? '…' : `${rate}%`}
             </div>
             {kpi.data && (
               <div className="text-sm text-ink-muted mt-2">
-                {kpi.data.nc_parts} NC / {kpi.data.inspected_parts} pièces
+                {kpi.data.nc_parts} NC / {kpi.data.inspected_parts} pièces inspectées
               </div>
             )}
           </div>
