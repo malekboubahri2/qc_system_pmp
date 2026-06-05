@@ -14,6 +14,13 @@ export function DevicesPage() {
 
   const onlineCount = devices.filter((d) => d.online).length;
 
+  // Online devices first, then most-recently-seen, then by name.
+  const sorted = [...devices].sort((a, b) =>
+    Number(b.online) - Number(a.online) ||
+    (b.last_seen ?? '').localeCompare(a.last_seen ?? '') ||
+    (a.name || a.id).localeCompare(b.name || b.id),
+  );
+
   const lastRefresh = dataUpdatedAt
     ? new Date(dataUpdatedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
     : '—';
@@ -57,7 +64,7 @@ export function DevicesPage() {
               </tr>
             </thead>
             <tbody>
-              {devices.map((device, i) => (
+              {sorted.map((device, i) => (
                 <tr key={device.id} className={i % 2 === 0 ? 'bg-white' : 'bg-cream/30'}>
                   <td className="px-5 py-4 text-sm text-ink">
                     <span className="flex items-center gap-2">

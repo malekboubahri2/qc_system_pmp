@@ -22,7 +22,14 @@ export function useLiveStations(): {
   });
 
   const now = Date.now();
-  const stations = (data?.stations ?? []).map((dto, i) => toStationView(dto, i, now));
+  const stations = (data?.stations ?? [])
+    .map((dto, i) => toStationView(dto, i, now))
+    // Online stations first, then those with an active session, then by name.
+    .sort((a, b) =>
+      Number(b.online) - Number(a.online) ||
+      Number(b.sessionActive) - Number(a.sessionActive) ||
+      a.name.localeCompare(b.name),
+    );
   const updatedAt = data?.updated_at ? formatTime(data.updated_at) : '—';
 
   return { stations, updatedAt, isLoading, isError };
