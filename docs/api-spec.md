@@ -36,7 +36,7 @@ All endpoints require a valid JWT except:
 > | GET | `/kpi` | operator/station/✓ | KPI snapshot (Taux NC, parts, NC, defects) |
 > | POST | `/operators` | ✓ | Create operator + login → **username/password once** |
 > | POST | `/operators/{id}/regenerate-password` | ✓ | Rotate password, return once |
-> | GET | `/reports/pdf` | ✓ | Period quality report as PDF |
+> | GET | `/reports/quality?from=&to=` | ✓ | Period quality report data (the dashboard renders + prints it) |
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|

@@ -179,6 +179,40 @@ export interface HeatmapPoint {
   count: number;
 }
 
+export interface ReportDefectRow {
+  label: string;
+  count: number;
+}
+export interface ReportOperatorRow {
+  operator: string;
+  parts: number;
+  nc_parts: number;
+  nc_rate: number;
+}
+export interface ReportDailyRow {
+  date: string;
+  parts: number;
+  nc_parts: number;
+  nc_rate: number;
+}
+export interface QualityReport {
+  date_from: string;
+  date_to: string;
+  generated_at: string;
+  inspected_parts: number;
+  nc_parts: number;
+  ok_parts: number;
+  nc_rate: number;
+  pmp_nc_parts: number;
+  pmp_nc_rate: number;
+  inj_nc_parts: number;
+  inj_nc_rate: number;
+  defects_total: number;
+  top_defects: ReportDefectRow[];
+  by_operator: ReportOperatorRow[];
+  daily: ReportDailyRow[];
+}
+
 export interface PaginatedLogs {
   items: DefectLog[];
   total: number;

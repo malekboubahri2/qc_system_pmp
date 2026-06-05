@@ -225,3 +225,15 @@
     animation: none !important;
   }
 }
+
+/* ── Print (quality report) ────────────────────────────────── */
+@media print {
+  @page { margin: 1.4cm; }
+  body { background: #fff; }
+}
+/* Force the brand bars/fills to render when printing/saving as PDF. */
+.report-sheet,
+.report-sheet * {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Radio, Package, Users, ScrollText,
-  LineChart, MonitorSmartphone, Settings, LogOut,
+  LineChart, FileText, MonitorSmartphone, Settings, LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
@@ -34,6 +34,7 @@ const mainNav = [
   { to: '/operators', label: 'Opérateurs', icon: Users, end: false },
   { to: '/logs', label: 'Journaux', icon: ScrollText, end: false },
   { to: '/analytics', label: 'Analytique', icon: LineChart, end: false },
+  { to: '/reports', label: 'Rapports', icon: FileText, end: false },
   { to: '/devices', label: 'Appareils', icon: MonitorSmartphone, end: false },
 ];
 
@@ -86,7 +87,7 @@ export function Sidebar() {
     <aside
       className={cn(
         'flex-shrink-0 h-full flex flex-col bg-brand-deep overflow-hidden',
-        'transition-[width] duration-200 ease-out',
+        'transition-[width] duration-200 ease-out print:hidden',
         isExpanded ? 'w-[240px]' : 'w-16',
       )}
       onMouseEnter={onMouseEnter}

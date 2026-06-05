@@ -11,6 +11,7 @@ import { ProductDetailPage } from '@/features/product-detail';
 import { OperatorsPage } from '@/features/operators';
 import { LogsPage } from '@/features/logs';
 import { AnalyticsPage } from '@/features/analytics';
+import { ReportsPage } from '@/features/reports';
 import { DevicesPage } from '@/features/devices';
 import { SettingsPage } from '@/features/settings';
 import { StyleguidePage } from '@/pages/StyleguidePage';
@@ -72,6 +73,10 @@ export default function App() {
             <Route
               path="/analytics"
               element={<ProtectedShell><AnalyticsPage /></ProtectedShell>}
+            />
+            <Route
+              path="/reports"
+              element={<ProtectedShell><ReportsPage /></ProtectedShell>}
             />
             <Route
               path="/devices"
