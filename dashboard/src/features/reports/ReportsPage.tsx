@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Printer, FileText } from 'lucide-react';
+import { Printer, FileText, Trophy } from 'lucide-react';
 import { getQualityReport } from '@/api/reports';
 import { config } from '@/config';
 import { daysAgo, today } from '@/components/shared/DateRangePicker';
 import { PageHeader, EmptyState } from '@/components/ui';
 import { Icon } from '@/components/Icon';
-import type { QualityReport } from '@/types';
+import type { QualityReport, ReportOperatorRow } from '@/types';
 
 function pct(r: number): string {
   return `${(r * 100).toFixed(1).replace('.', ',')} %`;
@@ -122,13 +122,26 @@ function ReportSheet({ report: r }: { report: QualityReport }) {
         )}
       </section>
 
-      {/* ── By operator ── */}
+      {/* ── By product ── */}
       <section className="break-inside-avoid mt-8">
-        <h2 className="text-lg font-semibold text-ink-head mb-3">Par opérateur</h2>
+        <h2 className="text-lg font-semibold text-ink-head mb-3">Par produit</h2>
         <Table
-          head={['Opérateur', 'Pièces', 'NC', 'Taux NC']}
-          rows={r.by_operator.map((o) => [o.operator, o.parts.toString(), o.nc_parts.toString(), pct(o.nc_rate)])}
+          head={['Produit', 'Pièces', 'NC', 'Taux NC', 'NC PMP', 'NC Inj.']}
+          rows={r.by_product.map((p) => [
+            p.reference ? `${p.product} · ${p.reference}` : p.product,
+            p.parts.toString(),
+            p.nc_parts.toString(),
+            pct(p.nc_rate),
+            p.pmp_nc_parts.toString(),
+            p.inj_nc_parts.toString(),
+          ])}
         />
+      </section>
+
+      {/* ── Operator leaderboard (productivity) ── */}
+      <section className="break-inside-avoid mt-8">
+        <h2 className="text-lg font-semibold text-ink-head mb-3">Classement des opérateurs</h2>
+        <OperatorLeaderboard rows={r.by_operator} />
       </section>
 
       {/* ── Daily trend ── */}
@@ -139,6 +152,64 @@ function ReportSheet({ report: r }: { report: QualityReport }) {
           rows={r.daily.map((d) => [fdate(d.date), d.parts.toString(), d.nc_parts.toString(), pct(d.nc_rate)])}
         />
       </section>
+    </div>
+  );
+}
+
+const MEDAL = ['🥇', '🥈', '🥉'];
+
+function OperatorLeaderboard({ rows }: { rows: ReportOperatorRow[] }) {
+  if (rows.length === 0) return <p className="text-sm text-ink-muted">Aucune donnée.</p>;
+  const top = rows[0];
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Best operator — productivity highlight */}
+      <div className="flex items-center gap-4 rounded-lg border border-accent/30 bg-accent/[0.06] px-5 py-4 break-inside-avoid">
+        <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-accent/15 text-accent">
+          <Icon icon={Trophy} size={24} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-xs uppercase tracking-wider text-ink-muted">Meilleur opérateur — productivité</p>
+          <p className="text-lg font-bold text-ink-head truncate">
+            {top.operator}
+            {top.matricule && (
+              <span className="ml-2 text-sm font-normal text-ink-muted mono">{top.matricule}</span>
+            )}
+          </p>
+        </div>
+        <div className="text-right flex-shrink-0">
+          <p className="text-2xl font-bold text-accent tabular-nums leading-none">
+            {top.parts.toLocaleString('fr-FR')}
+          </p>
+          <p className="text-xs text-ink-muted mt-1">pièces inspectées</p>
+        </div>
+      </div>
+
+      {/* Full ranking */}
+      <table className="w-full text-sm border border-cream-subtle">
+        <thead>
+          <tr className="bg-cream-subtle text-xs font-semibold uppercase tracking-wider text-ink-muted">
+            <th className="px-4 py-2.5 text-left w-12">#</th>
+            <th className="px-4 py-2.5 text-left">Opérateur</th>
+            <th className="px-4 py-2.5 text-left">Matricule</th>
+            <th className="px-4 py-2.5 text-right">Pièces</th>
+            <th className="px-4 py-2.5 text-right">NC</th>
+            <th className="px-4 py-2.5 text-right">Taux NC</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((o, i) => (
+            <tr key={o.operator + i} className={i % 2 ? 'bg-cream/30' : 'bg-white'}>
+              <td className="px-4 py-2 text-left">{MEDAL[o.rank - 1] ?? o.rank}</td>
+              <td className="px-4 py-2 text-left text-ink font-medium">{o.operator}</td>
+              <td className="px-4 py-2 text-left text-ink-muted mono">{o.matricule ?? '—'}</td>
+              <td className="px-4 py-2 text-right tabular-nums font-semibold text-ink">{o.parts}</td>
+              <td className="px-4 py-2 text-right tabular-nums text-ink-muted">{o.nc_parts}</td>
+              <td className="px-4 py-2 text-right tabular-nums text-ink-muted">{pct(o.nc_rate)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

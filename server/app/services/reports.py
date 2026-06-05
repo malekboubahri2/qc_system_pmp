@@ -15,8 +15,10 @@ from app.config import settings
 from app.constants import CATEGORY_KIND_PMP, CATEGORY_KIND_INJECTION
 from app.models.defect import InspectionLog, DefectType
 from app.models.operator import Operator
+from app.models.product import Product
 from app.schemas.report import (
-    QualityReport, ReportDefectRow, ReportOperatorRow, ReportDailyRow,
+    QualityReport, ReportDefectRow, ReportOperatorRow, ReportProductRow,
+    ReportDailyRow,
 )
 
 _ISO = "%Y-%m-%dT%H:%M:%SZ"
@@ -42,17 +44,19 @@ def build_report(db: Session, date_from: date_cls, date_to: date_cls) -> Quality
         InspectionLog.category_kind,
         InspectionLog.defect_type_id,
         InspectionLog.operator_id,
+        InspectionLog.product_id,
         InspectionLog.logged_at,
     ).filter(InspectionLog.logged_at >= lo, InspectionLog.logged_at <= hi).all()
 
     # ── Collapse rows into parts ──────────────────────────────────────────────
     parts: dict[str, dict] = {}
     defect_counts: Counter[int] = Counter()
-    for row_id, pid, outcome, cat, dtid, opid, logged in rows:
+    for row_id, pid, outcome, cat, dtid, opid, prid, logged in rows:
         key = pid or f"r{row_id}"
         part = parts.get(key)
         if part is None:
-            part = {"pmp_nc": False, "inj_nc": False, "operator": opid, "logged": logged}
+            part = {"pmp_nc": False, "inj_nc": False,
+                    "operator": opid, "product": prid, "logged": logged}
             parts[key] = part
         if outcome == "DEFECT":
             if cat == CATEGORY_KIND_PMP:
@@ -76,6 +80,21 @@ def build_report(db: Session, date_from: date_cls, date_to: date_cls) -> Quality
         if p["pmp_nc"] or p["inj_nc"]:
             op_nc[op] += 1
 
+    # ── By product ────────────────────────────────────────────────────────────
+    prod_parts: Counter[int] = Counter()
+    prod_nc: Counter[int] = Counter()
+    prod_pmp_nc: Counter[int] = Counter()
+    prod_inj_nc: Counter[int] = Counter()
+    for p in parts.values():
+        pr = p["product"]
+        prod_parts[pr] += 1
+        if p["pmp_nc"] or p["inj_nc"]:
+            prod_nc[pr] += 1
+        if p["pmp_nc"]:
+            prod_pmp_nc[pr] += 1
+        if p["inj_nc"]:
+            prod_inj_nc[pr] += 1
+
     # ── Daily trend (plant-local) ─────────────────────────────────────────────
     daily: dict[str, list[int]] = {}
     for p in parts.values():
@@ -87,7 +106,14 @@ def build_report(db: Session, date_from: date_cls, date_to: date_cls) -> Quality
 
     # ── Labels / names ────────────────────────────────────────────────────────
     labels = dict(db.query(DefectType.id, DefectType.label).all())
-    names = dict(db.query(Operator.id, Operator.name).all())
+    op_info = {
+        oid: (name, mat)
+        for oid, name, mat in db.query(Operator.id, Operator.name, Operator.matricule).all()
+    }
+    prod_info = {
+        pid: (name, ref)
+        for pid, name, ref in db.query(Product.id, Product.name, Product.reference).all()
+    }
 
     top_defects = [
         ReportDefectRow(label=labels.get(did, f"#{did}"), count=cnt)
@@ -96,12 +122,31 @@ def build_report(db: Session, date_from: date_cls, date_to: date_cls) -> Quality
     by_operator = sorted(
         (
             ReportOperatorRow(
-                operator=names.get(oid, f"#{oid}"),
+                operator=op_info.get(oid, (f"#{oid}", None))[0],
+                matricule=op_info.get(oid, (None, None))[1],
                 parts=op_parts[oid],
                 nc_parts=op_nc[oid],
                 nc_rate=_rate(op_nc[oid], op_parts[oid]),
             )
             for oid in op_parts
+        ),
+        key=lambda r: (-r.parts, r.nc_rate),
+    )
+    # Rank by productivity (parts inspected) — best operator is #1.
+    for i, row in enumerate(by_operator, start=1):
+        row.rank = i
+    by_product = sorted(
+        (
+            ReportProductRow(
+                product=prod_info.get(pid, (f"#{pid}", None))[0],
+                reference=prod_info.get(pid, (None, None))[1],
+                parts=prod_parts[pid],
+                nc_parts=prod_nc[pid],
+                nc_rate=_rate(prod_nc[pid], prod_parts[pid]),
+                pmp_nc_parts=prod_pmp_nc[pid],
+                inj_nc_parts=prod_inj_nc[pid],
+            )
+            for pid in prod_parts
         ),
         key=lambda r: -r.parts,
     )
@@ -125,5 +170,6 @@ def build_report(db: Session, date_from: date_cls, date_to: date_cls) -> Quality
         defects_total=sum(defect_counts.values()),
         top_defects=top_defects,
         by_operator=by_operator,
+        by_product=by_product,
         daily=daily_rows,
     )

@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel
 
 
@@ -8,9 +9,21 @@ class ReportDefectRow(BaseModel):
 
 class ReportOperatorRow(BaseModel):
     operator: str
+    matricule: Optional[str] = None
+    rank: int = 0          # 1-based, by parts inspected (productivity score)
+    parts: int             # the productivity score
+    nc_parts: int
+    nc_rate: float
+
+
+class ReportProductRow(BaseModel):
+    product: str
+    reference: Optional[str] = None
     parts: int
     nc_parts: int
     nc_rate: float
+    pmp_nc_parts: int
+    inj_nc_parts: int
 
 
 class ReportDailyRow(BaseModel):
@@ -37,4 +50,5 @@ class QualityReport(BaseModel):
     defects_total: int
     top_defects: list[ReportDefectRow]
     by_operator: list[ReportOperatorRow]
+    by_product: list[ReportProductRow]
     daily: list[ReportDailyRow]

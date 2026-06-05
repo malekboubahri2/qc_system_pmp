@@ -235,9 +235,20 @@ export interface ReportDefectRow {
 }
 export interface ReportOperatorRow {
   operator: string;
+  matricule: string | null;
+  rank: number;
   parts: number;
   nc_parts: number;
   nc_rate: number;
+}
+export interface ReportProductRow {
+  product: string;
+  reference: string | null;
+  parts: number;
+  nc_parts: number;
+  nc_rate: number;
+  pmp_nc_parts: number;
+  inj_nc_parts: number;
 }
 export interface ReportDailyRow {
   date: string;
@@ -260,6 +271,7 @@ export interface QualityReport {
   defects_total: number;
   top_defects: ReportDefectRow[];
   by_operator: ReportOperatorRow[];
+  by_product: ReportProductRow[];
   daily: ReportDailyRow[];
 }
 
