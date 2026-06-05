@@ -6,6 +6,7 @@ import { OfflineProvider } from './offline/OfflineContext';
 import { InspectionFlowProvider } from './flow/InspectionFlowContext';
 import { useInspectSession, hasToken, logoutToLogin } from './session';
 import { useHeartbeat } from './useHeartbeat';
+import { useWakeLock } from './useWakeLock';
 import { ProductPickerScreen } from './screens/ProductPickerScreen';
 import { CategoryPage } from './screens/CategoryPage';
 import { SummaryScreen } from './screens/SummaryScreen';
@@ -14,8 +15,11 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
 });
 
-function Heartbeat() {
+// Kiosk side-effects while an operator is active: presence heartbeat + keep the
+// screen awake. Renders nothing.
+function KioskRuntime() {
   useHeartbeat();
+  useWakeLock();
   return null;
 }
 
@@ -55,7 +59,7 @@ export function InspectApp() {
         <InspectionFlowProvider>
           <HashRouter>
             <RequireOperator>
-              <Heartbeat />
+              <KioskRuntime />
               <Routes>
                 <Route path="/" element={<ProductPickerScreen />} />
                 <Route path="/pmp" element={<CategoryPage category="PMP" />} />

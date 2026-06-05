@@ -13,6 +13,7 @@ volumes:
   qc-data:         # SQLite database
   mosquitto-data:  # Mosquitto persistence (retained messages)
   mosquitto-cfg:   # Writable config dir — populated by entrypoint from bind-mounts
+  caddy-data:      # Caddy internal CA + certs (stable root across restarts)
 
 services:
 
@@ -111,6 +112,9 @@ services:
       LOCALE: ${LOCALE:-fr-TN}
     ports:
       - "8080:80"
+      - "443:443"   # HTTPS (Caddy internal CA) for the installable kiosk PWA
+    volumes:
+      - caddy-data:/data   # persist Caddy's internal CA across restarts
     networks:
       - qc-net
     depends_on:

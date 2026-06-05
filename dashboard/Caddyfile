@@ -1,8 +1,18 @@
 {
 	admin off
+	# Keep plain HTTP on :80 working (no forced redirect to HTTPS).
+	auto_https disable_redirects
+	# On-demand internal TLS: issue a cert for whatever host/IP the tablet uses
+	# (the Pi's address changes between networks). The closed LAN has no public
+	# CA; the server health endpoint returns 200 for any host, so it acts as a
+	# permissive allow-list for on-demand issuance.
+	on_demand_tls {
+		ask http://{env.API_HOST}/health
+	}
 }
 
-:80 {
+# Shared site handlers (served over both HTTP and HTTPS).
+(site) {
 	root * /usr/share/caddy
 
 	# Inject runtime config so the built JS can read API URL, plant name, locale
@@ -32,4 +42,20 @@
 	}
 
 	encode gzip
+}
+
+# HTTP (kept working; also lets the tablet reach the CA download below).
+:80 {
+	import site
+}
+
+# HTTPS with Caddy's internal CA — required for the PWA to be installable,
+# load offline (service worker), and use the screen wake-lock. Install the root
+# CA on the tablet once (see docs/runbook-kiosk.md).
+:443 {
+	tls {
+		issuer internal
+		on_demand
+	}
+	import site
 }
