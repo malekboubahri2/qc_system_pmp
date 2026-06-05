@@ -69,3 +69,13 @@ def test_heartbeat_refreshes_presence(client, auth_headers, db):
 
 def test_heartbeat_requires_auth(client):
     assert client.post("/devices/heartbeat", json={"device_id": "x"}).status_code == 401
+
+
+def test_disconnect_marks_device_offline_immediately(client, auth_headers, db):
+    client.post("/devices/heartbeat", headers=auth_headers, json={"device_id": "qc-web-dc"})
+    db.expire_all()
+    assert db.get(Device, "qc-web-dc").online is True
+    resp = client.post("/devices/disconnect", headers=auth_headers, json={"device_id": "qc-web-dc"})
+    assert resp.status_code == 204
+    db.expire_all()
+    assert db.get(Device, "qc-web-dc").online is False

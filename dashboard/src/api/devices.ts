@@ -15,3 +15,8 @@ export async function getLiveStations(): Promise<LiveStationsResponse> {
 export async function heartbeat(deviceId: string, name?: string): Promise<void> {
   await client.post('/devices/heartbeat', { device_id: deviceId, name });
 }
+
+// Graceful logout — flip the station offline immediately.
+export async function disconnectDevice(deviceId: string): Promise<void> {
+  await client.post('/devices/disconnect', { device_id: deviceId });
+}

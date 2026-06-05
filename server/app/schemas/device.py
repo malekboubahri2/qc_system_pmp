@@ -18,3 +18,7 @@ class DeviceRead(BaseModel):
 class DeviceHeartbeat(BaseModel):
     device_id: str = Field(min_length=1, max_length=64)
     name: Optional[str] = Field(default=None, max_length=64)
+
+
+class DeviceDisconnect(BaseModel):
+    device_id: str = Field(min_length=1, max_length=64)

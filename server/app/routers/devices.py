@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 from app.deps import get_db, get_current_user, require_roles
 from app.models.user import User
-from app.schemas.device import DeviceRead, DeviceHeartbeat
+from app.schemas.device import DeviceRead, DeviceHeartbeat, DeviceDisconnect
 from app.schemas.live import LiveStationsResponse
 from app.services import devices as svc
 from app.services import live_stations as live_svc
@@ -24,6 +24,17 @@ def heartbeat(
 ):
     """Tablet presence ping — keeps the station shown online while connected."""
     svc.heartbeat(db, body.device_id, body.name)
+
+
+# Declared before /{device_id} so "disconnect" isn't captured as a device id.
+@router.post("/disconnect", status_code=status.HTTP_204_NO_CONTENT)
+def disconnect(
+    body: DeviceDisconnect,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles("operator", "station", "admin")),
+):
+    """Graceful logout — flip the station offline now, not after the timeout."""
+    svc.disconnect(db, body.device_id)
 
 
 # Must precede /{device_id} so "live" isn't captured as a device id.

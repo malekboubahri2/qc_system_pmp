@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Package, LogOut } from 'lucide-react';
 import { useProducts } from '@/hooks/useProducts';
 import { useInspectionFlow } from '../flow/InspectionFlowContext';
-import { useInspectSession, logoutToLogin } from '../session';
+import { useInspectSession, logout } from '../session';
 import { InspectScreen } from '../components/InspectScreen';
 import { TouchButton } from '../components/TouchButton';
 
@@ -19,7 +19,7 @@ export function ProductPickerScreen() {
       title="Quel produit ?"
       subtitle={me?.operator_name ? `Opérateur : ${me.operator_name}` : undefined}
       action={
-        <TouchButton variant="ghost" onClick={logoutToLogin}>
+        <TouchButton variant="ghost" onClick={() => { void logout(); }}>
           <LogOut size={18} /> Quitter
         </TouchButton>
       }

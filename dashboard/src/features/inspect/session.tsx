@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { getMe } from '@/api/auth';
+import { disconnectDevice } from '@/api/devices';
 import type { User } from '@/types';
+import { getDeviceId } from './device';
 
 const TOKEN_KEY = 'qc_token';
 const SESSION_START_KEY = 'qc_session_start';
@@ -31,4 +33,16 @@ export function logoutToLogin(): void {
   localStorage.removeItem(SESSION_START_KEY);
   // Back to the unified login (admin bundle).
   window.location.href = '/login';
+}
+
+// Explicit operator logout ("Quitter"): tell the server we're going offline
+// (so the station flips offline immediately, not after the 90s timeout) while
+// the token is still valid, then clear it and return to login.
+export async function logout(): Promise<void> {
+  try {
+    await disconnectDevice(getDeviceId());
+  } catch {
+    /* offline or already invalid — the heartbeat timeout covers it */
+  }
+  logoutToLogin();
 }

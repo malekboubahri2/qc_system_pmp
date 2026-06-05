@@ -176,7 +176,6 @@ export function OperatorsPage() {
               <tr className="bg-cream-subtle text-xs font-semibold uppercase tracking-wider text-ink-muted">
                 <th className="px-5 py-4 text-left">Nom</th>
                 <th className="px-5 py-4 text-left">Identifiant</th>
-                <th className="px-5 py-4 text-left">Statut</th>
                 <th className="px-5 py-4 text-right">Actions</th>
               </tr>
             </thead>
@@ -190,11 +189,6 @@ export function OperatorsPage() {
                     ) : (
                       <Pill variant="warning" dot>Aucun accès</Pill>
                     )}
-                  </td>
-                  <td className="px-5 py-4">
-                    <Pill variant={op.active ? 'success' : 'danger'} dot>
-                      {op.active ? 'Actif' : 'Archivé'}
-                    </Pill>
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-2 justify-end">

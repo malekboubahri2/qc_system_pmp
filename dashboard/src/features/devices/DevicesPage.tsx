@@ -43,14 +43,14 @@ export function DevicesPage() {
           <EmptyState
             icon={WifiOff}
             title="Aucun appareil enregistré"
-            description="Les terminaux STM32 apparaissent ici dès leur première connexion MQTT."
+            description="Les tablettes d'inspection et le tableau KPI apparaissent ici dès leur première activité."
             className="py-16"
           />
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-cream-subtle text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                <th className="px-5 py-4 text-left">Identifiant</th>
+                <th className="px-5 py-4 text-left">Appareil</th>
                 <th className="px-5 py-4 text-left">Statut</th>
                 <th className="px-5 py-4 text-left">Dernière connexion</th>
                 <th className="px-5 py-4 text-left">Version config</th>
@@ -59,10 +59,13 @@ export function DevicesPage() {
             <tbody>
               {devices.map((device, i) => (
                 <tr key={device.id} className={i % 2 === 0 ? 'bg-white' : 'bg-cream/30'}>
-                  <td className="px-5 py-4 font-mono text-sm text-ink">
+                  <td className="px-5 py-4 text-sm text-ink">
                     <span className="flex items-center gap-2">
                       <Icon icon={device.online ? Wifi : WifiOff} size={15} className={device.online ? 'text-success' : 'text-ink-muted/40'} />
-                      {device.id}
+                      <span className="flex flex-col">
+                        <span className="font-medium">{device.name || device.id}</span>
+                        {device.name && <span className="font-mono text-xs text-ink-muted">{device.id}</span>}
+                      </span>
                     </span>
                   </td>
                   <td className="px-5 py-4 text-sm">

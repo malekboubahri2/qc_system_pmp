@@ -29,6 +29,16 @@ def heartbeat(db: Session, device_id: str, name: str | None = None) -> Device:
     return dev
 
 
+def disconnect(db: Session, device_id: str) -> None:
+    """Mark a station offline immediately (graceful logout/close) instead of
+    waiting out the 90s heartbeat timeout. Clears last_seen so `online` is False;
+    a later heartbeat brings it back."""
+    dev = db.get(Device, device_id)
+    if dev is not None:
+        dev.last_seen = None
+        db.commit()
+
+
 def get_all(db: Session, active_only: bool = True) -> list[Device]:
     q = db.query(Device)
     if active_only:
