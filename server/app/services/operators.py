@@ -67,26 +67,39 @@ def operator_id_for_user(db: Session, user_id: int) -> Optional[int]:
 # ── Mutations ────────────────────────────────────────────────────────────────
 
 def create(db: Session, data: OperatorCreate) -> tuple[Operator, str, str]:
-    """Create an operator and its login account (role `operator`). Returns the
-    operator plus the generated username and password — the credentials are
-    revealed exactly once; only the password hash is stored (ADR-018)."""
-    username = _unique_username(db, _slug(data.name))
+    """Create an operator and its login account (role `operator`). The matricule
+    is the login username; the password is generated and revealed exactly once
+    (only its hash is stored). Returns (operator, username, password)."""
+    if db.query(User).filter(User.email == data.matricule).first() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Ce matricule est déjà utilisé",
+        )
     password = generate_password(settings.operator_password_length)
-    user = User(email=username, password_hash=hash_password(password), role=_OPERATOR_ROLE)
+    user = User(email=data.matricule, password_hash=hash_password(password), role=_OPERATOR_ROLE)
     db.add(user)
     db.flush()
-    op = Operator(name=data.name, user_id=user.id)
+    op = Operator(
+        name=data.name,
+        matricule=data.matricule,
+        last_name=data.last_name,
+        phone=data.phone,
+        address=data.address,
+        user_id=user.id,
+    )
     db.add(op)
     db.commit()
     db.refresh(op)
     mqtt_payloads.publish_operator_list()
-    return op, username, password
+    return op, data.matricule, password
 
 
 def update(db: Session, operator_id: int, data: OperatorUpdate) -> Operator:
     op = get_by_id(db, operator_id)
-    if data.name is not None:
-        op.name = data.name
+    fields = data.model_dump(exclude_unset=True)
+    for field in ("name", "last_name", "phone", "address"):
+        if field in fields:
+            setattr(op, field, fields[field])
     db.commit()
     db.refresh(op)
     mqtt_payloads.publish_operator_list()

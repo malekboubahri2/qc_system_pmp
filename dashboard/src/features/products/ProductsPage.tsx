@@ -2,20 +2,15 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import { toast } from 'sonner';
 import { Plus, ChevronRight, Archive, Layers } from 'lucide-react';
 import { useProducts, useCreateProduct, useArchiveProduct } from '@/hooks/useProducts';
+import { productSchema, type ProductForm } from '@/lib/schemas';
 import { Button } from '@/components/shared/Button';
 import { Modal } from '@/components/shared/Modal';
 import { FormField } from '@/components/shared/FormField';
 import { Icon } from '@/components/Icon';
 import { PageHeader, Section, EmptyState } from '@/components/ui';
-
-const productSchema = z.object({
-  name: z.string().min(1, 'Nom requis').max(64, '64 caractères max'),
-});
-type ProductForm = z.infer<typeof productSchema>;
 
 export function ProductsPage() {
   const { data: products = [], isLoading } = useProducts();
@@ -27,7 +22,12 @@ export function ProductsPage() {
     useForm<ProductForm>({ resolver: zodResolver(productSchema) });
 
   async function onSubmit(data: ProductForm) {
-    await createProduct.mutateAsync(data);
+    await createProduct.mutateAsync({
+      name: data.name,
+      reference: data.reference || null,
+      client: data.client || null,
+      cheatsheet: data.cheatsheet || null,
+    });
     toast.success('Produit créé — types de défauts initialisés');
     reset();
     setModalOpen(false);
@@ -112,6 +112,20 @@ export function ProductsPage() {
             placeholder="ex. Capot moteur"
             {...register('name')}
           />
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="Référence" error={errors.reference?.message} placeholder="ex. PROD-001" {...register('reference')} />
+            <FormField label="Client" error={errors.client?.message} placeholder="ex. Renault" {...register('client')} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <label className="text-sm font-medium text-ink-head">Fiche / consignes</label>
+            <textarea
+              {...register('cheatsheet')}
+              rows={3}
+              placeholder="Points de contrôle, consignes d'inspection…"
+              className="bg-white border border-cream-subtle rounded-lg px-3 py-2.5 text-sm resize-none
+                focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent"
+            />
+          </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="secondary" size="sm" onClick={() => setModalOpen(false)}>
               Annuler

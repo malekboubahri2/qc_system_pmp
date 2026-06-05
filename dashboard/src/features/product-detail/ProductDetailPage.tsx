@@ -6,15 +6,16 @@ import { z } from 'zod';
 import { toast } from 'sonner';
 import { Plus, Pencil, Archive } from 'lucide-react';
 import {
-  useProducts, useDefectTypes, useCategoryConstants,
+  useProducts, useUpdateProduct, useDefectTypes, useCategoryConstants,
   useCreateDefectType, useUpdateDefectType, useArchiveDefectType,
 } from '@/hooks/useProducts';
+import { productSchema, type ProductForm } from '@/lib/schemas';
 import { Button } from '@/components/shared/Button';
 import { Modal } from '@/components/shared/Modal';
 import { FormField } from '@/components/shared/FormField';
 import { Icon } from '@/components/Icon';
 import { PageHeader } from '@/components/ui';
-import type { DefectType } from '@/types';
+import type { DefectType, Product } from '@/types';
 import { DEFECT_TYPES_PER_CATEGORY_CAP } from './constants';
 
 const typeSchema = z.object({
@@ -186,16 +187,43 @@ export function ProductDetailPage() {
 
   const { data: products = [] } = useProducts();
   const { data: categories = [] } = useCategoryConstants();
+  const [editOpen, setEditOpen] = useState(false);
 
   const product = products.find((p) => p.id === id);
+  const hasInfo = product && (product.reference || product.client || product.cheatsheet);
 
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
         breadcrumb={[{ label: 'Produits', href: '/products' }, { label: product?.name ?? '…' }]}
         title={product?.name ?? '…'}
-        subtitle="Types de défauts par catégorie"
+        subtitle="Fiche produit & types de défauts"
+        right={product && (
+          <Button variant="secondary" onClick={() => setEditOpen(true)}>
+            <Icon icon={Pencil} size={15} /> Modifier la fiche
+          </Button>
+        )}
       />
+
+      {hasInfo && (
+        <div className="bg-white rounded-lg p-5 flex flex-col gap-3" style={{ boxShadow: '0 1px 3px rgba(26,85,96,0.08)' }}>
+          <div className="flex flex-wrap gap-x-10 gap-y-2 text-sm">
+            {product!.reference && (
+              <div><span className="text-ink-muted">Référence : </span><span className="font-mono text-ink">{product!.reference}</span></div>
+            )}
+            {product!.client && (
+              <div><span className="text-ink-muted">Client : </span><span className="font-medium text-ink">{product!.client}</span></div>
+            )}
+          </div>
+          {product!.cheatsheet && (
+            <div className="text-sm text-ink-muted whitespace-pre-wrap border-t border-cream-subtle pt-3">{product!.cheatsheet}</div>
+          )}
+        </div>
+      )}
+
+      {product && (
+        <ProductEditModal open={editOpen} onClose={() => setEditOpen(false)} product={product} />
+      )}
 
       {categories.map((cat) => (
         <CategorySection
@@ -206,5 +234,66 @@ export function ProductDetailPage() {
         />
       ))}
     </div>
+  );
+}
+
+// ── Product fiche edit modal ──────────────────────────────────────
+function ProductEditModal({
+  open, onClose, product,
+}: {
+  open: boolean;
+  onClose: () => void;
+  product: Product;
+}) {
+  const updateProduct = useUpdateProduct();
+  const { register, handleSubmit, formState: { errors, isSubmitting } } =
+    useForm<ProductForm>({
+      resolver: zodResolver(productSchema),
+      values: {
+        name: product.name,
+        reference: product.reference ?? '',
+        client: product.client ?? '',
+        cheatsheet: product.cheatsheet ?? '',
+      },
+    });
+
+  async function submit(data: ProductForm) {
+    await updateProduct.mutateAsync({
+      id: product.id,
+      body: {
+        name: data.name,
+        reference: data.reference || null,
+        client: data.client || null,
+        cheatsheet: data.cheatsheet || null,
+      },
+    });
+    toast.success('Fiche produit mise à jour');
+    onClose();
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Modifier la fiche produit" size="sm">
+      <form onSubmit={handleSubmit(submit)} className="flex flex-col gap-4">
+        <FormField label="Nom" required error={errors.name?.message} {...register('name')} />
+        <div className="grid grid-cols-2 gap-3">
+          <FormField label="Référence" error={errors.reference?.message} placeholder="ex. PROD-001" {...register('reference')} />
+          <FormField label="Client" error={errors.client?.message} placeholder="ex. Renault" {...register('client')} />
+        </div>
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium text-ink-head">Fiche / consignes</label>
+          <textarea
+            {...register('cheatsheet')}
+            rows={4}
+            placeholder="Points de contrôle, consignes d'inspection…"
+            className="bg-white border border-cream-subtle rounded-lg px-3 py-2.5 text-sm resize-none
+              focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent"
+          />
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="secondary" size="sm" onClick={onClose}>Annuler</Button>
+          <Button type="submit" size="sm" loading={isSubmitting}>Enregistrer</Button>
+        </div>
+      </form>
+    </Modal>
   );
 }

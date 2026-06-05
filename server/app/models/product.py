@@ -14,6 +14,10 @@ class Product(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(64), nullable=False)
+    reference: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    client: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    # Free-text inspection notes / cheatsheet shown on the product page.
+    cheatsheet: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
     archived_at: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     created_at: Mapped[str] = mapped_column(

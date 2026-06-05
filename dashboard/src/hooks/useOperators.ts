@@ -13,7 +13,7 @@ export function useOperators(includeArchived = false) {
 export function useCreateOperator() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (name: string) => api.createOperator(name),
+    mutationFn: (body: api.OperatorInput) => api.createOperator(body),
     onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
   });
 }
@@ -21,8 +21,8 @@ export function useCreateOperator() {
 export function useUpdateOperator() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, name }: { id: number; name: string }) =>
-      api.updateOperator(id, { name }),
+    mutationFn: ({ id, body }: { id: number; body: Partial<Omit<api.OperatorInput, 'matricule'>> }) =>
+      api.updateOperator(id, body),
     onSuccess: () => qc.invalidateQueries({ queryKey: [KEY] }),
   });
 }

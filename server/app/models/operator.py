@@ -10,6 +10,11 @@ class Operator(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String, nullable=False)
+    # HR details. `matricule` is the operator's login username (ADR-018).
+    matricule: Mapped[Optional[str]] = mapped_column(String(32), nullable=True, unique=True)
+    last_name: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    phone: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    address: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     # Login account that owns this operator (role `operator`). Operators sign in
     # with username + password; this links attribution to their user (ADR-018).
     user_id: Mapped[Optional[int]] = mapped_column(

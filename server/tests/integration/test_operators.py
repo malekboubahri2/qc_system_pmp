@@ -1,8 +1,14 @@
+import itertools
 from unittest.mock import patch
 
+_mat = itertools.count(1)
 
-def _create(client, headers, name="Mohammed"):
-    return client.post("/operators", json={"name": name}, headers=headers)
+
+def _create(client, headers, name="Mohammed", matricule=None, **extra):
+    if matricule is None:
+        matricule = f"M{next(_mat):04d}"
+    body = {"matricule": matricule, "name": name, **extra}
+    return client.post("/operators", json=body, headers=headers)
 
 
 def _login(client, username, password):
@@ -16,13 +22,16 @@ def test_list_operators_empty(client, auth_headers):
 
 
 def test_create_operator_returns_credentials_once(client, auth_headers):
-    resp = _create(client, auth_headers)
+    resp = _create(client, auth_headers, matricule="EMP-0427",
+                   last_name="Benali", phone="55123456")
     assert resp.status_code == 201
     body = resp.json()
     assert body["name"] == "Mohammed"
+    assert body["last_name"] == "Benali"
+    assert body["matricule"] == "EMP-0427"
+    assert body["username"] == "EMP-0427"   # matricule is the login
     assert body["active"] is True
     assert body["has_login"] is True
-    assert body["username"]                 # generated login id
     assert body["password"]                 # plaintext, returned once
     assert "password_hash" not in body
 
@@ -34,10 +43,9 @@ def test_created_operator_can_log_in(client, auth_headers):
     assert "access_token" in resp.json()
 
 
-def test_usernames_are_unique_for_same_name(client, auth_headers):
-    a = _create(client, auth_headers, "Ali").json()
-    b = _create(client, auth_headers, "Ali").json()
-    assert a["username"] != b["username"]
+def test_duplicate_matricule_rejected(client, auth_headers):
+    assert _create(client, auth_headers, "Ali", matricule="DUP").status_code == 201
+    assert _create(client, auth_headers, "Karim", matricule="DUP").status_code == 409
 
 
 def test_get_operator_exposes_login_not_password(client, auth_headers):

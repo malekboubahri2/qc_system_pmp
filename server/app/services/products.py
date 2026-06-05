@@ -37,7 +37,12 @@ def get_by_id(db: Session, product_id: int) -> Product:
 
 
 def create(db: Session, data: ProductCreate) -> Product:
-    product = Product(name=data.name)
+    product = Product(
+        name=data.name,
+        reference=data.reference,
+        client=data.client,
+        cheatsheet=data.cheatsheet,
+    )
     db.add(product)
     db.flush()  # get product.id without full commit
     _create_fallback_types(db, product.id)
@@ -48,8 +53,10 @@ def create(db: Session, data: ProductCreate) -> Product:
 
 def update(db: Session, product_id: int, data: ProductUpdate) -> Product:
     p = get_by_id(db, product_id)
-    if data.name is not None:
-        p.name = data.name
+    fields = data.model_dump(exclude_unset=True)
+    for field in ("name", "reference", "client", "cheatsheet"):
+        if field in fields:
+            setattr(p, field, fields[field])
     db.commit()
     db.refresh(p)
     return p

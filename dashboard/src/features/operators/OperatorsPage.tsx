@@ -17,40 +17,57 @@ import type { Operator } from '@/types';
 
 interface Creds { name: string; username: string; password: string }
 
-// ── Operator name modal (create / rename) ────────────────────────
+// ── Operator modal (create / edit) ───────────────────────────────
 function OperatorModal({
   open, onClose, initial, onSave,
 }: {
   open: boolean;
   onClose: () => void;
   initial?: Operator;
-  onSave: (name: string) => Promise<void>;
+  onSave: (data: OperatorForm) => Promise<void>;
 }) {
+  const editing = !!initial;
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } =
     useForm<OperatorForm>({
       resolver: zodResolver(operatorSchema),
-      values: initial ? { name: initial.name } : undefined,
+      values: initial
+        ? {
+            matricule: initial.matricule ?? '',
+            name: initial.name,
+            last_name: initial.last_name ?? '',
+            phone: initial.phone ?? '',
+            address: initial.address ?? '',
+          }
+        : undefined,
     });
 
   async function submit(data: OperatorForm) {
-    await onSave(data.name);
+    await onSave(data);
     reset();
     onClose();
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={initial ? "Modifier l'opérateur" : 'Nouvel opérateur'} size="sm">
+    <Modal open={open} onClose={onClose} title={editing ? "Modifier l'opérateur" : 'Nouvel opérateur'} size="sm">
       <form onSubmit={handleSubmit(submit)} className="flex flex-col gap-4">
-        <FormField label="Nom" required error={errors.name?.message} placeholder="ex. Ahmed Ben Ali" {...register('name')} />
-        {!initial && (
+        <FormField label="Matricule" required error={errors.matricule?.message}
+          placeholder="ex. EMP-0427" disabled={editing}
+          {...register('matricule')} />
+        <div className="grid grid-cols-2 gap-3">
+          <FormField label="Prénom" required error={errors.name?.message} placeholder="ex. Ahmed" {...register('name')} />
+          <FormField label="Nom de famille" error={errors.last_name?.message} placeholder="ex. Ben Ali" {...register('last_name')} />
+        </div>
+        <FormField label="Téléphone" error={errors.phone?.message} placeholder="ex. 55 123 456" {...register('phone')} />
+        <FormField label="Adresse" error={errors.address?.message} placeholder="ex. 12 rue …" {...register('address')} />
+        {!editing && (
           <p className="text-sm text-ink-muted">
-            Un identifiant et un mot de passe seront générés automatiquement et
-            affichés une seule fois.
+            Le matricule sert d&apos;identifiant de connexion ; un mot de passe est
+            généré et affiché une seule fois.
           </p>
         )}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="secondary" size="sm" onClick={onClose}>Annuler</Button>
-          <Button type="submit" size="sm" loading={isSubmitting}>{initial ? 'Enregistrer' : 'Créer'}</Button>
+          <Button type="submit" size="sm" loading={isSubmitting}>{editing ? 'Enregistrer' : 'Créer'}</Button>
         </div>
       </form>
     </Modal>
@@ -119,14 +136,26 @@ export function OperatorsPage() {
   const [opModal, setOpModal] = useState<{ open: boolean; editing?: Operator }>({ open: false });
   const [reveal, setReveal] = useState<{ open: boolean; creds: Creds | null }>({ open: false, creds: null });
 
-  async function handleSaveOp(name: string) {
+  async function handleSaveOp(form: OperatorForm) {
+    const details = {
+      name: form.name,
+      last_name: form.last_name || null,
+      phone: form.phone || null,
+      address: form.address || null,
+    };
     if (opModal.editing) {
-      await updateOp.mutateAsync({ id: opModal.editing.id, name });
+      await updateOp.mutateAsync({ id: opModal.editing.id, body: details });
       toast.success('Opérateur modifié');
-    } else {
-      const created = await createOp.mutateAsync(name);
+      return;
+    }
+    try {
+      const created = await createOp.mutateAsync({ matricule: form.matricule, ...details });
       toast.success('Opérateur créé');
       setReveal({ open: true, creds: { name: created.name, username: created.username ?? '', password: created.password } });
+    } catch (err) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      toast.error(status === 409 ? 'Ce matricule est déjà utilisé' : 'Échec de la création');
+      throw err; // keep the modal open
     }
   }
 
@@ -182,7 +211,10 @@ export function OperatorsPage() {
             <tbody>
               {operators.map((op, i) => (
                 <tr key={op.id} className={i % 2 === 0 ? 'bg-white' : 'bg-cream/30'}>
-                  <td className="px-5 py-4 font-medium text-sm text-ink">{op.name}</td>
+                  <td className="px-5 py-4 font-medium text-sm text-ink">
+                    {op.name}{op.last_name ? ` ${op.last_name}` : ''}
+                    {op.phone && <span className="block text-xs font-normal text-ink-muted mt-0.5">{op.phone}</span>}
+                  </td>
                   <td className="px-5 py-4">
                     {op.has_login ? (
                       <span className="font-mono text-ink-muted">{op.username}</span>

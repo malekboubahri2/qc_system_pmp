@@ -14,7 +14,11 @@ export interface AuthToken {
 
 export interface Operator {
   id: number;
+  matricule?: string | null;
   name: string;
+  last_name?: string | null;
+  phone?: string | null;
+  address?: string | null;
   username?: string | null;
   has_login: boolean;
   pin_set: boolean;
@@ -58,6 +62,9 @@ export interface KpiSnapshot {
 export interface Product {
   id: number;
   name: string;
+  reference?: string | null;
+  client?: string | null;
+  cheatsheet?: string | null;
   active: boolean;
   created_at: string;
 }

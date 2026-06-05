@@ -101,7 +101,7 @@ def test_kpi_is_scoped_to_the_calling_operator(client, auth_headers, kpi_seed):
     s = kpi_seed
 
     def op_headers(name):
-        created = client.post("/operators", json={"name": name}, headers=auth_headers).json()
+        created = client.post("/operators", json={"matricule": name, "name": name}, headers=auth_headers).json()
         login = client.post(
             "/auth/login",
             json={"email": created["username"], "password": created["password"]},
@@ -129,7 +129,7 @@ def test_kpi_is_scoped_to_the_calling_operator(client, auth_headers, kpi_seed):
 
 def test_kpi_since_scopes_to_the_session_window(client, auth_headers, kpi_seed):
     s = kpi_seed
-    created = client.post("/operators", json={"name": "Sess"}, headers=auth_headers).json()
+    created = client.post("/operators", json={"matricule": "SESS1", "name": "Sess"}, headers=auth_headers).json()
     login = client.post(
         "/auth/login",
         json={"email": created["username"], "password": created["password"]},

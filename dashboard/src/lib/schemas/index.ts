@@ -11,10 +11,29 @@ export const typeSchema = z.object({
 });
 export type TypeForm = z.infer<typeof typeSchema>;
 
+const optionalText = (max: number) =>
+  z.string().max(max, `${max} caractères max`).optional().or(z.literal(''));
+
 export const operatorSchema = z.object({
-  name: z.string().min(1, 'Nom requis').max(64, '64 caractères max'),
+  matricule: z
+    .string()
+    .min(1, 'Matricule requis')
+    .max(32, '32 caractères max')
+    .regex(/^[A-Za-z0-9._-]+$/, 'Lettres, chiffres, . _ - uniquement'),
+  name: z.string().min(1, 'Prénom requis').max(64, '64 caractères max'),
+  last_name: optionalText(64),
+  phone: optionalText(32),
+  address: optionalText(255),
 });
 export type OperatorForm = z.infer<typeof operatorSchema>;
+
+export const productSchema = z.object({
+  name: z.string().min(1, 'Nom requis').max(64, '64 caractères max'),
+  reference: optionalText(64),
+  client: optionalText(120),
+  cheatsheet: optionalText(2000),
+});
+export type ProductForm = z.infer<typeof productSchema>;
 
 export const pinSchema = z.object({
   pin: z.string().regex(/^\d{4,8}$/, 'PIN : 4 à 8 chiffres numériques'),

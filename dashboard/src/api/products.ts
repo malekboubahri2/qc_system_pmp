@@ -9,15 +9,19 @@ export async function listProducts(includeArchived = false): Promise<Product[]> 
   return data;
 }
 
-export async function createProduct(body: { name: string }): Promise<Product> {
+export interface ProductInput {
+  name?: string;
+  reference?: string | null;
+  client?: string | null;
+  cheatsheet?: string | null;
+}
+
+export async function createProduct(body: ProductInput): Promise<Product> {
   const { data } = await client.post<Product>('/products', body);
   return data;
 }
 
-export async function updateProduct(
-  id: number,
-  body: { name?: string },
-): Promise<Product> {
+export async function updateProduct(id: number, body: ProductInput): Promise<Product> {
   const { data } = await client.patch<Product>(`/products/${id}`, body);
   return data;
 }

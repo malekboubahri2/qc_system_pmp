@@ -91,7 +91,7 @@ def test_operator_posts_own_inspection(client, db, auth_headers, insp_seed):
     # An operator logs in and submits without operator_id; the server attributes
     # the part to their own linked operator (body cannot spoof it).
     s = insp_seed
-    created = client.post("/operators", json={"name": "Bob"}, headers=auth_headers).json()
+    created = client.post("/operators", json={"matricule": "BOB1", "name": "Bob"}, headers=auth_headers).json()
     login = client.post(
         "/auth/login",
         json={"email": created["username"], "password": created["password"]},

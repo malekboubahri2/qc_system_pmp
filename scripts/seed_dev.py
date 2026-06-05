@@ -142,7 +142,7 @@ def _seed_operators(db) -> list[Operator]:
                 )
                 db.add(user)
                 db.flush()
-            op = Operator(name=data["name"], user_id=user.id)
+            op = Operator(name=data["name"], matricule=data["username"], user_id=user.id)
             db.add(op)
             print(f"  + operator '{data['name']}' (login: {data['username']} / {data['password']})")
         else:

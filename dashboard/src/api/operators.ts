@@ -8,9 +8,18 @@ export async function listOperators(includeArchived = false): Promise<Operator[]
   return data;
 }
 
-// The server creates the login user and returns username + password once.
-export async function createOperator(name: string): Promise<OperatorWithCredentials> {
-  const { data } = await client.post<OperatorWithCredentials>('/operators', { name });
+export interface OperatorInput {
+  matricule: string;
+  name: string;
+  last_name?: string | null;
+  phone?: string | null;
+  address?: string | null;
+}
+
+// The matricule is the login; the server returns username (= matricule) +
+// password once.
+export async function createOperator(body: OperatorInput): Promise<OperatorWithCredentials> {
+  const { data } = await client.post<OperatorWithCredentials>('/operators', body);
   return data;
 }
 
@@ -22,7 +31,10 @@ export async function regeneratePassword(id: number): Promise<OperatorWithCreden
   return data;
 }
 
-export async function updateOperator(id: number, body: { name: string }): Promise<Operator> {
+export async function updateOperator(
+  id: number,
+  body: Partial<Omit<OperatorInput, 'matricule'>>,
+): Promise<Operator> {
   const { data } = await client.patch<Operator>(`/operators/${id}`, body);
   return data;
 }
