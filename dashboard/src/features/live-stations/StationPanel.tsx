@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { TrendingUp, TrendingDown, Minus, Check } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import {
@@ -7,6 +8,30 @@ import {
 } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import type { StationSession, FeedEntry, StationView } from './types';
+
+// Returns the set of feed ids that have appeared since the previous update, so
+// a part logged in real time (via SSE) flashes once. Nothing flashes on first
+// load. Effect-based (StrictMode-safe).
+function useNewlyArrived(ids: number[]): Set<number> {
+  const key = ids.join(',');
+  const seen = useRef<Set<number> | null>(null);
+  const [fresh, setFresh] = useState<Set<number>>(new Set());
+  useEffect(() => {
+    if (seen.current === null) {
+      seen.current = new Set(ids);
+      return;
+    }
+    const arrived = ids.filter((id) => !seen.current!.has(id));
+    if (arrived.length) {
+      arrived.forEach((id) => seen.current!.add(id));
+      setFresh(new Set(arrived));
+      const t = setTimeout(() => setFresh(new Set()), 1100);
+      return () => clearTimeout(t);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+  return fresh;
+}
 
 // ── Session summary band ────────────────────────────────────────────────────
 
@@ -79,11 +104,12 @@ function TrendLine({
 
 // ── Feed card ───────────────────────────────────────────────────────────────
 
-function FeedCard({ entry }: { entry: FeedEntry }) {
+function FeedCard({ entry, isNew }: { entry: FeedEntry; isNew?: boolean }) {
   return (
     <Card
       variant={entry.isOther ? 'fallback' : 'default'}
       repeatBadge={entry.repeatCount ? `↻ ${entry.repeatCount} répétés` : undefined}
+      className={isNew ? 'animate-card-flash' : undefined}
     >
       <Glyph
         letter={entry.label[0]}
@@ -112,6 +138,7 @@ function FeedCard({ entry }: { entry: FeedEntry }) {
 // ── Station panel ───────────────────────────────────────────────────────────
 
 export function StationPanel({ station }: { station: StationView }) {
+  const freshIds = useNewlyArrived(station.feed.map((f) => f.id));
   return (
     <Panel minHeight>
       <PanelHeader
@@ -159,7 +186,7 @@ export function StationPanel({ station }: { station: StationView }) {
         }}
       >
         {station.feed.map((entry) => (
-          <FeedCard key={entry.id} entry={entry} />
+          <FeedCard key={entry.id} entry={entry} isNew={freshIds.has(entry.id)} />
         ))}
       </PanelBody>
 

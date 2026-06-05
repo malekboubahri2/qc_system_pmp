@@ -8,12 +8,14 @@ import { daysAgo, today } from '@/components/shared/DateRangePicker';
 import { Icon } from '@/components/Icon';
 import { formatDateTime } from '@/lib/format';
 import { PageHeader, Section, EmptyState } from '@/components/ui';
+import { CountUp } from '@/components/ui/CountUp';
 
 interface StatTileProps {
   label: string;
-  value: number | string;
+  value: number;
   icon: typeof AlertTriangle;
   color: 'brand' | 'accent' | 'success' | 'info';
+  index?: number;
 }
 
 const COLOR_MAP = {
@@ -23,19 +25,22 @@ const COLOR_MAP = {
   info: { bg: 'bg-info/10', icon: 'text-info', value: 'text-info' },
 } as const;
 
-function StatTile({ label, value, icon, color }: StatTileProps) {
+function StatTile({ label, value, icon, color, index = 0 }: StatTileProps) {
   const c = COLOR_MAP[color];
   return (
     <div
-      className="bg-white rounded-lg px-5 py-5 flex items-center gap-5"
-      style={{ boxShadow: '0 1px 3px rgba(26,85,96,0.08)' }}
+      className="stagger-item bg-white rounded-lg px-5 py-5 flex items-center gap-5
+        transition-transform duration-200 hover:-translate-y-0.5"
+      style={{ ['--stagger' as string]: `${index * 70}ms`, boxShadow: '0 1px 3px rgba(26,85,96,0.08)' }}
     >
       <div className={`${c.bg} rounded-lg p-3 flex-shrink-0`}>
         <Icon icon={icon} size={22} className={c.icon} />
       </div>
       <div>
         <p className="text-xs font-medium text-ink-muted uppercase tracking-wide">{label}</p>
-        <p className={`text-2xl font-bold mt-0.5 ${c.value}`}>{value}</p>
+        <p className={`text-2xl font-bold mt-0.5 tabular-nums ${c.value}`}>
+          <CountUp value={value} />
+        </p>
       </div>
     </div>
   );
@@ -80,10 +85,10 @@ export function DashboardPage() {
 
       {/* Stat tiles */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatTile label="Défauts aujourd'hui" value={todayCount} icon={AlertTriangle} color="brand" />
-        <StatTile label="Défauts (7 jours)" value={weekTotal} icon={AlertTriangle} color="accent" />
-        <StatTile label="Opérateurs actifs" value={activeOperators} icon={Users} color="success" />
-        <StatTile label="Appareils en ligne" value={onlineDevices} icon={Wifi} color="info" />
+        <StatTile index={0} label="Défauts aujourd'hui" value={todayCount} icon={AlertTriangle} color="brand" />
+        <StatTile index={1} label="Défauts (7 jours)" value={weekTotal} icon={AlertTriangle} color="accent" />
+        <StatTile index={2} label="Opérateurs actifs" value={activeOperators} icon={Users} color="success" />
+        <StatTile index={3} label="Appareils en ligne" value={onlineDevices} icon={Wifi} color="info" />
       </div>
 
       {/* Recent activity */}
