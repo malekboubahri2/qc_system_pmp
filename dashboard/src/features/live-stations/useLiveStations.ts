@@ -4,9 +4,9 @@ import { formatTime, timeAgo } from '@/lib/format';
 import type { LiveStationDTO } from '@/types';
 import type { StationView } from './types';
 
-const POLL_MS = 10_000;
+const POLL_MS = 4_000;
 
-/** Polls GET /devices/live every 10s and maps it to the panel view model.
+/** Polls GET /devices/live every few seconds and maps it to the panel view model.
  * Relative labels ("il y a …") are computed client-side off a single `now`
  * so they stay fresh on each poll. */
 export function useLiveStations(): {
