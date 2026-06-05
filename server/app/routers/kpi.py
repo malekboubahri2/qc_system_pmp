@@ -18,14 +18,16 @@ def get_kpi(
     date: Optional[str] = Query(None, description="Plant-local day YYYY-MM-DD; default today"),
     product_id: Optional[int] = Query(None),
     operator_id: Optional[int] = Query(None, description="Admin/station only; operators are scoped to themselves"),
+    since: Optional[str] = Query(None, description="UTC ISO lower bound — the PWA passes its login time for a session-scoped Taux NC"),
     db: Session = Depends(get_db),
     user: User = Depends(require_roles("operator", "station", "admin")),
 ):
     """KPI snapshot for the andon board, dashboard, and the PWA summary.
 
-    An `operator` caller is always scoped to *their own* parts (their session),
-    so the PWA summary shows the operator's numbers, not the whole room. Admin /
-    station callers see the global view, optionally filtered by `operator_id`.
+    An `operator` caller is always scoped to *their own* parts; with `since` set
+    to their login time the PWA shows the operator's **session** Taux NC rather
+    than the whole day. Admin / station callers see the global view, optionally
+    filtered by `operator_id`.
     """
     day = None
     if date is not None:
@@ -42,4 +44,7 @@ def get_kpi(
     else:
         scoped_operator_id = operator_id
 
-    return svc.compute_kpi(db, day=day, product_id=product_id, operator_id=scoped_operator_id)
+    return svc.compute_kpi(
+        db, day=day, product_id=product_id,
+        operator_id=scoped_operator_id, since=since,
+    )

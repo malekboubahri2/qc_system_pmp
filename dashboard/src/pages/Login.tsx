@@ -36,6 +36,8 @@ export function LoginPage() {
       const me = await login(values.email, values.password);
       if (me.role === 'operator') {
         // Operators belong in the inspection PWA, not the admin dashboard.
+        // Record session start so the PWA scopes Taux NC to this login.
+        localStorage.setItem('qc_session_start', new Date().toISOString());
         window.location.href = '/inspect.html';
         return;
       }

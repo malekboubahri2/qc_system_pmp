@@ -125,3 +125,21 @@ def test_kpi_is_scoped_to_the_calling_operator(client, auth_headers, kpi_seed):
     # Admin sees the global view (all 3 parts).
     kpi_admin = client.get("/kpi", headers=auth_headers).json()
     assert kpi_admin["inspected_parts"] == 3 and kpi_admin["nc_parts"] == 1
+
+
+def test_kpi_since_scopes_to_the_session_window(client, auth_headers, kpi_seed):
+    s = kpi_seed
+    created = client.post("/operators", json={"name": "Sess"}, headers=auth_headers).json()
+    login = client.post(
+        "/auth/login",
+        json={"email": created["username"], "password": created["password"]},
+    ).json()
+    h = {"Authorization": f"Bearer {login['access_token']}"}
+    client.post("/inspections", headers=h, json={
+        "product_id": s["product"].id, "pmp_defect_type_ids": [s["pmp"].id], "inj_defect_type_ids": [],
+    })
+
+    # since in the future → the part is before the session window
+    assert client.get("/kpi?since=2999-01-01T00:00:00Z", headers=h).json()["inspected_parts"] == 0
+    # since in the past → included
+    assert client.get("/kpi?since=2000-01-01T00:00:00Z", headers=h).json()["inspected_parts"] == 1

@@ -28,14 +28,21 @@ def compute_kpi(
     day: Optional[date_cls] = None,
     product_id: Optional[int] = None,
     operator_id: Optional[int] = None,
+    since: Optional[str] = None,
 ) -> KpiSnapshot:
     tz = ZoneInfo(settings.plant_tz)
     now = datetime.now(timezone.utc)
     target = day or now.astimezone(tz).date()
 
     day_lo = datetime.combine(target, time.min, tzinfo=tz).astimezone(timezone.utc)
-    lo = _iso(day_lo)
-    hi = _iso(day_lo + timedelta(days=1))
+    if since is not None:
+        # Session window: from login (`since`) to now — used for the operator's
+        # "this session" Taux NC rather than the whole plant day.
+        lo = since
+        hi = _iso(now + timedelta(minutes=1))
+    else:
+        lo = _iso(day_lo)
+        hi = _iso(day_lo + timedelta(days=1))
     hour_ago = _iso(now - timedelta(hours=1))
 
     q = db.query(

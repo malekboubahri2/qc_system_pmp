@@ -44,3 +44,28 @@ def test_list_devices_includes_online_field(client, auth_headers, db):
     assert len(body) == 1
     assert "online" in body[0]
     assert body[0]["online"] is True
+
+
+def test_heartbeat_registers_and_keeps_device_online(client, auth_headers, db):
+    resp = client.post("/devices/heartbeat", headers=auth_headers,
+                       json={"device_id": "qc-web-a1b2c3d4", "name": "Poste Peinture 1"})
+    assert resp.status_code == 204
+    dev = db.get(Device, "qc-web-a1b2c3d4")
+    assert dev is not None
+    assert dev.name == "Poste Peinture 1"
+    assert dev.online is True
+
+
+def test_heartbeat_refreshes_presence(client, auth_headers, db):
+    db.add(Device(id="qc-web-stale", last_seen=_ago_iso(300)))
+    db.commit()
+    assert db.get(Device, "qc-web-stale").online is False
+    resp = client.post("/devices/heartbeat", headers=auth_headers,
+                       json={"device_id": "qc-web-stale"})
+    assert resp.status_code == 204
+    db.expire_all()
+    assert db.get(Device, "qc-web-stale").online is True
+
+
+def test_heartbeat_requires_auth(client):
+    assert client.post("/devices/heartbeat", json={"device_id": "x"}).status_code == 401

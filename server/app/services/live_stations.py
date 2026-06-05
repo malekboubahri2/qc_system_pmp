@@ -109,6 +109,7 @@ def _build_station(dev: Device, drows: list, hour_ago: str, active_cutoff: str) 
 
     return LiveStation(
         device_id=dev.id,
+        name=dev.name,
         online=dev.online,
         last_seen=dev.last_seen,
         session_active=session_active,

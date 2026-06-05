@@ -8,6 +8,8 @@ import { getKpi } from '@/api/kpi';
 import type { DefectType } from '@/types';
 import { useInspectionFlow } from '../flow/InspectionFlowContext';
 import { useSubmitInspection } from '../flow/useSubmitInspection';
+import { getDeviceId } from '../device';
+import { getSessionStart } from '../session';
 import { InspectScreen } from '../components/InspectScreen';
 import { TouchButton } from '../components/TouchButton';
 
@@ -18,8 +20,13 @@ export function SummaryScreen() {
   const { data: categories = [] } = useCategoryConstants();
   const submit = useSubmitInspection();
   const [done, setDone] = useState(false);
-  // staleTime 0 so each saved part shows up-to-date numbers, not a cached snapshot.
-  const kpi = useQuery({ queryKey: ['kpi'], queryFn: () => getKpi(), enabled: done, staleTime: 0 });
+  // Scope to this login session; staleTime 0 so each saved part is fresh.
+  const kpi = useQuery({
+    queryKey: ['kpi'],
+    queryFn: () => getKpi({ since: getSessionStart() ?? undefined }),
+    enabled: done,
+    staleTime: 0,
+  });
 
   if (!product) return <Navigate to="/" replace />;
 
@@ -32,6 +39,7 @@ export function SummaryScreen() {
   async function onSave() {
     try {
       const res = await submit.mutateAsync({
+        device_id: getDeviceId(),
         product_id: product!.id,
         pmp_defect_type_ids: pmp,
         inj_defect_type_ids: inj,
@@ -68,7 +76,7 @@ export function SummaryScreen() {
             <p className="text-fluid-2xl font-bold text-brand">Pièce enregistrée</p>
           </div>
           <div className="bg-white rounded-3xl border border-cream-subtle shadow-card px-[clamp(2rem,8vw,5rem)] py-[clamp(1.5rem,4vh,2.5rem)] animate-fade-in-up">
-            <div className="text-fluid-sm uppercase tracking-wider text-ink-muted">Votre taux NC du jour</div>
+            <div className="text-fluid-sm uppercase tracking-wider text-ink-muted">Votre taux NC (cette session)</div>
             <div className="text-fluid-display font-bold text-brand tabular-nums mt-1">
               {kpi.isError ? '—' : rate === null ? '…' : `${rate}%`}
             </div>

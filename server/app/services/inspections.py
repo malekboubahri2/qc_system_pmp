@@ -45,10 +45,14 @@ def record_part(
     received = _utc_now()
     logged = logged_at or received
 
-    # Self-register the device/station so the device_id FK resolves.
-    if db.get(Device, device_id) is None:
+    # Self-register the device/station so the device_id FK resolves, and refresh
+    # its presence on every inspection (not only on first sight).
+    device = db.get(Device, device_id)
+    if device is None:
         db.add(Device(id=device_id, last_seen=received))
         db.flush()
+    else:
+        device.last_seen = received
 
     all_ids = list(pmp_defect_type_ids) + list(inj_defect_type_ids)
     other_ids: set[int] = set()

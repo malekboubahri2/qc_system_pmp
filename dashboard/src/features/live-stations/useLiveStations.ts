@@ -32,7 +32,7 @@ function toStationView(dto: LiveStationDTO, index: number, now: number): Station
   const productRef = dto.product_id != null ? `#${dto.product_id}` : '—';
   return {
     id: dto.device_id,
-    name: `Station ${index + 1}`,
+    name: dto.name || `Station ${index + 1}`,
     deviceId: dto.device_id,
     online: dto.online,
     connSince: dto.last_seen ? timeAgo(dto.last_seen, now) : '—',

@@ -3,9 +3,15 @@ import { getMe } from '@/api/auth';
 import type { User } from '@/types';
 
 const TOKEN_KEY = 'qc_token';
+const SESSION_START_KEY = 'qc_session_start';
 
 export function hasToken(): boolean {
   return !!localStorage.getItem(TOKEN_KEY);
+}
+
+// Login time (UTC ISO), used to scope the operator's Taux NC to this session.
+export function getSessionStart(): string | null {
+  return localStorage.getItem(SESSION_START_KEY);
 }
 
 // Resolves the logged-in operator from the shared login token. The unified
@@ -22,6 +28,7 @@ export function useInspectSession() {
 
 export function logoutToLogin(): void {
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(SESSION_START_KEY);
   // Back to the unified login (admin bundle).
   window.location.href = '/login';
 }

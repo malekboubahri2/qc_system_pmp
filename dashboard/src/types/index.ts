@@ -109,6 +109,7 @@ export interface HourlyReport {
 
 export interface Device {
   id: string;
+  name?: string | null;
   last_seen?: string;
   config_version?: number;
   online: boolean;
@@ -125,6 +126,7 @@ export interface LiveFeedEntryDTO {
 
 export interface LiveStationDTO {
   device_id: string;
+  name?: string | null;
   online: boolean;
   last_seen: string | null;
   session_active: boolean;

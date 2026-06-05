@@ -14,6 +14,9 @@ class Device(Base):
     __tablename__ = "devices"
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
+    # Human label shown in the live view. Web tablets report it (browsers can't
+    # read the OS device name); falls back to a generic station label.
+    name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     last_seen: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     config_version: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     operator_version: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)

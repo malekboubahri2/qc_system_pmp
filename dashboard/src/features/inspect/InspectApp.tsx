@@ -5,6 +5,7 @@ import { Toaster } from 'sonner';
 import { OfflineProvider } from './offline/OfflineContext';
 import { InspectionFlowProvider } from './flow/InspectionFlowContext';
 import { useInspectSession, hasToken, logoutToLogin } from './session';
+import { useHeartbeat } from './useHeartbeat';
 import { ProductPickerScreen } from './screens/ProductPickerScreen';
 import { CategoryPage } from './screens/CategoryPage';
 import { SummaryScreen } from './screens/SummaryScreen';
@@ -12,6 +13,11 @@ import { SummaryScreen } from './screens/SummaryScreen';
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
 });
+
+function Heartbeat() {
+  useHeartbeat();
+  return null;
+}
 
 function Splash() {
   return (
@@ -49,6 +55,7 @@ export function InspectApp() {
         <InspectionFlowProvider>
           <HashRouter>
             <RequireOperator>
+              <Heartbeat />
               <Routes>
                 <Route path="/" element={<ProductPickerScreen />} />
                 <Route path="/pmp" element={<CategoryPage category="PMP" />} />

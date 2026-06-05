@@ -43,6 +43,7 @@ export const handlers = [
   // Devices
   http.get(`${BASE}/devices/live`, () => HttpResponse.json(FIXTURE_LIVE_STATIONS)),
   http.get(`${BASE}/devices`, () => HttpResponse.json([FIXTURE_DEVICE])),
+  http.post(`${BASE}/devices/heartbeat`, () => new HttpResponse(null, { status: 204 })),
 
   // Logs
   http.get(`${BASE}/logs`, () => HttpResponse.json(FIXTURE_LOGS)),

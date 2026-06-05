@@ -15,6 +15,7 @@ class LiveFeedEntry(BaseModel):
 
 class LiveStation(BaseModel):
     device_id: str
+    name: Optional[str] = None             # device-reported friendly name
     online: bool
     last_seen: Optional[str] = None        # UTC ISO
     session_active: bool                   # recent inspection activity
