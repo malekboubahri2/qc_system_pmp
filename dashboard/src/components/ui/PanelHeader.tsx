@@ -16,7 +16,7 @@ export function PanelHeader({ left, center, right, className }: PanelHeaderProps
   return (
     <header
       className={cn(
-        'h-20 bg-brand text-ink-inv px-5 flex items-center gap-4',
+        'h-20 bg-brand text-ink-inv px-6 flex items-center gap-5',
         'sticky top-0 z-10',
         className,
       )}

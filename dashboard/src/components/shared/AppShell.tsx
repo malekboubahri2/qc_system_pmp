@@ -12,7 +12,9 @@ export function AppShell({ children }: AppShellProps) {
     <div className="h-screen bg-cream flex overflow-hidden">
       <Sidebar />
       <main className="flex-1 min-w-0 h-full overflow-y-auto">
-        <div className="px-8 md:px-10 lg:px-12 py-10 min-h-full">
+        {/* Consistent app-wide gutters: generous top so the page header never
+            sits flush against the viewport, even-handed horizontal padding. */}
+        <div className="px-6 sm:px-8 lg:px-12 pt-12 pb-14 min-h-full">
           {children}
         </div>
       </main>
