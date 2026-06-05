@@ -7,7 +7,7 @@ describe('LoginPage', () => {
     renderWithProviders(<LoginPage />);
 
     expect(await screen.findByRole('heading', { name: /Contrôle Qualité/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(/Adresse e-mail/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Identifiant/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/Mot de passe/i)).toBeInTheDocument();
   });
 });

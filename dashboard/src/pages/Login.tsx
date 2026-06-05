@@ -10,7 +10,9 @@ import { Icon } from '@/components/Icon';
 import { config } from '@/config';
 
 const schema = z.object({
-  email: z.string().email('Adresse e-mail invalide'),
+  // Admins sign in with an e-mail, operators with a username (ADR-018), so the
+  // identifier is any non-empty string — not necessarily an e-mail.
+  email: z.string().min(1, 'Identifiant requis'),
   password: z.string().min(1, 'Mot de passe requis'),
 });
 
@@ -74,19 +76,22 @@ export function LoginPage() {
         {/* Form body */}
         <div className="bg-white px-8 py-8">
           <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-6">
-            {/* Email */}
+            {/* Identifier (e-mail for admins, username for operators) */}
             <div className="flex flex-col gap-2">
               <label htmlFor="email" className="text-sm font-medium text-ink-head">
-                Adresse e-mail
+                Identifiant ou e-mail
               </label>
               <input
                 id="email"
-                type="email"
-                autoComplete="email"
+                type="text"
+                autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 autoFocus
                 {...register('email')}
                 className="bg-white border border-cream-sub rounded-lg px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted transition-colors focus:outline-none focus:ring-2 focus:ring-accent/40 focus:border-accent"
-                placeholder="responsable@pmp.tn"
+                placeholder="responsable@pmp.tn  ·  ou  ·  prenom.nom"
               />
               {errors.email && (
                 <p className="text-sm text-danger">{errors.email.message}</p>
