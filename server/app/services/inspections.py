@@ -84,4 +84,9 @@ def record_part(
         "part inspection recorded device={} part={} pmp={} inj={}",
         device_id, part_id, len(pmp_defect_type_ids), len(inj_defect_type_ids),
     )
+
+    # Nudge connected dashboards to refetch (no data, just a signal).
+    from app.events import publish
+    publish("inspection", {"device_id": device_id})
+
     return part_id

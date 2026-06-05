@@ -1,11 +1,13 @@
 import { type ReactNode } from 'react';
 import { Sidebar } from './Sidebar';
+import { useServerEvents } from '@/hooks/useServerEvents';
 
 interface AppShellProps {
   children: ReactNode;
 }
 
 export function AppShell({ children }: AppShellProps) {
+  useServerEvents();  // live refresh on new inspections (SSE)
   return (
     <div className="h-screen bg-cream flex overflow-hidden">
       <Sidebar />

@@ -74,6 +74,19 @@ def test_post_inspection_forbidden_for_other_role(client, db, insp_seed):
     assert resp.status_code == 403
 
 
+def test_inspection_publishes_refresh_event(client, auth_headers, insp_seed):
+    from unittest.mock import patch
+    with patch("app.events.publish") as mock_pub:
+        resp = client.post("/inspections", headers=auth_headers, json={
+            "operator_id": insp_seed["op"].id,
+            "product_id": insp_seed["product"].id,
+            "pmp_defect_type_ids": [],
+            "inj_defect_type_ids": [],
+        })
+        assert resp.status_code == 201
+        mock_pub.assert_called_once()
+
+
 def test_operator_posts_own_inspection(client, db, auth_headers, insp_seed):
     # An operator logs in and submits without operator_id; the server attributes
     # the part to their own linked operator (body cannot spoof it).

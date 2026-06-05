@@ -5,7 +5,7 @@ import app.logging as app_logging
 from app.config import settings
 from app.routers import (
     health, auth, operators, products, defect_types, devices, defect_logs,
-    inspection_logs, inspections, kpi, stats, feature_flags, constants,
+    inspection_logs, inspections, kpi, stats, feature_flags, constants, events,
 )
 
 app_logging.setup_logging()
@@ -49,6 +49,7 @@ app.include_router(devices.router)
 app.include_router(defect_logs.router)
 app.include_router(inspection_logs.router)
 app.include_router(inspections.router)
+app.include_router(events.router)
 app.include_router(kpi.router)
 app.include_router(stats.router)
 app.include_router(feature_flags.router)
