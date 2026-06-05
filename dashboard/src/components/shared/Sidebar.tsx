@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
-  LayoutDashboard, Radio, Package, Users, ScrollText,
+  LayoutDashboard, Radio, PackageSearch, Package, Users, ScrollText,
   LineChart, FileText, MonitorSmartphone, Settings, LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -30,6 +30,7 @@ function useSidebarHover() {
 const mainNav = [
   { to: '/', label: 'Tableau de bord', icon: LayoutDashboard, end: true },
   { to: '/stations/en-direct', label: 'Stations en direct', icon: Radio, end: false },
+  { to: '/produits/en-direct', label: 'Produits en direct', icon: PackageSearch, end: false },
   { to: '/products', label: 'Produits', icon: Package, end: false },
   { to: '/operators', label: 'Opérateurs', icon: Users, end: false },
   { to: '/logs', label: 'Journaux', icon: ScrollText, end: false },

@@ -1,11 +1,16 @@
 import { client } from './client';
-import type { Product, DefectType, CategoryConstant } from '@/types';
+import type { Product, DefectType, CategoryConstant, LiveProductsResponse } from '@/types';
 
 // ── Products ─────────────────────────────────────────────────────
 export async function listProducts(includeArchived = false): Promise<Product[]> {
   const { data } = await client.get<Product[]>('/products', {
     params: includeArchived ? { include_archived: true } : undefined,
   });
+  return data;
+}
+
+export async function getLiveProducts(): Promise<LiveProductsResponse> {
+  const { data } = await client.get<LiveProductsResponse>('/products/live');
   return data;
 }
 

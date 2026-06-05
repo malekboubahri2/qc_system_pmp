@@ -154,6 +154,49 @@ export interface LiveStationsResponse {
   stations: LiveStationDTO[];
 }
 
+export interface LiveProductFeedEntryDTO {
+  id: number;
+  label: string;
+  category: string;
+  note: string | null;
+  operator_name: string | null;
+  logged_at: string;
+  is_other: boolean;
+}
+
+export interface LiveProductOperatorDTO {
+  operator_id: number | null;
+  operator_name: string | null;
+  parts: number;
+  nc_parts: number;
+  nc_rate: number;
+  last_at: string | null;
+  active: boolean;
+}
+
+export interface LiveProductDTO {
+  product_id: number;
+  product_name: string;
+  reference: string | null;
+  client: string | null;
+  active: boolean;
+  last_activity: string | null;
+  parts_today: number;
+  nc_parts: number;
+  ok_parts: number;
+  defect_count: number;
+  nc_rate: number;
+  last_hour_parts: number;
+  active_operators: number;
+  operators: LiveProductOperatorDTO[];
+  feed: LiveProductFeedEntryDTO[];
+}
+
+export interface LiveProductsResponse {
+  updated_at: string;
+  products: LiveProductDTO[];
+}
+
 export interface FeatureFlag {
   name: string;
   enabled: boolean;

@@ -2,7 +2,7 @@ import type {
   User, Operator, Product, CategoryConstant, DefectType, DefectLog,
   Device, FeatureFlag, PaginatedLogs,
   SummaryPoint, ByDefectPoint, ByOperatorPoint, HeatmapPoint,
-  HourlyReport, HourlyRow, LiveStationsResponse,
+  HourlyReport, HourlyRow, LiveStationsResponse, LiveProductsResponse,
 } from '@/types';
 
 export const FIXTURE_USER: User = {
@@ -83,6 +83,35 @@ export const FIXTURE_LIVE_STATIONS: LiveStationsResponse = {
       feed: [
         { id: 101, label: 'Coulure', category: 'PMP Défauts', note: null, logged_at: '2026-06-02T09:58:00Z', is_other: false },
         { id: 102, label: 'Bavure', category: 'Injection Défauts', note: null, logged_at: '2026-06-02T09:50:00Z', is_other: false },
+      ],
+    },
+  ],
+};
+
+export const FIXTURE_LIVE_PRODUCTS: LiveProductsResponse = {
+  updated_at: '2026-06-02T10:00:00Z',
+  products: [
+    {
+      product_id: 1,
+      product_name: 'Capot moteur',
+      reference: 'CM-100',
+      client: 'Renault',
+      active: true,
+      last_activity: '2026-06-02T09:58:00Z',
+      parts_today: 17,
+      nc_parts: 4,
+      ok_parts: 13,
+      defect_count: 5,
+      nc_rate: 0.2353,
+      last_hour_parts: 6,
+      active_operators: 2,
+      operators: [
+        { operator_id: 1, operator_name: 'Mohammed', parts: 10, nc_parts: 3, nc_rate: 0.3, last_at: '2026-06-02T09:58:00Z', active: true },
+        { operator_id: 2, operator_name: 'Sofia', parts: 7, nc_parts: 1, nc_rate: 0.1429, last_at: '2026-06-02T09:55:00Z', active: true },
+      ],
+      feed: [
+        { id: 201, label: 'Coulure', category: 'PMP Défauts', note: null, operator_name: 'Mohammed', logged_at: '2026-06-02T09:58:00Z', is_other: false },
+        { id: 202, label: 'Bavure', category: 'Injection Défauts', note: null, operator_name: 'Sofia', logged_at: '2026-06-02T09:50:00Z', is_other: false },
       ],
     },
   ],

@@ -3,7 +3,9 @@ from sqlalchemy.orm import Session
 from app.deps import get_db, get_current_user
 from app.models.user import User
 from app.schemas.product import ProductCreate, ProductUpdate, ProductRead
+from app.schemas.live_product import LiveProductsResponse
 from app.services import products as svc
+from app.services import live_products as live_svc
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -15,6 +17,12 @@ def list_products(
     _: User = Depends(get_current_user),
 ):
     return svc.get_all(db, active_only=not include_archived)
+
+
+# Must precede /{product_id} so "live" isn't captured as a product id.
+@router.get("/live", response_model=LiveProductsResponse)
+def live_products(db: Session = Depends(get_db), _: User = Depends(get_current_user)):
+    return live_svc.compute_live_products(db)
 
 
 @router.post("", response_model=ProductRead, status_code=status.HTTP_201_CREATED)

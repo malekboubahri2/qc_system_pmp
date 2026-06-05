@@ -16,6 +16,7 @@ import { DevicesPage } from '@/features/devices';
 import { SettingsPage } from '@/features/settings';
 import { StyleguidePage } from '@/pages/StyleguidePage';
 import { LiveStationsPage } from '@/features/live-stations';
+import { LiveProductsPage } from '@/features/live-products';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -53,6 +54,10 @@ export default function App() {
             <Route
               path="/stations/en-direct"
               element={<ProtectedShell><LiveStationsPage /></ProtectedShell>}
+            />
+            <Route
+              path="/produits/en-direct"
+              element={<ProtectedShell><LiveProductsPage /></ProtectedShell>}
             />
             <Route
               path="/products"

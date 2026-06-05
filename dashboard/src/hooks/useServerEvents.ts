@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { config } from '@/config';
 
 const LIVE_KEYS = new Set([
-  'live-stations', 'inspection-logs', 'stats', 'logs', 'devices', 'kpi',
+  'live-stations', 'live-products', 'inspection-logs', 'stats', 'logs', 'devices', 'kpi',
 ]);
 
 // Subscribes to the server's SSE stream and refetches live data the instant an
