@@ -13,6 +13,7 @@ import { Modal } from '@/components/shared/Modal';
 import { FormField } from '@/components/shared/FormField';
 import { Icon } from '@/components/Icon';
 import { PageHeader, EmptyState, Pill } from '@/components/ui';
+import { copyToClipboard } from '@/lib/clipboard';
 import type { Operator } from '@/types';
 
 interface Creds { name: string; username: string; password: string }
@@ -86,13 +87,14 @@ function RevealCredentialsModal({
 
   async function copy() {
     if (!creds) return;
-    try {
-      await navigator.clipboard.writeText(
-        `Identifiant: ${creds.username}\nMot de passe: ${creds.password}`,
-      );
+    const ok = await copyToClipboard(
+      `Identifiant: ${creds.username}\nMot de passe: ${creds.password}`,
+    );
+    if (ok) {
       setCopied(true);
-    } catch {
-      /* clipboard unavailable — values are on screen anyway */
+      setTimeout(() => setCopied(false), 2000);
+    } else {
+      toast.error('Copie impossible — sélectionnez et copiez les valeurs à la main');
     }
   }
 
