@@ -670,6 +670,17 @@ from the inspection path.
    historical MQTT operators config only; the `station` role is kept for the
    andon board / tooling.
 
+**Amendment (2026-06-06) — username = matricule, plus HR details.** Point 2's
+auto-generated name-slug username was replaced: the responsable now enters the
+operator's **matricule** (employee id) on create, and that matricule **is** the
+login username (`users.email`). The password is still server-minted and
+revealed once. Matricules are unique among operators (duplicate → HTTP 409) and
+must match `^[A-Za-z0-9._-]+$`. The same form captures optional HR details —
+`last_name`, `phone`, `address`. New columns: `operators.matricule` (unique),
+`last_name`, `phone`, `address` (migration 0009). Rationale: a plant already
+issues every operator a matricule; reusing it as the login is more memorable and
+auditable than a generated slug, and removes name-collision suffixes.
+
 **Consequences:**
 - Simpler, conventional UX: one sign-in, one login page, role-based routing.
 - Cost: on a *shared* wall tablet, per-operator credential entry is slower per
@@ -688,3 +699,51 @@ from the inspection path.
   force a risky FK/data migration on `inspection_logs` for no functional gain.
 - *Hybrid one-field login (admin email+pwd OR operator id+PIN):* rejected as
   more login logic for the same outcome.
+
+---
+
+## ADR-019 — Product & operator as first-class analytics dimensions; operator score = productivity
+
+**Date:** 2026-06-06
+**Status:** Accepted
+
+**Context:** Operators inspect different products simultaneously, so a
+device-centric live view (ADR-016 "Stations en direct") and a single global
+quality report don't answer "how is *this product* doing right now?" or "who is
+my most productive operator?". The product owner asked to emphasize per-product
+analytics, richer product/operator metadata, and a small operator scoreboard.
+
+**Decision:**
+
+1. **Product gains a fiche.** `products` adds `reference`, `client`,
+   `cheatsheet` (free text) — migration 0008. Shown on the product page; the
+   product list filters by `client` and suggests previously-used clients.
+2. **Operator gains HR details** (`last_name`, `phone`, `address`) alongside the
+   `matricule` login — migration 0009 (see ADR-018 amendment).
+3. **Live-products view.** `GET /products/live` pivots today's `inspection_logs`
+   on the product (mirroring `GET /devices/live`): per active product it returns
+   the operators currently working it, part/NC/OK counts, the day's Taux NC, and
+   a shared recent-defect feed. Backs a new "Produits en direct" dashboard page.
+4. **Reports gain a per-product section and an operator leaderboard.**
+   `GET /reports/quality` adds `by_product` rows (parts, NC, Taux NC, PMP/INJ
+   split) and enriches `by_operator` with `matricule` + a 1-based `rank`.
+5. **Operator score = productivity (parts inspected).** The leaderboard ranks
+   operators by the number of parts inspected, not by quality, and highlights
+   the top operator.
+
+**Consequences:**
+- All additive schema (three product + four operator nullable columns); no
+  change to `inspection_logs`, so every existing stats/attribution path is
+  untouched. Live-products and the report sections are pure read aggregations
+  over the same per-part data the dashboard already uses.
+- "Productivity" rewards throughput; it can be gamed by inspecting fast/loose.
+  Accepted for the PoC as a motivator; a blended quality+throughput score is a
+  later refinement behind the same endpoint.
+
+**Alternatives considered:**
+- *Score by quality (low Taux NC):* rejected for now — penalizes operators on
+  intrinsically harder products and discourages honest defect logging, the
+  opposite of what the tool should reward during the pilot.
+- *Reuse `GET /devices/live` and group client-side:* rejected — the part→product
+  pivot and operator roll-up belong in one server aggregation, not duplicated in
+  the dashboard.

@@ -27,7 +27,16 @@
 - ✅ Server, SQLite, JWT auth, dashboard, product/defect config, analytics,
   live-stations, per-part inspection model (ADR-013/016), hourly Taux NC.
 - ✅ ADR-017 recorded; architecture, CLAUDE.md and docs updated.
-- ▶️ Next: Phase 1.
+- ✅ **Phase 1** — one `services/inspections` behind REST + MQTT; `POST
+  /inspections`, `GET /kpi`, `station` role. Shipped.
+- ✅ **Inspection PWA** + unified login (ADR-018): operators are login accounts
+  (matricule = username), PIN flow retired. Offline queue + kiosk in place.
+- ✅ **Per-product/operator epic** (ADR-019): product fiche
+  (reference/client/cheatsheet), operator HR details, `GET /products/live` +
+  "Produits en direct" page, quality report per-product section + operator
+  productivity leaderboard. SSE live updates. Deployed to the RPi.
+- ▶️ Next: validate the inspection PWA end-to-end on a station tablet; surface
+  the product cheatsheet to inspectors; optional per-operator drill-down report.
 
 ---
 

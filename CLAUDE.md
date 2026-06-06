@@ -150,10 +150,11 @@ one onto another.
 ## Architecture (one-paragraph summary)
 
 Inspectors use a touch-optimised **web PWA** (a slice of the React dashboard)
-on a station tablet: they pick their name + PIN (verified server-side), select
-a product, tap defects across the PMP and INJECTION grids — rendered
-dynamically from the product's defect-type config fetched from the API — and
-submit one **part inspection** (`POST /inspections`, schema 4). The QC
+on a station tablet: they sign in with their **matricule + password** (ADR-018;
+the server attributes the part to their linked operator), select a product, tap
+defects across the PMP and INJECTION grids — rendered dynamically from the
+product's defect-type config fetched from the API — and submit one **part
+inspection** (`POST /inspections`, schema 4). The QC
 responsable manages products, defect types and operators in the same dashboard
 (FastAPI → SQLite); config changes are picked up by the PWA on its next fetch,
 no device push needed (ADR-013/016/017). A shared `services/inspections` module
@@ -352,16 +353,20 @@ See per-component `CLAUDE.md`.
 
 ## Status
 
-Currently in: **Web-PWA pivot (ADR-017).** The inspection client is moving from
-the STM32/TouchGFX terminal to a web PWA on station tablets; the STM32 becomes a
-KPI andon board. Server, data model, auth, and dashboard are reused as-is.
-Next: Phase 1 (one `services/inspections` behind both REST + MQTT; `POST
-/inspections`, `POST /operators/verify-pin`, `GET /kpi`, a `station` role) →
-inspection PWA MVP → offline/kiosk → andon board. See `docs/decisions.md`
-ADR-017 and the rebuilt `docs/roadmap.md`.
+**Web-PWA pivot shipped (ADR-017/018/019).** The inspection client is the web
+PWA on station tablets; the STM32 is the KPI andon board. Done: Phase 1 (one
+`services/inspections` behind REST + MQTT; `POST /inspections`, `GET /kpi`,
+`station` role); operators are login accounts with **matricule = username**
+(ADR-018, PIN flow retired); the **per-product/operator epic** (ADR-019) —
+product fiche (reference/client/cheatsheet), operator HR details, `GET
+/products/live` + "Produits en direct" page, quality report per-product section
++ operator productivity leaderboard, SSE live updates. Deployed to the RPi.
+
+**Next:** validate the inspection PWA end-to-end on a station tablet; surface the
+product cheatsheet to inspectors; optional per-operator drill-down report.
+See `docs/decisions.md` (ADR-017/018/019) and `docs/roadmap.md`.
 
 **Product direction:** the web dashboard + inspection PWA are the primary
 surface and selling point — prioritise interactive, animated, polished UX.
-Planned features (backlog, see roadmap): PDF report generation; auto-generated
-unique operator PINs (responsable enters a name → server mints a unique PIN,
-shown once).
+Operator scoring is **productivity (parts inspected)**; PDF is browser-print
+(no server-side PDF endpoint).

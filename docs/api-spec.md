@@ -49,6 +49,7 @@ All endpoints require a valid JWT except:
 | DELETE | `/operators/{id}` | ✓ | Soft-delete operator (+ disable login) |
 | POST | `/operators/{id}/regenerate-password` | ✓ | Rotate password, return plaintext once |
 | GET | `/products` | ✓ | List products (active by default) |
+| GET | `/products/live` | ✓ | Per-product live activity today (operators, Taux NC, feed) |
 | POST | `/products` | ✓ | Create product (auto-creates Other fallbacks) |
 | GET | `/products/{product_id}` | ✓ | Get product |
 | PATCH | `/products/{product_id}` | ✓ | Update product |
@@ -60,7 +61,9 @@ All endpoints require a valid JWT except:
 | DELETE | `/defect-types/{type_id}` | ✓ | Soft-delete defect type |
 | GET | `/constants/categories` | ✓ | Plant-wide category display names |
 | GET | `/devices` | ✓ | List known devices |
+| GET | `/devices/live` | ✓ | Per-station live activity today (Stations en direct) |
 | GET | `/devices/{device_id}` | ✓ | Get device detail |
+| GET | `/events` | ✓ | SSE stream — emits `inspection` on each new part |
 | GET | `/logs` | ✓ | List defect logs (filtered) |
 | GET | `/logs/export.csv` | ✓ | Export logs as CSV |
 | GET | `/stats/summary` | ✓ | Daily defect counts |
@@ -68,6 +71,7 @@ All endpoints require a valid JWT except:
 | GET | `/stats/by-operator` | ✓ | Counts grouped by operator |
 | GET | `/stats/heatmap` | ✓ | Hour-of-day × defect heatmap |
 | GET | `/kpi` | operator, station, admin | One-day KPI snapshot (taux NC, parts) |
+| GET | `/reports/quality?from=&to=` | ✓ | Period quality report (by product, operator leaderboard, daily) |
 | GET | `/flags` | ✓ | List live feature flags |
 | PUT | `/flags/{name}` | ✓ | Toggle a live feature flag |
 | GET | `/health` | — | Liveness check |
@@ -108,11 +112,13 @@ curl -X POST http://localhost:8000/auth/login \
 ## Operators (ADR-018)
 
 An operator **is a login account** (role `operator`) linked 1:1 to an
-`operators` row for attribution. Creating one mints a unique **username**
-(slug of the name) and **password**, returned in plaintext **once** — the
-responsable relays them to the operator. Only the password hash is stored; it
-cannot be retrieved afterwards, only regenerated. The operator then signs in on
-the unified login page and is routed to the inspection PWA.
+`operators` row for attribution. On create, the responsable supplies the
+operator's **matricule** (employee id), which **is** the login username; the
+server mints a **password**, returned in plaintext **once** — the responsable
+relays it to the operator. Only the password hash is stored; it cannot be
+retrieved afterwards, only regenerated. The operator then signs in on the
+unified login page (matricule + password) and is routed to the inspection PWA.
+Matricules are unique (duplicate → 409) and must match `^[A-Za-z0-9._-]+$`.
 
 ### `GET /operators`
 
@@ -124,8 +130,12 @@ to include archived operators.
 [
   {
     "id": 1,
+    "matricule": "EMP-0427",
     "name": "Mohammed",
-    "username": "mohammed",
+    "last_name": "Benali",
+    "phone": "55123456",
+    "address": null,
+    "username": "EMP-0427",
     "has_login": true,
     "pin_set": false,
     "active": true,
@@ -135,24 +145,29 @@ to include archived operators.
 ]
 ```
 
-`has_login` is `true` when the operator has a linked login account; `password`
-is never returned on reads.
+`username` equals the `matricule`. `has_login` is `true` when the operator has a
+linked login account; `password` is never returned on reads.
 
 ### `POST /operators`
 
-Creates an operator **and** its login user, returning the plaintext
-`username` + `password` **once** — show them to the operator immediately.
-Password length is set by `OPERATOR_PASSWORD_LENGTH` (default 8).
+Creates an operator **and** its login user (username = `matricule`), returning
+the plaintext `password` **once** — show it to the operator immediately.
+Password length is set by `OPERATOR_PASSWORD_LENGTH` (default 8). A duplicate
+matricule returns **409**.
 
 ```json
-// Request
-{ "name": "Aïcha" }
+// Request — matricule + name required; last_name/phone/address optional
+{ "matricule": "EMP-0428", "name": "Aïcha", "last_name": "Khelifi", "phone": "55200300" }
 
 // Response 201
 {
   "id": 2,
+  "matricule": "EMP-0428",
   "name": "Aïcha",
-  "username": "aicha",
+  "last_name": "Khelifi",
+  "phone": "55200300",
+  "address": null,
+  "username": "EMP-0428",
   "has_login": true,
   "pin_set": false,
   "active": true,
@@ -170,9 +185,11 @@ Back-fills a login account for legacy operators that predate ADR-018.
 
 ### `PATCH /operators/{id}`
 
+Updates `name`, `last_name`, `phone`, `address` (matricule is immutable).
+
 ```json
 // Request (partial — only provided fields updated)
-{ "name": "Aïcha B." }
+{ "name": "Aïcha B.", "phone": "55200301" }
 
 // Response 200 — updated operator object
 ```
@@ -206,29 +223,31 @@ Query params: `include_archived` (default `false`).
     "id": 1,
     "name": "Capot moteur",
     "reference": "PROD-001",
-    "description": null,
+    "client": "Renault",
+    "cheatsheet": null,
     "active": true,
-    "created_at": "2026-05-19T09:00:00Z",
-    "archived_at": null
+    "created_at": "2026-05-19T09:00:00Z"
   }
 ]
 ```
 
+`reference`, `client`, `cheatsheet` are the optional product "fiche" (ADR-019).
+
 ### `POST /products`
 
 ```json
-// Request
-{ "name": "Capot moteur", "reference": "PROD-001", "description": null }
+// Request — only name is required; reference/client/cheatsheet optional
+{ "name": "Capot moteur", "reference": "PROD-001", "client": "Renault", "cheatsheet": "Vérifier les coulures sur l'arête." }
 
 // Response 201
 {
   "id": 1,
   "name": "Capot moteur",
   "reference": "PROD-001",
-  "description": null,
+  "client": "Renault",
+  "cheatsheet": "Vérifier les coulures sur l'arête.",
   "active": true,
-  "created_at": "2026-05-19T09:00:00Z",
-  "archived_at": null
+  "created_at": "2026-05-19T09:00:00Z"
 }
 ```
 
@@ -244,7 +263,7 @@ Same shape as list item. Returns 404 if product is unknown.
 
 ```json
 // Request (partial — only provided fields updated)
-{ "name": "Capot moteur v2", "description": "Revised part geometry" }
+{ "name": "Capot moteur v2", "client": "Renault Tanger", "cheatsheet": "..." }
 
 // Response 200 — updated product object
 ```
@@ -254,6 +273,42 @@ Same shape as list item. Returns 404 if product is unknown.
 Soft-delete: sets `active=false` and `archived_at`. Returns 204.
 Cascades to all `defect_types` for this product (also soft-deleted).
 Triggers `qc/config/products` MQTT publish.
+
+### `GET /products/live`
+
+Per-product live activity for the current plant-local day (ADR-019), backing
+the "Produits en direct" page. Only products inspected today appear; active
+products (recent activity) sort first, then the busiest. All counts are
+per part.
+
+```json
+// Response 200
+{
+  "updated_at": "2026-06-06T10:00:00Z",
+  "products": [
+    {
+      "product_id": 1,
+      "product_name": "Capot moteur",
+      "reference": "PROD-001",
+      "client": "Renault",
+      "active": true,
+      "last_activity": "2026-06-06T09:58:00Z",
+      "parts_today": 17, "nc_parts": 4, "ok_parts": 13, "defect_count": 5,
+      "nc_rate": 0.2353, "last_hour_parts": 6, "active_operators": 2,
+      "operators": [
+        { "operator_id": 1, "operator_name": "Mohammed", "parts": 10,
+          "nc_parts": 3, "nc_rate": 0.3, "last_at": "2026-06-06T09:58:00Z",
+          "active": true }
+      ],
+      "feed": [
+        { "id": 201, "label": "Coulure", "category": "PMP Défauts",
+          "note": null, "operator_name": "Mohammed",
+          "logged_at": "2026-06-06T09:58:00Z", "is_other": false }
+      ]
+    }
+  ]
+}
+```
 
 ---
 
@@ -541,6 +596,43 @@ NC part. `taux NC` = `nc_parts / inspected_parts`.
 ```
 
 An unparseable `date` returns `400`.
+
+---
+
+## Reports
+
+### `GET /reports/quality?from=YYYY-MM-DD&to=YYYY-MM-DD`
+
+Aggregated quality metrics for a plant-local date range (defaults to the last
+30 days), for the printable dashboard report. Admin only. Pure data — the
+dashboard renders and prints it. Everything is per part. Adds, over the KPI
+snapshot, a per-product breakdown and an operator leaderboard ranked by
+**productivity** (parts inspected — ADR-019).
+
+```json
+// Response 200 (abridged)
+{
+  "date_from": "2026-05-08", "date_to": "2026-06-06",
+  "generated_at": "2026-06-06T10:00:00Z",
+  "inspected_parts": 420, "nc_parts": 51, "ok_parts": 369, "nc_rate": 0.1214,
+  "pmp_nc_parts": 30, "pmp_nc_rate": 0.0714,
+  "inj_nc_parts": 25, "inj_nc_rate": 0.0595,
+  "defects_total": 73,
+  "top_defects": [ { "label": "Coulure", "count": 22 } ],
+  "by_operator": [
+    { "operator": "Mohammed", "matricule": "EMP-0427", "rank": 1,
+      "parts": 230, "nc_parts": 28, "nc_rate": 0.1217 }
+  ],
+  "by_product": [
+    { "product": "Capot moteur", "reference": "PROD-001", "parts": 260,
+      "nc_parts": 33, "nc_rate": 0.1269, "pmp_nc_parts": 20, "inj_nc_parts": 15 }
+  ],
+  "daily": [ { "date": "2026-06-06", "parts": 17, "nc_parts": 4, "nc_rate": 0.2353 } ]
+}
+```
+
+`by_operator` is sorted by `parts` desc (best productivity = `rank` 1). An
+invalid `from`/`to`, or `from > to`, returns `400`.
 
 ---
 

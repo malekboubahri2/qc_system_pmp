@@ -13,7 +13,7 @@ for how this data reaches the STM32.
 | `products` | Products inspected at the plant |
 | `defect_types` | Defect buttons scoped to a product and category |
 | `inspection_logs` | Immutable log of every inspection tap (DEFECT or OK) |
-| `operators` | Plant floor operators with PIN credentials |
+| `operators` | Plant floor operators; login accounts via `user_id`, matricule = username (ADR-018) |
 | `devices` | Known STM32 terminals (auto-registered on first heartbeat) |
 | `users` | Dashboard accounts (QC responsable and admin) |
 | `feature_flags` | Live-toggleable server-side flags |
@@ -64,26 +64,24 @@ erDiagram
 ```sql
 CREATE TABLE products (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    name        TEXT    NOT NULL UNIQUE,
-    reference   TEXT    NOT NULL UNIQUE,   -- e.g. "PROD-001"
-    description TEXT,
+    name        TEXT    NOT NULL,
+    reference   TEXT,               -- optional, e.g. "PROD-001" (migration 0008)
+    client      TEXT,               -- optional, e.g. "Renault"  (migration 0008)
+    cheatsheet  TEXT,               -- optional free-text inspection notes
     active      INTEGER NOT NULL DEFAULT 1,
     archived_at TEXT,
     created_at  TEXT    NOT NULL
-                DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
-    updated_at  TEXT    NOT NULL
                 DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );
 
-CREATE INDEX idx_products_active    ON products (active);
-CREATE INDEX idx_products_reference ON products (reference);
+CREATE INDEX idx_products_active ON products (active);
 ```
 
 **Column notes:**
-- `reference` — short identifier shown on the STM32 product-selection
-  screen (e.g. `"PROD-001"`, `"CAPOT-A"`). Must be unique.
-- `name` — human-readable name shown in the dashboard
-  (e.g. `"Capot moteur"`). Must be unique.
+- `name` — human-readable name shown in the dashboard (e.g. `"Capot moteur"`).
+- `reference`, `client`, `cheatsheet` — the product "fiche" (migration 0008,
+  ADR-019). All optional. The product list filters by `client` and suggests
+  previously-used clients; `cheatsheet` is free-text inspection consignes.
 - Creating a product via `POST /products` auto-creates two
   `defect_types` rows with `is_other_fallback=true`, one per
   `category_kind`. These seed the "Autre — préciser" fallback for each
@@ -235,30 +233,49 @@ VALUES ('qc-stm32-001a2b3c', 1, 1, 'OK', '2026-05-19T08:25:00Z');
 
 ## operators
 
+An operator **is a login account** (ADR-018): a `users` row with role
+`operator`, linked 1:1 via `user_id`. The `matricule` is the login username
+(ADR-018 amendment); attribution still lives in `operators` so
+`inspection_logs` is untouched.
+
 ```sql
 CREATE TABLE operators (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     name        TEXT    NOT NULL,
-    pin_hash    TEXT    NOT NULL,   -- "sha256:<hex_salt>:<hex_hash>" or
-                                   -- argon2 encoded string (see ADR-010)
+    matricule   TEXT    UNIQUE,       -- login username; employee id (ADR-018/019)
+    last_name   TEXT,                 -- HR details (migration 0009)
+    phone       TEXT,
+    address     TEXT,
+    user_id     INTEGER UNIQUE        -- login account, role `operator` (ADR-018)
+                REFERENCES users(id),
+    pin_hash    TEXT,                 -- legacy MQTT only; retired from web (ADR-018)
     active      INTEGER NOT NULL DEFAULT 1,
-    archived_at TEXT,              -- ISO 8601 UTC, set on soft-delete
+    archived_at TEXT,                 -- ISO 8601 UTC, set on soft-delete
     created_at  TEXT    NOT NULL
                 DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );
 
-CREATE INDEX idx_operators_active ON operators (active);
+CREATE INDEX idx_operators_active        ON operators (active);
+CREATE UNIQUE INDEX ix_operators_matricule ON operators (matricule);
 ```
 
 **Column notes:**
-- `pin_hash` — format includes algorithm prefix so the firmware and server
-  can detect which algorithm to use at verification time.
-- `name` — displayed on the STM32 briefly after successful login.
+- `matricule` — employee id entered by the responsable on create; doubles as
+  the login username (`users.email`). Unique among operators; must match
+  `^[A-Za-z0-9._-]+$`. A duplicate is rejected with HTTP 409.
+- `user_id` — the `users` row (role `operator`) this operator signs in as.
+  `NULL` for legacy operators until a password is regenerated for them.
+- `pin_hash` — **retired** from the web flow (ADR-018). Kept nullable only for
+  the historical MQTT operators config; new operators never set it.
+- `name` / `last_name`, `phone`, `address` — display name and optional HR
+  details shown in the dashboard.
 
 **Example:**
 ```sql
-INSERT INTO operators (name, pin_hash) VALUES
-    ('Mohammed', 'sha256:a3f1c2:8b4e9d2f...');
+-- Created via POST /operators {matricule, name, ...}; the login user is
+-- created in the same transaction and the password returned once.
+INSERT INTO operators (name, matricule, user_id) VALUES
+    ('Mohammed', 'EMP-0427', 12);
 ```
 
 ---
