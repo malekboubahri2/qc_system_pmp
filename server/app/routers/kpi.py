@@ -7,10 +7,22 @@ from sqlalchemy.orm import Session
 from app.deps import get_db, require_roles
 from app.models.user import User
 from app.schemas.kpi import KpiSnapshot
+from app.schemas.kpi_board import KpiBoardResponse
 from app.services import kpi as svc
+from app.services import kpi_board as board_svc
 from app.services import operators as operators_svc
 
 router = APIRouter(prefix="/kpi", tags=["kpi"])
+
+
+@router.get("/board", response_model=KpiBoardResponse)
+def get_kpi_board(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_roles("station", "admin")),
+):
+    """Bounded snapshot for the andon wall board (ADR-020): global block + top
+    products + trending defects. Threshold-agnostic; the firmware colours it."""
+    return board_svc.compute_board(db)
 
 
 @router.get("", response_model=KpiSnapshot)
