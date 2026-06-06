@@ -747,3 +747,68 @@ analytics, richer product/operator metadata, and a small operator scoreboard.
 - *Reuse `GET /devices/live` and group client-side:* rejected — the part→product
   pivot and operator roll-up belong in one server aggregation, not duplicated in
   the dashboard.
+
+---
+
+## ADR-020 — Andon KPI board: one screen, auto-rotating body, on-device severity, bounded board payload
+
+**Date:** 2026-06-06
+**Status:** Accepted
+
+**Context:** The repurposed STM32H7B3I-DK (480×272, TouchGFX, display-only,
+ESP-01 over AT) must show, at a glance from across the room: the live products
+under inspection, Taux NC, and the trending defects with each one's ratio —
+with green/orange/red severity on both products and defects. It is unattended
+(no input, no human login) and constrained (ESP-01 JSON limits, no steady-state
+heap). `GET /kpi` today returns global numbers only. Full UI spec:
+`firmware/UI-SPEC.md`.
+
+**Decision:**
+
+1. **One Screen, persistent header + auto-rotating body.** The header (global
+   Taux NC, connection, clock) is always visible; the body **auto-cycles**
+   every ~8 s between a *Products* panel (≤4 tiles) and a *Defects* panel (≤4
+   ratio bars). No navigation, no input — it's a wall board.
+2. **Four-state severity, computed on-device.** `Severity { UNKNOWN, GOOD,
+   MODERATE, CRITICAL }` → grey / green / orange / red. The board payload is
+   **threshold-agnostic** (raw rates); the firmware maps rate→severity using
+   thresholds in its Octo-SPI config (flag hierarchy — not hardcoded, not
+   server-side). Defaults: **product/global NC rate** GOOD ≤ 5 %, MODERATE ≤
+   10 %, CRITICAL > 10 %; **defect share** (count/total) GOOD < 20 %, MODERATE
+   < 35 %, CRITICAL ≥ 35 %. `UNKNOWN` (grey) is the boot/stale value so the
+   board never shows green before it has data.
+3. **Auto-auth, no login.** The board holds a provisioned **`station`**
+   credential (long-lived token or user/pass) in Octo-SPI, joins Wi-Fi, logs in
+   once at boot, caches the JWT, and re-auths on 401. Reuses the `station` role
+   kept by ADR-018. `provision-device.sh` mints it.
+4. **Boot/placeholder state.** A loading overlay covers the screen until the
+   first `200`; values start `—`, severity `UNKNOWN`, connection `OFFLINE`. A
+   small screen state machine (BOOT → CONNECTING → LIVE → STALE → OFFLINE)
+   drives visibility; `updated_at` age drives STALE/OFFLINE.
+5. **Bounded board payload.** New `GET /kpi/board` returns one fixed-shape
+   snapshot — global block + `products` (≤4, pre-sorted) + `defects` (≤4, by
+   count, each with `ratio`) — so the firmware parses into fixed buffers with no
+   allocation. Same payload is the body of the retained `qc/display/kpi` MQTT
+   message (optional transport). Caps (4/4) match the screen and the firmware
+   arrays.
+6. **Animations are signal, not decoration.** Idle is static; motion marks
+   change — KPI number roll, bar-width tween, fade-in on first data, and a short
+   pulse when a tile/bar turns CRITICAL. Cheap (DMA2D box/text fades); no
+   TextureMapper/Canvas in steady state.
+
+**Consequences:**
+- `GET /kpi/board` is a pure read aggregation reusing `compute_kpi` +
+  `compute_live_products` + a today-top-defects query; no schema change.
+- Thresholds live on the device, so tuning the board doesn't touch the server.
+- Auto-rotation adds a small timer state machine in firmware but keeps text
+  large and the design to one Screen — the "minimal, 1 page" ask.
+
+**Alternatives considered:**
+- *Static dense single screen (no rotation):* rejected — fitting products +
+  defects + global at once on 480×272 forces text too small for a wall board.
+- *Server computes severity / sends colors:* rejected — thresholds belong in the
+  device's config layer (flag hierarchy); keeps the payload reusable and the
+  board independently tunable.
+- *Board calls `GET /kpi` + `GET /products/live` separately:* rejected — two
+  unbounded round-trips and JSON too large for the ESP-01; one bounded payload
+  is the contract.
