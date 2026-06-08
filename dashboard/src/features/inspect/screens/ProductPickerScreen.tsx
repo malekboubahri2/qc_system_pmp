@@ -35,7 +35,7 @@ export function ProductPickerScreen() {
           {active.map((p, i) => (
             <button
               key={p.id}
-              onClick={() => { setProduct({ id: p.id, name: p.name }); navigate('/pmp'); }}
+              onClick={() => { setProduct({ id: p.id, name: p.name, hasCheatsheet: p.has_cheatsheet_file }); navigate('/pmp'); }}
               style={{ ['--stagger' as string]: `${Math.min(i, 8) * 40}ms` }}
               className="stagger-item min-h-[clamp(80px,14vh,108px)] rounded-2xl bg-white border-2 border-cream-subtle
                 p-[clamp(1rem,3vw,1.5rem)] flex items-center gap-4 text-left

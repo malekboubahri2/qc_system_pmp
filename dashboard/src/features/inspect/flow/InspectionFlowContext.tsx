@@ -5,6 +5,7 @@ import {
 export interface SelectedProduct {
   id: number;
   name: string;
+  hasCheatsheet?: boolean;
 }
 export type Category = 'PMP' | 'INJECTION';
 

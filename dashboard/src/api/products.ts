@@ -35,6 +35,28 @@ export async function archiveProduct(id: number): Promise<void> {
   await client.delete(`/products/${id}`);
 }
 
+// ── Cheatsheet document (uploaded PDF/image) ─────────────────────
+export async function uploadCheatsheet(id: number, file: File): Promise<Product> {
+  const form = new FormData();
+  form.append('file', file);
+  const { data } = await client.post<Product>(`/products/${id}/cheatsheet`, form);
+  return data;
+}
+
+export async function deleteCheatsheet(id: number): Promise<void> {
+  await client.delete(`/products/${id}/cheatsheet`);
+}
+
+// The cheatsheet GET is auth-gated, so it can't be a plain <img>/<iframe> src
+// (a bare browser fetch carries no Authorization header). Pull it through the
+// authed client as a blob; callers make an object URL and revoke it when done.
+export async function fetchCheatsheetBlob(id: number): Promise<Blob> {
+  const { data } = await client.get(`/products/${id}/cheatsheet`, {
+    responseType: 'blob',
+  });
+  return data as Blob;
+}
+
 // ── Defect types (product-scoped) ────────────────────────────────
 export async function listDefectTypes(
   productId: number,

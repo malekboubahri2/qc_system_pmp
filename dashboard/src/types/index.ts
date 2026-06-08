@@ -65,6 +65,8 @@ export interface Product {
   reference?: string | null;
   client?: string | null;
   cheatsheet?: string | null;
+  has_cheatsheet_file: boolean;
+  cheatsheet_name?: string | null;
   active: boolean;
   created_at: string;
 }

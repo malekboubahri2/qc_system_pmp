@@ -38,6 +38,23 @@ export function useArchiveProduct() {
   });
 }
 
+export function useUploadCheatsheet() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, file }: { id: number; file: File }) =>
+      api.uploadCheatsheet(id, file),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [PRODUCT_KEY] }),
+  });
+}
+
+export function useDeleteCheatsheet() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: api.deleteCheatsheet,
+    onSuccess: () => qc.invalidateQueries({ queryKey: [PRODUCT_KEY] }),
+  });
+}
+
 // ── Defect types ─────────────────────────────────────────────────
 export function useDefectTypes(
   productId: number,

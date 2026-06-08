@@ -1,18 +1,20 @@
-import { useState } from 'react';
+import { useRef, useState, type ChangeEvent } from 'react';
 import { useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { Plus, Pencil, Archive } from 'lucide-react';
+import { Plus, Pencil, Archive, FileText, Upload, Eye, Trash2 } from 'lucide-react';
 import {
   useProducts, useUpdateProduct, useDefectTypes, useCategoryConstants,
   useCreateDefectType, useUpdateDefectType, useArchiveDefectType,
+  useUploadCheatsheet, useDeleteCheatsheet,
 } from '@/hooks/useProducts';
 import { productSchema, type ProductForm } from '@/lib/schemas';
 import { Button } from '@/components/shared/Button';
 import { Modal } from '@/components/shared/Modal';
 import { FormField } from '@/components/shared/FormField';
+import { CheatsheetViewer } from '@/components/shared/CheatsheetViewer';
 import { Icon } from '@/components/Icon';
 import { PageHeader } from '@/components/ui';
 import type { DefectType, Product } from '@/types';
@@ -181,6 +183,76 @@ function CategorySection({
   );
 }
 
+function cheatsheetErrorMessage(err: unknown): string {
+  const ax = err as { response?: { data?: { detail?: string } } };
+  return ax?.response?.data?.detail ?? 'Échec du téléversement';
+}
+
+// Uploaded cheatsheet document (PDF/image) — distinct from the free-text notes.
+function CheatsheetDocCard({ product }: { product: Product }) {
+  const upload = useUploadCheatsheet();
+  const remove = useDeleteCheatsheet();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [viewing, setViewing] = useState(false);
+
+  async function onPick(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try {
+      await upload.mutateAsync({ id: product.id, file });
+      toast.success('Fiche défauts téléversée');
+    } catch (err) {
+      toast.error(cheatsheetErrorMessage(err));
+    }
+  }
+
+  async function onRemove() {
+    if (!confirm('Supprimer la fiche défauts ?')) return;
+    await remove.mutateAsync(product.id);
+    toast.success('Fiche supprimée');
+  }
+
+  return (
+    <div className="bg-white rounded-lg p-5 flex items-center gap-4" style={{ boxShadow: '0 1px 3px rgba(26,85,96,0.08)' }}>
+      <div className="shrink-0 w-10 h-10 rounded-lg bg-cream flex items-center justify-center text-brand">
+        <Icon icon={FileText} size={18} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <h3 className="text-base font-semibold text-ink-head">Fiche défauts (document)</h3>
+        <p className="text-sm text-ink-muted truncate">
+          {product.has_cheatsheet_file
+            ? product.cheatsheet_name ?? 'Document attaché'
+            : 'Aucun document — PDF ou image que les inspecteurs consultent'}
+        </p>
+      </div>
+      {product.has_cheatsheet_file && (
+        <Button variant="ghost" size="sm" onClick={() => setViewing(true)}>
+          <Icon icon={Eye} size={15} /> Voir
+        </Button>
+      )}
+      <Button variant="secondary" size="sm" loading={upload.isPending} onClick={() => inputRef.current?.click()}>
+        <Icon icon={Upload} size={15} /> {product.has_cheatsheet_file ? 'Remplacer' : 'Téléverser'}
+      </Button>
+      {product.has_cheatsheet_file && (
+        <button onClick={onRemove} title="Supprimer" className="p-2 rounded text-ink-muted hover:text-danger transition-colors">
+          <Icon icon={Trash2} size={15} />
+        </button>
+      )}
+      <input
+        ref={inputRef}
+        type="file"
+        accept="application/pdf,image/png,image/jpeg,image/webp"
+        className="hidden"
+        onChange={onPick}
+      />
+      {viewing && (
+        <CheatsheetViewer productId={product.id} productName={product.name} onClose={() => setViewing(false)} />
+      )}
+    </div>
+  );
+}
+
 export function ProductDetailPage() {
   const { productId } = useParams<{ productId: string }>();
   const id = Number(productId);
@@ -220,6 +292,8 @@ export function ProductDetailPage() {
           )}
         </div>
       )}
+
+      {product && <CheatsheetDocCard product={product} />}
 
       {product && (
         <ProductEditModal open={editOpen} onClose={() => setEditOpen(false)} product={product} />

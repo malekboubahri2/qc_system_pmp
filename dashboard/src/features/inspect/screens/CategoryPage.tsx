@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
-import { ArrowRight, ChevronLeft, Check } from 'lucide-react';
+import { ArrowRight, ChevronLeft, Check, BookOpen } from 'lucide-react';
 import { useDefectTypes, useCategoryConstants } from '@/hooks/useProducts';
+import { CheatsheetViewer } from '@/components/shared/CheatsheetViewer';
 import type { DefectType } from '@/types';
 import { useInspectionFlow, type Category } from '../flow/InspectionFlowContext';
 import { InspectScreen } from '../components/InspectScreen';
@@ -28,6 +29,7 @@ export function CategoryPage({ category }: { category: Category }) {
   const { data: types = [], isLoading } = useDefectTypes(product?.id ?? 0);
   const { data: categories = [] } = useCategoryConstants();
   const [noteFor, setNoteFor] = useState<number | null>(null);
+  const [showFiche, setShowFiche] = useState(false);
 
   if (!product) return <Navigate to="/" replace />;
 
@@ -56,9 +58,16 @@ export function CategoryPage({ category }: { category: Category }) {
       title={label}
       subtitle={`${product.name} · étape ${cfg.stepN} / 2`}
       action={
-        <TouchButton variant="ghost" onClick={() => navigate(cfg.back)}>
-          <ChevronLeft size={20} /> Retour
-        </TouchButton>
+        <div className="flex items-center gap-2">
+          {product.hasCheatsheet && (
+            <TouchButton variant="ghost" onClick={() => setShowFiche(true)}>
+              <BookOpen size={20} /> Fiche
+            </TouchButton>
+          )}
+          <TouchButton variant="ghost" onClick={() => navigate(cfg.back)}>
+            <ChevronLeft size={20} /> Retour
+          </TouchButton>
+        </div>
       }
       footer={
         <div className="flex items-center justify-between gap-4 max-w-5xl mx-auto w-full">
@@ -139,6 +148,13 @@ export function CategoryPage({ category }: { category: Category }) {
           setNoteFor(null);
         }}
       />
+      {showFiche && (
+        <CheatsheetViewer
+          productId={product.id}
+          productName={product.name}
+          onClose={() => setShowFiche(false)}
+        />
+      )}
     </InspectScreen>
   );
 }
