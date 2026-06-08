@@ -49,6 +49,29 @@ at 192.168.8.0/24 (or whatever the router default is). The STM32 joins that
 SSID. No IT coordination required. The router's SSID and PSK are set once
 and burned into the device's Octo-SPI at provisioning time.
 
+### Friendly hostname — `inspection.pmp` (dnsmasq)
+
+Tablets reach the platform at `https://inspection.pmp` instead of a raw IP. The
+`dnsmasq` container resolves the name to the RPi's **current** DHCP IP — it uses
+dnsmasq's `interface-name`, so the config never hardcodes an address and the
+name follows the lease (`QC_DOMAIN` / `UPSTREAM_DNS` / `LAN_IFACE` in `.env`). It
+runs with `network_mode: host` so it can read the live interface address and
+bind `:53` on the LAN.
+
+Point clients' DNS at the RPi so they use it:
+
+- **Preferred:** in the plant router's DHCP, set the primary DNS to the RPi's
+  address, and give the RPi a **DHCP reservation** (so that pointer — and the
+  address tablets resolve to — stays valid; `interface-name` still means you
+  never edit dnsmasq if the reservation is later changed).
+- **Or per-tablet:** set the kiosk tablet's DNS manually to the RPi's IP.
+
+Then `https://inspection.pmp` works: Caddy issues an internal-CA cert for the
+name on demand. Install Caddy's root CA on each tablet once (see
+`docs/runbook-kiosk.md`) so the lock is trusted and the PWA can install + run
+offline. **The andon board keeps using the RPi's IP** (`KPI_SERVER_HOST`) — the
+wall display should not depend on DNS.
+
 ---
 
 ## 2. Plant IT Requirements (Option A)

@@ -127,3 +127,20 @@ services:
       retries: 6
       start_period: 15s
     restart: unless-stopped
+
+  # ── Local DNS — friendly hostname on the plant LAN ───────────
+  # Resolves ${QC_DOMAIN} to the RPi's *current* DHCP IP (interface-name; no
+  # hardcoded address). network_mode: host is required so it can read the host
+  # interface's live address and bind :53 on the LAN — a bridged container would
+  # only see its useless internal 172.x address. Intended for the RPi; on a dev
+  # laptop with Docker Desktop, host networking differs, so skip it there
+  # (`docker compose ... up -d` the other services, or scale dnsmasq to 0).
+  dnsmasq:
+    build:
+      context: ../dnsmasq
+    network_mode: host
+    environment:
+      QC_DOMAIN: ${QC_DOMAIN:-inspection.pmp}
+      UPSTREAM_DNS: ${UPSTREAM_DNS:-1.1.1.1}
+      # LAN_IFACE: eth0   # optional — auto-detected from the default route
+    restart: unless-stopped
