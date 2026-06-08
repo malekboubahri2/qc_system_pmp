@@ -19,7 +19,18 @@ export function InspectScreen({
   title, subtitle, action, footer, fill = false, children,
 }: InspectScreenProps) {
   return (
-    <div className="h-dvh flex flex-col bg-cream">
+    // Pad for the device safe areas (notch / status bar / home indicator).
+    // inspect.html uses viewport-fit=cover + a translucent status bar, so
+    // without this the header renders *under* the status bar in fullscreen.
+    <div
+      className="h-dvh flex flex-col bg-cream"
+      style={{
+        paddingTop: 'env(safe-area-inset-top)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+        paddingLeft: 'env(safe-area-inset-left)',
+        paddingRight: 'env(safe-area-inset-right)',
+      }}
+    >
       <header className="flex items-center justify-between gap-4 px-[clamp(1.25rem,4vw,2.5rem)] pt-[clamp(1rem,2.5vh,1.75rem)] pb-[clamp(0.75rem,1.5vh,1.25rem)] shrink-0">
         <div className="min-w-0">
           {title && (
