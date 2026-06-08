@@ -49,5 +49,11 @@ class Settings(BaseSettings):
     # Length of the auto-generated operator login password (ADR-018).
     operator_password_length: int = Field(default=8, ge=6, le=24)
 
+    # Uploaded product cheatsheet documents. Stored on the qc-data volume next to
+    # the SQLite DB so they persist across redeploys; only metadata is in the DB.
+    # Override per environment via UPLOAD_DIR.
+    upload_dir: str = Field(default="/var/lib/qc/uploads")
+    cheatsheet_max_bytes: int = Field(default=10 * 1024 * 1024)  # 10 MiB
+
 
 settings = Settings()  # type: ignore[call-arg]  # pydantic-settings reads from env

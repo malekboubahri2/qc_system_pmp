@@ -18,6 +18,12 @@ class Product(Base):
     client: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
     # Free-text inspection notes / cheatsheet shown on the product page.
     cheatsheet: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    # Uploaded cheatsheet document (PDF/image): stored filename on disk, its MIME
+    # type, and the original upload name. The file lives under settings.upload_dir;
+    # only this metadata is in the DB.
+    cheatsheet_file: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    cheatsheet_mime: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    cheatsheet_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
     archived_at: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     created_at: Mapped[str] = mapped_column(
@@ -29,3 +35,8 @@ class Product(Base):
     defect_types: Mapped[List["DefectType"]] = relationship(  # type: ignore[name-defined]
         "DefectType", back_populates="product", lazy="select"
     )
+
+    @property
+    def has_cheatsheet_file(self) -> bool:
+        """True when an uploaded cheatsheet document is attached."""
+        return bool(self.cheatsheet_file)

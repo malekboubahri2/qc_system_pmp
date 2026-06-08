@@ -22,6 +22,10 @@ class ProductRead(BaseModel):
     reference: Optional[str] = None
     client: Optional[str] = None
     cheatsheet: Optional[str] = None
+    # Uploaded cheatsheet document: whether one is attached + its display name.
+    # The bytes are fetched separately via GET /products/{id}/cheatsheet.
+    has_cheatsheet_file: bool = False
+    cheatsheet_name: Optional[str] = None
     active: bool
     created_at: str
 
