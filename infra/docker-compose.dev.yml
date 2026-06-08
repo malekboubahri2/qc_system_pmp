@@ -137,7 +137,7 @@ services:
   # (`docker compose ... up -d` the other services, or scale dnsmasq to 0).
   dnsmasq:
     build:
-      context: ../dnsmasq
+      context: ./dnsmasq
     network_mode: host
     environment:
       QC_DOMAIN: ${QC_DOMAIN:-inspection.pmp}
