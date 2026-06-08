@@ -184,8 +184,9 @@ function CategorySection({
 }
 
 function cheatsheetErrorMessage(err: unknown): string {
-  const ax = err as { response?: { data?: { detail?: string } } };
-  return ax?.response?.data?.detail ?? 'Échec du téléversement';
+  const detail = (err as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
+  // FastAPI 422 returns an array of error objects — never hand that to a toast.
+  return typeof detail === 'string' ? detail : 'Échec du téléversement';
 }
 
 // Uploaded cheatsheet document (PDF/image) — distinct from the free-text notes.

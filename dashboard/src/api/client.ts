@@ -27,6 +27,10 @@ export const client = axios.create({
 client.interceptors.request.use((req) => {
   const token = getToken();
   if (token) req.headers.Authorization = `Bearer ${token}`;
+  // FormData uploads must go out as multipart with a browser-generated boundary.
+  // Drop the instance default 'application/json' so the body isn't mislabelled
+  // (which the server would reject with a 422).
+  if (req.data instanceof FormData) req.headers.delete('Content-Type');
   return req;
 });
 

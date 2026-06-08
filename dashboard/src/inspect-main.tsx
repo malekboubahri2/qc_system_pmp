@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import './index.css';
 import { configureAuth } from '@/api/client';
 import { InspectApp } from '@/features/inspect/InspectApp';
+import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 
 // The PWA shares the unified login token (ADR-018). On 401, drop it and return
 // to the login page.
@@ -16,7 +17,9 @@ configureAuth({
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <InspectApp />
+    <ErrorBoundary>
+      <InspectApp />
+    </ErrorBoundary>
   </StrictMode>,
 );
 
