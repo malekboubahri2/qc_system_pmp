@@ -1,0 +1,3 @@
+[submodule "firmware/qc_andon"]
+	path = firmware/qc_andon
+	url = https://github.com/malekboubahri2/qc_andon.git
