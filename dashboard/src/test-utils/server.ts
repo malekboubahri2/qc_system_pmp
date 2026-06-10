@@ -54,6 +54,20 @@ export const handlers = [
     HttpResponse.json(FIXTURE_HOURLY_REPORT),
   ),
 
+  // KPI snapshot (global Taux NC + cadence on the dashboard home)
+  http.get(`${BASE}/kpi`, () =>
+    HttpResponse.json({
+      date: '2026-06-05',
+      inspected_parts: 40,
+      nc_parts: 6,
+      ok_parts: 34,
+      nc_rate: 0.15,
+      defect_count: 9,
+      last_hour_parts: 5,
+      updated_at: '2026-06-05T10:00:00Z',
+    }),
+  ),
+
   // Stats
   http.get(`${BASE}/stats/summary`, () => HttpResponse.json(FIXTURE_SUMMARY)),
   http.get(`${BASE}/stats/by-defect`, () => HttpResponse.json(FIXTURE_BY_DEFECT)),

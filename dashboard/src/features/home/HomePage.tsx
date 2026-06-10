@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getHourlyReport } from '@/api/inspection-logs';
+import { getKpi } from '@/api/kpi';
 import { PageHeader, Section } from '@/components/ui';
+import { GlobalStatsRow } from './GlobalStatsRow';
 import { DayStatsRow } from './DayStatsRow';
 import { HourlyReportTable } from './HourlyReportTable';
 
@@ -15,6 +17,13 @@ export function HomePage() {
   const { data, isLoading } = useQuery({
     queryKey: ['inspection-logs', 'hourly', date],
     queryFn: () => getHourlyReport(date),
+  });
+
+  // Global, part-level KPIs (correct NC rate by part; the per-category rows
+  // can't give a global rate without double-counting parts NC in both).
+  const { data: kpi } = useQuery({
+    queryKey: ['kpi', date],
+    queryFn: () => getKpi({ date }),
   });
 
   const rows = data?.rows ?? [];
@@ -46,6 +55,8 @@ export function HomePage() {
         <div className="text-sm text-ink-muted">Chargement…</div>
       ) : (
         <>
+          <GlobalStatsRow kpi={kpi} rows={rows} />
+
           <DayStatsRow rows={rows} />
 
           <Section className="overflow-hidden p-0">
