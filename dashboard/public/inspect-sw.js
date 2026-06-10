@@ -4,7 +4,7 @@
  * handled in the app (IndexedDB queue) — this only caches the app shell and
  * static assets. It never touches /api requests or admin-surface navigations.
  */
-const CACHE = 'qc-inspect-v2';
+const CACHE = 'qc-inspect-v3';
 const SHELL = ['/inspect.html', '/config.js', '/logo.png', '/inspect.webmanifest'];
 
 self.addEventListener('install', (event) => {
