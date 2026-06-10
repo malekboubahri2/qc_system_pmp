@@ -24,7 +24,7 @@ export function Clock() {
   return (
     <div className="text-right leading-tight">
       <div className="text-lg font-mono font-semibold text-brand tabular-nums">{time}</div>
-      <div className="text-xs text-ink-muted capitalize">{date}</div>
+      <div className="hidden sm:block text-xs text-ink-muted capitalize">{date}</div>
     </div>
   );
 }

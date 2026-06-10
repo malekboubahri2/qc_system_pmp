@@ -58,17 +58,27 @@ export function CategoryPage({ category }: { category: Category }) {
       title={label}
       subtitle={`${product.name} · étape ${cfg.stepN} / 2`}
       back={
-        <TouchButton variant="ghost" onClick={() => navigate(cfg.back)} aria-label="Retour">
-          <ChevronLeft size={20} />
-          <span className="hidden sm:inline">Retour</span>
-        </TouchButton>
+        <button
+          onClick={() => navigate(cfg.back)}
+          aria-label="Retour"
+          className="flex items-center gap-1.5 h-11 px-2.5 sm:px-3.5 rounded-xl shrink-0 select-none
+            text-ink-muted hover:text-brand hover:bg-cream-subtle/60 active:scale-95 transition-colors"
+        >
+          <ChevronLeft size={22} />
+          <span className="hidden sm:inline text-base font-semibold">Retour</span>
+        </button>
       }
       action={
         product.hasCheatsheet ? (
-          <TouchButton variant="ghost" onClick={() => setShowFiche(true)} aria-label="Fiche défauts">
-            <BookOpen size={20} />
-            <span className="hidden sm:inline">Fiche</span>
-          </TouchButton>
+          <button
+            onClick={() => setShowFiche(true)}
+            aria-label="Fiche défauts"
+            className="flex items-center gap-1.5 h-11 px-2.5 sm:px-3.5 rounded-xl shrink-0 select-none
+              text-ink-muted hover:text-brand hover:bg-cream-subtle/60 active:scale-95 transition-colors"
+          >
+            <BookOpen size={22} />
+            <span className="hidden sm:inline text-base font-semibold">Fiche</span>
+          </button>
         ) : undefined
       }
       footer={
