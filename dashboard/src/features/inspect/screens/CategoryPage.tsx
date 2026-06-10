@@ -57,17 +57,19 @@ export function CategoryPage({ category }: { category: Category }) {
       fill
       title={label}
       subtitle={`${product.name} · étape ${cfg.stepN} / 2`}
+      back={
+        <TouchButton variant="ghost" onClick={() => navigate(cfg.back)} aria-label="Retour">
+          <ChevronLeft size={20} />
+          <span className="hidden sm:inline">Retour</span>
+        </TouchButton>
+      }
       action={
-        <div className="flex items-center gap-2">
-          {product.hasCheatsheet && (
-            <TouchButton variant="ghost" onClick={() => setShowFiche(true)}>
-              <BookOpen size={20} /> Fiche
-            </TouchButton>
-          )}
-          <TouchButton variant="ghost" onClick={() => navigate(cfg.back)}>
-            <ChevronLeft size={20} /> Retour
+        product.hasCheatsheet ? (
+          <TouchButton variant="ghost" onClick={() => setShowFiche(true)} aria-label="Fiche défauts">
+            <BookOpen size={20} />
+            <span className="hidden sm:inline">Fiche</span>
           </TouchButton>
-        </div>
+        ) : undefined
       }
       footer={
         <div className="flex items-center justify-between gap-4 max-w-5xl mx-auto w-full">

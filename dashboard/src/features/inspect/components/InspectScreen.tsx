@@ -5,7 +5,9 @@ import { Clock } from './Clock';
 interface InspectScreenProps {
   title?: string;
   subtitle?: string;
-  /** Top-right slot (e.g. back/logout). The clock + connectivity are always shown. */
+  /** Left slot before the title — e.g. a back button. */
+  back?: ReactNode;
+  /** Top-right slot (e.g. logout or a secondary action). Clock + connectivity always show. */
   action?: ReactNode;
   /** Bottom sticky bar (e.g. primary CTA). */
   footer?: ReactNode;
@@ -16,7 +18,7 @@ interface InspectScreenProps {
 
 // Full-screen, touch-first layout for the inspection kiosk. No admin chrome.
 export function InspectScreen({
-  title, subtitle, action, footer, fill = false, children,
+  title, subtitle, back, action, footer, fill = false, children,
 }: InspectScreenProps) {
   return (
     // Pad for the device safe areas (notch / status bar / home indicator).
@@ -31,14 +33,15 @@ export function InspectScreen({
         paddingRight: 'env(safe-area-inset-right)',
       }}
     >
-      <header className="flex items-center justify-between gap-4 px-[clamp(1.25rem,4vw,2.5rem)] pt-[clamp(1rem,2.5vh,1.75rem)] pb-[clamp(0.75rem,1.5vh,1.25rem)] shrink-0">
-        <div className="min-w-0">
+      <header className="flex items-center gap-3 px-[clamp(1.25rem,4vw,2.5rem)] pt-[clamp(1rem,2.5vh,1.75rem)] pb-[clamp(0.75rem,1.5vh,1.25rem)] shrink-0">
+        {back && <div className="shrink-0">{back}</div>}
+        <div className="min-w-0 flex-1">
           {title && (
             <h1 className="text-fluid-xl font-bold text-brand tracking-tighter truncate">{title}</h1>
           )}
           {subtitle && <p className="text-fluid-sm text-ink-muted mt-0.5 truncate">{subtitle}</p>}
         </div>
-        <div className="flex items-center gap-[clamp(0.75rem,2vw,1.5rem)] shrink-0">
+        <div className="flex items-center gap-[clamp(0.5rem,1.5vw,1.25rem)] shrink-0">
           {action}
           <ConnectivityBadge />
           <Clock />
