@@ -4,6 +4,7 @@ import { Toaster } from 'sonner';
 import { AuthProvider } from '@/hooks/useAuth';
 import { RequireAuth } from '@/components/RequireAuth';
 import { AppShell } from '@/components/shared/AppShell';
+import { NotificationProvider } from '@/components/shared/notifications';
 import { LoginPage } from '@/pages/Login';
 import { HomePage } from '@/features/home';
 import { ProductsPage } from '@/features/products';
@@ -39,6 +40,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <NotificationProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
@@ -95,6 +97,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
+        </NotificationProvider>
 
         <Toaster
           position="top-right"

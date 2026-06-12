@@ -1,7 +1,9 @@
 import { type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
+import { NotificationCenter, NotificationToasts } from './notifications';
 import { useServerEvents } from '@/hooks/useServerEvents';
+import { useAppAlerts } from '@/hooks/useAppAlerts';
 
 interface AppShellProps {
   children: ReactNode;
@@ -9,6 +11,7 @@ interface AppShellProps {
 
 export function AppShell({ children }: AppShellProps) {
   useServerEvents();  // live refresh on new inspections (SSE)
+  useAppAlerts();     // connection + threshold notifications
   const { pathname } = useLocation();
   return (
     <div className="h-screen bg-cream flex overflow-hidden print:h-auto print:overflow-visible print:block">
@@ -23,6 +26,12 @@ export function AppShell({ children }: AppShellProps) {
           </div>
         </div>
       </main>
+
+      {/* Notification bell (top-right gutter) + transient toast stack. */}
+      <div className="fixed top-4 right-4 z-50 print:hidden">
+        <NotificationCenter />
+      </div>
+      <NotificationToasts />
     </div>
   );
 }

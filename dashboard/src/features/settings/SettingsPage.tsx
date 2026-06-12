@@ -4,6 +4,7 @@ import { useFlags, useUpdateFlag } from '@/hooks/useFlags';
 import { config } from '@/config';
 import type { FeatureFlag } from '@/types';
 import { PageHeader, Section } from '@/components/ui';
+import { ThresholdsSection } from './ThresholdsSection';
 
 function FlagRow({ flag, pending }: { flag: FeatureFlag; pending: boolean }) {
   const updateFlag = useUpdateFlag();
@@ -66,6 +67,8 @@ export function SettingsPage() {
           </div>
         </dl>
       </Section>
+
+      <ThresholdsSection />
 
       <Section title="Indicateurs de fonctionnalité">
 
