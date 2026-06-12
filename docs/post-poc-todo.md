@@ -9,6 +9,20 @@ Pick this file up if and only if:
 - A specific item becomes a blocker for an actual demo or pilot day
 - You're onboarding a new engineer and need a "what's the technical debt" tour
 
+> **Status (v1.0.0, 2026-06).** This is a **dated snapshot** of the Phase 1/2
+> audits (May 2026), not a live checklist. The web pivot and the v1.0.0 release
+> closed or mooted much of it:
+> - **Moot** — every PIN / STM32-as-inspection-device item: operators are login
+>   accounts now (ADR-018) and the STM32 is a display-only andon board
+>   (ADR-017). The PIN endpoints and the device defect-log path are retired.
+> - **Closed since** — the dashboard feature-flag hook (`hooks/useFlags.ts`),
+>   the `include_archived` toggle (Operators page), and the Phase 2 ADR backlog
+>   (`decisions.md` now runs through ADR-020). `admin/mqtt/republish-retained`
+>   is no longer referenced in any live doc, so the 🟡-13 doc-drift is gone.
+>
+> Treat the items below as a technical-debt *tour*, and cross-check against
+> `architecture.md` / `roadmap.md` for the current state before acting on any.
+
 ## Why these are parked, not fixed
 
 The PoC thesis is: can operators digitalize defect logging faster than

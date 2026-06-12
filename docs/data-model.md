@@ -65,9 +65,12 @@ erDiagram
 CREATE TABLE products (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     name        TEXT    NOT NULL,
-    reference   TEXT,               -- optional, e.g. "PROD-001" (migration 0008)
-    client      TEXT,               -- optional, e.g. "Renault"  (migration 0008)
-    cheatsheet  TEXT,               -- optional free-text inspection notes
+    reference       TEXT,           -- optional, e.g. "PROD-001" (migration 0008)
+    client          TEXT,           -- optional, e.g. "Renault"  (migration 0008)
+    cheatsheet      TEXT,           -- optional free-text inspection notes
+    cheatsheet_file TEXT,           -- uploaded doc: stored filename on disk
+    cheatsheet_mime TEXT,           -- uploaded doc: MIME type (PDF/image)
+    cheatsheet_name TEXT,           -- uploaded doc: original display name
     active      INTEGER NOT NULL DEFAULT 1,
     archived_at TEXT,
     created_at  TEXT    NOT NULL
@@ -82,6 +85,10 @@ CREATE INDEX idx_products_active ON products (active);
 - `reference`, `client`, `cheatsheet` — the product "fiche" (migration 0008,
   ADR-019). All optional. The product list filters by `client` and suggests
   previously-used clients; `cheatsheet` is free-text inspection consignes.
+- `cheatsheet_file` / `cheatsheet_mime` / `cheatsheet_name` — an optional
+  uploaded cheatsheet **document** (PDF/image) per product, served to inspectors
+  via `GET /products/{id}/cheatsheet`. The blob lives on disk; only the stored
+  filename, MIME, and display name are in the row.
 - Creating a product via `POST /products` auto-creates two
   `defect_types` rows with `is_other_fallback=true`, one per
   `category_kind`. These seed the "Autre — préciser" fallback for each

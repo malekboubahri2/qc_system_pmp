@@ -20,20 +20,22 @@ Plant LAN (wired)
        │
    [Wi-Fi AP]          SSID: <qc-system-ssid>   WPA2-PSK
        │                2.4 GHz only
-   ─────────────────────────────────────────────────
-   │                                             │
-[RPi 4B]                               [STM32H7B3I-DK]
-static IP / DHCP reservation            ISM43340 Wi-Fi module
-runs Mosquitto on :1883
+   ───────────────┬─────────────────────┬───────────────
+   │              │                     │
+[RPi 4B]   [Station tablets]   [STM32H7B3I-DK andon board]
+static IP /  inspection PWA      ESP-01 Wi-Fi module
+DHCP reserv. HTTPS → :443        HTTP GET /kpi (display only)
+runs the stack
 ```
 
 The RPi connects to the plant AP via its wired Ethernet (recommended) or its
-own Wi-Fi interface. The STM32 connects to the same AP over 2.4 GHz (the
-ISM43340 is 2.4 GHz only; the AP must serve a 2.4 GHz band on the chosen
-SSID).
+own Wi-Fi interface. **Station tablets** run the inspection PWA and reach the
+server over HTTPS (`:443`, Caddy). The **STM32 andon board** is display-only: it
+joins the same AP over 2.4 GHz via an external ESP-01 (ESP8266; 2.4 GHz only,
+so the AP must serve a 2.4 GHz band) and polls `GET /kpi`.
 
-Both devices must be on the same Layer-3 subnet so MQTT traffic (TCP :1883)
-is routed directly. No VPN or NAT between them.
+All clients must be on the same Layer-3 subnet as the RPi. No VPN or NAT
+between them.
 
 ### Option B — Dedicated travel router (fallback)
 
@@ -80,12 +82,13 @@ Before arrival at the site, confirm these items with the plant IT contact:
 
 | Requirement | Why |
 |---|---|
-| STM32 on 2.4 GHz SSID | ISM43340 is 802.11 b/g/n; no 5 GHz support |
-| Client isolation **off** | STM32 must reach the RPi over WLAN; isolation blocks it |
-| TCP port **1883** open between WLAN clients | Mosquitto; no TLS in PoC |
-| WPA2-PSK (not 802.1X/enterprise) | ISM43340 AT-command driver does not implement EAP |
-| Static IP **or** DHCP reservation for the RPi | STM32 firmware has the broker IP baked in; it must not change |
-| RSSI ≥ −65 dBm at every inspection station | ISM43340 reliable-operation floor; painting equipment is electrically noisy |
+| Andon board on 2.4 GHz SSID | ESP-01 (ESP8266) is 802.11 b/g/n; no 5 GHz support |
+| Client isolation **off** | Tablets and the andon board must reach the RPi over WLAN; isolation blocks it |
+| TCP port **443** open between WLAN clients | Tablets reach the server over HTTPS (Caddy) |
+| TCP port **1883** open (only if MQTT KPI option used) | Mosquitto; the andon board's default is HTTP `GET /kpi`, so this is optional |
+| WPA2-PSK (not 802.1X/enterprise) | ESP-01 AT-command firmware does not implement EAP |
+| Static IP **or** DHCP reservation for the RPi | The andon board has the server host baked into its Octo-SPI config; it must not change |
+| RSSI ≥ −65 dBm at every station and the andon wall | ESP-01 reliable-operation floor; painting equipment is electrically noisy |
 
 If any item cannot be confirmed, fall back to Option B.
 
@@ -254,7 +257,9 @@ docker compose -f infra/docker-compose.dev.yml up --build
 ```
 
 Services: `qc-server` (FastAPI :8000), `mosquitto` (:1883),
-`qc-dashboard` (Vite dev server :5173), `caddy` (:80).
+`qc-dashboard` (Caddy-served built SPA on :8080 / :443), and `dnsmasq` (host
+network, RPi only — skip on a dev laptop). The dashboard image bundles Caddy;
+there is no separate Vite-dev-server or Caddy service.
 
 ### Production (RPi)
 
@@ -290,50 +295,58 @@ docker compose -f infra/docker-compose.prod.yml restart server
 
 ---
 
-## 7. STM32 Device — Wi-Fi Verification
+## 7. Andon Board — Wi-Fi Verification
 
-Before flashing production firmware, verify that the ISM43340 can join the
-target SSID using the Clock & Weather demo shipped with the H7B3I-DK board.
+The STM32 andon board joins Wi-Fi through an external **ESP-01 (ESP8266)** over
+UART/AT commands (ADR-015) — the module owns the IP stack. Before mounting the
+board on the wall, verify it can reach the server:
 
-1. Download and flash the Clock & Weather demo from STM32CubeH7 examples.
-2. Configure the demo's `wifi_credentials.h` with the target SSID and PSK.
-3. Power on the board and check the LCD for a connected status and IP address.
-4. If association fails: verify the AP serves 2.4 GHz, WPA2-PSK, and that
-   client isolation is off.
+1. Flash the andon firmware (`C:\TouchGFXProjects\qc_node`) with the target
+   SSID, PSK, and server host set in its Octo-SPI config.
+2. Power on the board; the LCD should show a connecting → connected indicator.
+3. Confirm it renders live KPI numbers (it is polling `GET /kpi`). A value other
+   than the placeholder means the HTTP round-trip works.
+4. If association fails: verify the AP serves 2.4 GHz, WPA2-PSK, and that client
+   isolation is off; confirm the server host/IP in the board config is current.
 
-A successful Clock & Weather demo association is the Day 1 gate before
-any firmware development begins (see `docs/roadmap.md` Day 1 checklist).
+The board is **display-only** — there is no input flow to test on the device
+itself. Inspection is verified on a station tablet (section 8).
 
 ---
 
 ## 8. End-to-End Smoke Test
 
-After bringing up the stack and flashing a device:
+After bringing up the stack:
 
-1. **MQTT broker reachable:**
+1. **Server healthy:**
 
    ```bash
-   # From the RPi or another machine on the same subnet
+   curl -f http://<rpi-ip>:8000/health        # → {"status":"ok"}
+   ```
+
+2. **Dashboard reachable:** Open `https://inspection.pmp` (or `http://<rpi-ip>:8080`)
+   and log in as the `admin` user. Create a product with a couple of PMP /
+   INJECTION defect types and an operator (note the one-time credentials).
+
+3. **Inspection round-trip (the primary path):** On a tablet or any browser,
+   open the inspection PWA (`/inspect.html`), log in with the operator's
+   credentials, pick the product, tap a few defects across the grids, and
+   submit. Confirm the part appears in the dashboard's **Journaux** and that the
+   **Taux NC** updates. Toggle Wi-Fi off, log a part, toggle back on, and verify
+   the queued part drains (online/pending indicator).
+
+4. **Andon board:** Confirm the wall board's KPI numbers update within a few
+   seconds of the inspection above (it polls `GET /kpi`).
+
+5. **MQTT (only if using the optional MQTT KPI/config mirror):**
+
+   ```bash
    mosquitto_sub -h <rpi-ip> -p 1883 -u qc-server -P <server-password> \
      -t 'qc/#' -v
    ```
 
-   Should subscribe without error. Leave it running.
-
-2. **Device connects:** Power on the STM32. Within 30 seconds you should
-   see a connect message in the Mosquitto log (`connection_messages true`)
-   and a heartbeat on `qc/device/qc-stm32-<uid>/status`.
-
-3. **Config delivery:** The device should receive the retained
-   `qc/config/products` and `qc/config/operators` messages immediately on
-   connect. Verify via the `mosquitto_sub` terminal above.
-
-4. **Defect log round-trip:** Tap a defect on the STM32 touchscreen.
-   Verify the log appears in `mosquitto_sub` on `qc/device/<id>/defect`
-   and in the FastAPI database (`GET /api/v1/logs`).
-
-5. **Dashboard:** Open `http://<rpi-ip>` in a browser. Log in. Confirm
-   the defect appears in the live log view.
+   Should subscribe without error and show the retained `qc/display/kpi` /
+   `qc/config/*` messages.
 
 ---
 
@@ -351,9 +364,10 @@ After bringing up the stack and flashing a device:
 - **Adding a new device:** Run `scripts/provision-device.sh <uid>`, copy
   credentials to the flashing tool, flash the device. No broker restart
   required.
-- **Device offline queue:** Each STM32 queues up to 1 000 defect logs to
-  Octo-SPI flash during Wi-Fi outages and drains them on reconnect. This
-  covers approximately 24 hours of typical plant use.
+- **Offline queue:** lives in the **inspection PWA** (IndexedDB), not the
+  andon board (which is display-only). Each tablet queues up to 1 000 parts
+  during a Wi-Fi outage and drains them in order on reconnect — about 24 hours
+  of typical use.
 
 ---
 

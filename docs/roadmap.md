@@ -22,7 +22,10 @@
   and offline last. Keep the STM32 terminal running in parallel until the PWA
   proves out — no big-bang cutover.
 
-## Status
+## Status — v1.0.0 shipped
+
+All five phases below are done and deployed to the RPi. v1.0.0 is the first
+joint release of the post-pivot system (web PWA inspection + STM32 andon board).
 
 - ✅ Server, SQLite, JWT auth, dashboard, product/defect config, analytics,
   live-stations, per-part inspection model (ADR-013/016), hourly Taux NC.
@@ -34,9 +37,16 @@
 - ✅ **Per-product/operator epic** (ADR-019): product fiche
   (reference/client/cheatsheet), operator HR details, `GET /products/live` +
   "Produits en direct" page, quality report per-product section + operator
-  productivity leaderboard. SSE live updates. Deployed to the RPi.
-- ▶️ Next: validate the inspection PWA end-to-end on a station tablet; surface
-  the product cheatsheet to inspectors; optional per-operator drill-down report.
+  productivity leaderboard. SSE live updates.
+- ✅ **STM32 andon board** (ADR-020): single auto-rotating KPI screen,
+  on-device severity, bounded board payload over `GET /kpi/board`.
+- ✅ **Access layer:** `inspection.pmp` via dnsmasq, Caddy internal-CA HTTPS so
+  the PWA installs and runs offline; cheatsheet surfaced to inspectors.
+- ✅ **Operations layer:** PWA idle auto-logout + remembered-user re-login;
+  configurable threshold alerts (global / per-product Taux NC, connection) with
+  a dashboard notification center.
+- ▶️ Next (post-v1.0.0): validate end-to-end on a station tablet during a pilot
+  shift; optional per-operator drill-down report; the backlog below.
 
 ---
 
@@ -140,34 +150,27 @@ seconds; no input on the device.
 The web surface is the **product differentiator and selling point**, so UX
 investment is a first-class workstream, not polish-at-the-end.
 
-- **Rich, interactive dashboard UX.** Motion/animation (Framer Motion or CSS),
-  live-updating charts, micro-interactions, an engaging inspection flow on the
-  tablet. Treat the dashboard + PWA as the demo's wow factor. Keep it modular
-  (a `lib/motion` + shared interactive components) so it stays reusable and
-  doesn't leak into business logic.
-- **Auto-generated operator credentials.** The QC responsable creates an
-  operator by entering a **name** (more fields later); the server **mints a
-  unique numeric PIN**, stores only its hash, and returns the plaintext **once**
-  in the create/regenerate response. The dashboard shows it in a **reveal-once**
-  modal (copyable), after which it's unrecoverable. Sketch:
-  - `POST /operators {name}` → 201 `{id, name, pin}` where `pin` is plaintext,
-    returned exactly once; DB stores `pin_hash` only.
-  - PIN generated server-side (CSPRNG), enforced **unique among active
-    operators** (regenerate until unique), length configurable (e.g. 4–6).
-  - `POST /operators/{id}/regenerate-pin` → 200 `{pin}` (reveal once) for
-    rotation/forgotten PINs.
-  - Reuses `app/security.py` hashing; **republish the retained operators config
-    on create/regenerate** (so any device add-on stays in sync — the same hook
-    that fixed the "operators not refreshed until PIN change" bug).
-  - Replaces any manual PIN entry; the responsable never sees a stored PIN, only
-    the one-time reveal.
-- **PDF report generation.** Server-side PDF (e.g. WeasyPrint/ReportLab) for a
-  shift/day/period quality report: Taux NC per category, top defects (Pareto),
-  by-operator, hourly trend, date range. Exposed as `GET /reports/pdf?from=&to=`
-  and a dashboard "Export PDF" action. Reuse the existing analytics services;
-  render from the same data the dashboard charts use.
-- Later, behind flags: photo/attachment capture on a defect, MES integration,
-  multi-plant/tenant, role-based dashboards.
+**Shipped in v1.0.0 (was backlog):**
+
+- ✅ **Rich, interactive dashboard UX** — live-updating charts (SSE), animated
+  transitions, an engaging tablet inspection flow, the notification center.
+  Treated as a first-class workstream, kept out of business logic.
+- ✅ **Auto-generated operator credentials** — landed as **login accounts**, not
+  PINs (ADR-018 superseded the PIN sketch). `POST /operators {name}` mints a
+  unique username + password returned **once** (`OperatorWithCredentials`, hash
+  only stored); `POST /operators/{id}/regenerate-password` rotates it. Retained
+  operators config is republished on create/regenerate.
+- ✅ **Period quality report** — shipped as **browser-print** (no server-side
+  PDF endpoint): the dashboard report page renders Taux NC per category, top
+  defects, by-operator, and trend from the existing analytics endpoints, and the
+  responsable prints/saves it from the browser.
+
+**Genuinely future (behind flags, post-pilot):**
+
+- Photo/attachment capture on a defect (see architecture.md §9 for the seam).
+- MES / ERP integration (read export + after-commit push).
+- Multi-plant / multi-tenant (`plant_id` scoping + JWT claim).
+- Per-operator drill-down report; role-based dashboards.
 
 ## What we deliberately are NOT doing now
 

@@ -6,7 +6,7 @@ React + Vite + TS frontend, served by Caddy from a Docker container. Hosts
 1. **Admin dashboard** — for the QC responsable: products/defect-types config,
    operators, analytics, Journaux, live-stations, settings.
 2. **Inspection PWA** (`features/inspect/`) — the touch/kiosk app inspectors use
-   on station tablets: operator+PIN → product → PMP/INJ defect grids (dynamic
+   on station tablets: operator login → product → PMP/INJ defect grids (dynamic
    from config) → summary → `POST /inspections`. Installable, offline (service
    worker + IndexedDB queue), fullscreen kiosk.
 
@@ -20,10 +20,13 @@ React + Vite + TS frontend, served by Caddy from a Docker container. Hosts
 entry/build so the kiosk bundle stays small and locked-down. They share only
 `api/`, `hooks/`, `lib/`, `types/` — never each other's internals.
 
-**Inspector auth:** the tablet holds one low-privilege `station` JWT; the
-operator picks their name + PIN, verified via `POST /operators/verify-pin`
-(server-side). `operator_id` goes on the inspection. PIN hashes never reach the
-client. Operators are the existing `operators` (ADR-013/017).
+**Inspector auth (ADR-018):** operators are **login accounts** (a `users` row,
+role `operator`, linked 1:1 to an `operators` row; matricule = username). The
+inspector logs into the PWA with their own credentials; the server attributes
+the part to *their* linked operator (`POST /inspections` ignores a body
+`operator_id` for operator callers — no spoofing). The old station+PIN flow and
+`POST /operators/verify-pin` are **retired**. A `station` JWT still exists for
+the andon board / tooling (POST with an explicit `operator_id`).
 
 ## Layout
 
