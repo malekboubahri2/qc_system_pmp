@@ -1,30 +1,33 @@
-import { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { CheckCircle2, ChevronLeft, AlertTriangle, ArrowRight } from 'lucide-react';
+import { CheckCircle2, ChevronLeft, AlertTriangle } from 'lucide-react';
 import { useDefectTypes, useCategoryConstants } from '@/hooks/useProducts';
 import { getKpi } from '@/api/kpi';
 import type { DefectType } from '@/types';
 import { useInspectionFlow } from '../flow/InspectionFlowContext';
 import { useSubmitInspection } from '../flow/useSubmitInspection';
 import { getDeviceId } from '../device';
-import { getSessionStart } from '../session';
 import { InspectScreen } from '../components/InspectScreen';
 import { TouchButton } from '../components/TouchButton';
 
+// One screen: review the choices, see the running Taux NC, and save → next part.
+// (Merges the old review + post-save stats screens to cut a click.)
 export function SummaryScreen() {
   const navigate = useNavigate();
   const { product, pmp, inj, note, resetPart } = useInspectionFlow();
   const { data: types = [] } = useDefectTypes(product?.id ?? 0);
   const { data: categories = [] } = useCategoryConstants();
   const submit = useSubmitInspection();
-  const [done, setDone] = useState(false);
-  // Scope to this login session; staleTime 0 so each saved part is fresh.
+
+  // The operator's Taux NC for today, computed server-side and scoped to this
+  // operator by the token. Robust by design: no dependency on a stored session
+  // start or the tablet clock (the old `since`-based session rate broke when the
+  // kiosk clock drifted or the stored start was missing → always 0%). Refetched
+  // each visit so it tracks the running total.
   const kpi = useQuery({
-    queryKey: ['kpi'],
-    queryFn: () => getKpi({ since: getSessionStart() ?? undefined }),
-    enabled: done,
+    queryKey: ['kpi', 'today'],
+    queryFn: () => getKpi({}),
     staleTime: 0,
   });
 
@@ -35,6 +38,7 @@ export function SummaryScreen() {
   const injSel = types.filter((t) => inj.includes(t.id));
   const total = pmp.length + inj.length;
   const conform = total === 0;
+  const rate = kpi.data ? Math.round(kpi.data.nc_rate * 100) : null;
 
   async function onSave() {
     try {
@@ -46,52 +50,14 @@ export function SummaryScreen() {
         note: note.trim() ? note.trim() : null,
       });
       toast.success(res.queued ? 'Enregistrée hors ligne' : 'Pièce enregistrée');
-      setDone(true);
+      resetPart();
+      void kpi.refetch();
+      navigate('/pmp');
     } catch {
       toast.error('Échec de l’enregistrement — réessayez');
     }
   }
 
-  function nextPart() {
-    resetPart();
-    setDone(false);
-    navigate('/pmp');
-  }
-
-  // ── Confirmation with the live Taux NC indicator ──────────────────────────
-  if (done) {
-    const rate = kpi.data ? Math.round(kpi.data.nc_rate * 100) : null;
-    return (
-      <InspectScreen
-        fill
-        footer={
-          <TouchButton block onClick={nextPart} className="max-w-md mx-auto">
-            Pièce suivante <ArrowRight size={22} />
-          </TouchButton>
-        }
-      >
-        <div className="h-full flex flex-col items-center justify-center gap-[clamp(1.5rem,4vh,3rem)] text-center px-4">
-          <div className="flex flex-col items-center gap-4 animate-scale-in">
-            <CheckCircle2 size={88} className="text-success" strokeWidth={1.75} />
-            <p className="text-fluid-2xl font-bold text-brand">Pièce enregistrée</p>
-          </div>
-          <div className="bg-white rounded-3xl border border-cream-subtle shadow-card px-[clamp(2rem,8vw,5rem)] py-[clamp(1.5rem,4vh,2.5rem)] animate-fade-in-up">
-            <div className="text-fluid-sm uppercase tracking-wider text-ink-muted">Votre taux NC (cette session)</div>
-            <div className="text-fluid-display font-bold text-brand tabular-nums mt-1">
-              {kpi.isError ? '—' : rate === null ? '…' : `${rate}%`}
-            </div>
-            {kpi.data && (
-              <div className="text-fluid-base text-ink-muted mt-2">
-                {kpi.data.nc_parts} NC sur {kpi.data.inspected_parts} pièces inspectées
-              </div>
-            )}
-          </div>
-        </div>
-      </InspectScreen>
-    );
-  }
-
-  // ── Review ────────────────────────────────────────────────────────────────
   return (
     <InspectScreen
       fill
@@ -108,10 +74,11 @@ export function SummaryScreen() {
         </div>
       }
     >
-      <div className="h-full flex flex-col items-center justify-center">
+      <div className="h-full flex flex-col items-center justify-center gap-[clamp(1.25rem,3.5vh,2.5rem)]">
+        {/* Choices review */}
         {conform ? (
-          <div className="flex flex-col items-center gap-4 text-center animate-scale-in">
-            <CheckCircle2 size={96} className="text-success" strokeWidth={1.75} />
+          <div className="flex flex-col items-center gap-3 text-center animate-scale-in">
+            <CheckCircle2 size={84} className="text-success" strokeWidth={1.75} />
             <p className="text-fluid-2xl font-bold text-brand">Pièce conforme</p>
             <p className="text-fluid-base text-ink-muted">Aucun défaut signalé.</p>
           </div>
@@ -149,6 +116,19 @@ export function SummaryScreen() {
             )}
           </div>
         )}
+
+        {/* Running Taux NC — the operator's rate today */}
+        <div className="flex items-center gap-3 bg-white rounded-2xl border border-cream-subtle shadow-card px-[clamp(1.25rem,4vw,2rem)] py-3">
+          <span className="text-fluid-sm uppercase tracking-wider text-ink-muted">Votre taux NC aujourd’hui</span>
+          <span className="text-fluid-xl font-bold text-brand tabular-nums">
+            {kpi.isError ? '—' : rate === null ? '…' : `${rate}%`}
+          </span>
+          {kpi.data && kpi.data.inspected_parts > 0 && (
+            <span className="text-fluid-sm text-ink-muted">
+              {kpi.data.nc_parts}/{kpi.data.inspected_parts}
+            </span>
+          )}
+        </div>
       </div>
     </InspectScreen>
   );

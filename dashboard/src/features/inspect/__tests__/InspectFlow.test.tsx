@@ -42,12 +42,13 @@ describe('inspection PWA flow (ADR-018: operator login → product → PMP → I
     // INJECTION page (no types) → go to summary
     fireEvent.click(await screen.findByRole('button', { name: /Vérifier/ }));
 
-    // Summary → save
+    // Summary merges the review + the running Taux NC (the operator's rate
+    // today) on one screen; saving advances to the next part.
     expect(await screen.findByText(/1 défaut signalé/)).toBeInTheDocument();
+    expect(await screen.findByText('20%')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Enregistrer' }));
 
-    // Confirmation shows the day's Taux NC; submission carried no operator_id.
-    expect(await screen.findByText('20%')).toBeInTheDocument();
+    // Submission carried the part but no operator_id (server attributes it).
     await waitFor(() => expect(posted).not.toBeNull());
     expect(posted).toMatchObject({ product_id: 1, pmp_defect_type_ids: [1], inj_defect_type_ids: [] });
     expect(posted).not.toHaveProperty('operator_id');
