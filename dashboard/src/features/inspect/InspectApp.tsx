@@ -7,6 +7,7 @@ import { InspectionFlowProvider } from './flow/InspectionFlowContext';
 import { useInspectSession, hasToken, logoutToLogin } from './session';
 import { useHeartbeat } from './useHeartbeat';
 import { useWakeLock } from './useWakeLock';
+import { useIdleLogout } from './useIdleLogout';
 import { ProductPickerScreen } from './screens/ProductPickerScreen';
 import { CategoryPage } from './screens/CategoryPage';
 import { SummaryScreen } from './screens/SummaryScreen';
@@ -15,11 +16,12 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },
 });
 
-// Kiosk side-effects while an operator is active: presence heartbeat + keep the
-// screen awake. Renders nothing.
+// Kiosk side-effects while an operator is active: presence heartbeat, keep the
+// screen awake, and auto-logout on inactivity. Renders nothing.
 function KioskRuntime() {
   useHeartbeat();
   useWakeLock();
+  useIdleLogout();
   return null;
 }
 
