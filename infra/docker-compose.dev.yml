@@ -110,6 +110,8 @@ services:
       API_HOST: qc-server:8000
       PLANT_NAME: ${PLANT_NAME:-Plant 1}
       LOCALE: ${LOCALE:-fr-TN}
+      # Hostname Caddy serves the public andon dashboard on.
+      ANDON_DOMAIN: ${ANDON_DOMAIN:-andon.pmp.com}
     ports:
       - "8080:80"
       - "443:443"   # HTTPS (Caddy internal CA) for the installable kiosk PWA
@@ -140,7 +142,7 @@ services:
       context: ./dnsmasq
     network_mode: host
     environment:
-      QC_DOMAIN: ${QC_DOMAIN:-inspection.pmp}
+      QC_DOMAIN: ${QC_DOMAIN:-inspection.pmp.com andon.pmp.com}
       UPSTREAM_DNS: ${UPSTREAM_DNS:-1.1.1.1}
       # LAN_IFACE: eth0   # optional — auto-detected from the default route
     restart: unless-stopped

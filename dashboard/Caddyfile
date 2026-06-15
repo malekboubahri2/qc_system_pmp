@@ -2,51 +2,76 @@
 	admin off
 	# Keep plain HTTP on :80 working (no forced redirect to HTTPS).
 	auto_https disable_redirects
-	# On-demand internal TLS: issue a cert for whatever host/IP the tablet uses
-	# (the Pi's address changes between networks). The closed LAN has no public
-	# CA; the server health endpoint returns 200 for any host, so it acts as a
-	# permissive allow-list for on-demand issuance.
+	# On-demand internal TLS: issue a cert for whatever host/IP the client uses
+	# (the Pi's address changes between networks, and we serve several hostnames:
+	# inspection.pmp.com, andon.pmp.com, the raw IP). The server health endpoint
+	# returns 200 for any host, so it acts as a permissive allow-list for issuance.
 	on_demand_tls {
 		ask http://{env.API_HOST}/health
 	}
 }
 
-# Shared site handlers (served over both HTTP and HTTPS).
-(site) {
-	root * /usr/share/caddy
-
-	# Inject runtime config so the built JS can read API URL, plant name, locale
-	handle /config.js {
+# ── The platform under the /level3 base + its API ─────────────────────────────
+# Both hostnames serve the static bundle (built with Vite base=/level3/) under
+# /level3, so asset URLs resolve the same everywhere. config.js advertises the
+# API at /level3/api; the andon page's address bar stays clean because andon.html
+# is served at the host root while its assets live under /level3.
+(level3) {
+	# Runtime config — apiBaseUrl sits under the same base.
+	handle /level3/config.js {
 		header Content-Type "application/javascript"
 		respond `window.__APP_CONFIG__ = {
-  "apiBaseUrl": "/api",
+  "apiBaseUrl": "/level3/api",
   "plantName": "{env.PLANT_NAME}",
   "locale": "{env.LOCALE}"
 };`
 	}
 
-	# Proxy API calls to the FastAPI server (strips /api prefix)
-	handle /api/* {
-		uri strip_prefix /api
+	# API proxy (strip /level3/api → FastAPI). flush_interval -1 keeps SSE flowing.
+	handle /level3/api/* {
+		uri strip_prefix /level3/api
 		reverse_proxy {env.API_HOST} {
-			# Flush immediately so Server-Sent Events (/api/events) stream
-			# through instead of being buffered.
 			flush_interval -1
 		}
 	}
 
-	# SPA fallback — always serve index.html for unknown paths
-	handle {
+	# Static bundle + assets (strip /level3, SPA fallback to index.html).
+	handle_path /level3/* {
+		root * /usr/share/caddy
 		try_files {path} /index.html
 		file_server
+	}
+}
+
+# ── Site routes, shared by :80 and :443 ───────────────────────────────────────
+(routes) {
+	# Public, no-login andon wall display on its own hostname.
+	@andon host {env.ANDON_DOMAIN}
+	handle @andon {
+		import level3
+		# Host root (and anything else) → the andon single-page app.
+		handle {
+			root * /usr/share/caddy
+			rewrite * /andon.html
+			file_server
+		}
+	}
+
+	# Everything else (inspection.pmp.com, the raw Pi IP): the platform.
+	handle {
+		import level3
+		# Bare root / stray paths → the app under /level3.
+		handle {
+			redir /level3/ 308
+		}
 	}
 
 	encode gzip
 }
 
-# HTTP (kept working; also lets the tablet reach the CA download below).
+# HTTP (kept working; also lets a tablet reach the CA download).
 :80 {
-	import site
+	import routes
 }
 
 # HTTPS with Caddy's internal CA — required for the PWA to be installable,
@@ -57,5 +82,5 @@
 		issuer internal
 		on_demand
 	}
-	import site
+	import routes
 }

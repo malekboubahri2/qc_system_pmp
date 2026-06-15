@@ -3,6 +3,7 @@ import { getMe } from '@/api/auth';
 import { disconnectDevice } from '@/api/devices';
 import type { User } from '@/types';
 import { getDeviceId } from './device';
+import { appUrl } from '@/lib/basePath';
 
 const TOKEN_KEY = 'qc_token';
 const SESSION_START_KEY = 'qc_session_start';
@@ -32,7 +33,7 @@ export function logoutToLogin(): void {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(SESSION_START_KEY);
   // Back to the unified login (admin bundle).
-  window.location.href = '/login';
+  window.location.href = appUrl('login');
 }
 
 // Explicit operator logout ("Quitter"): tell the server we're going offline

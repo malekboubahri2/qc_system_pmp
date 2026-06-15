@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { appUrl } from '@/lib/basePath';
 
 export function RequireAuth({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -18,7 +19,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
   if (!user) return <Navigate to="/login" replace />;
   if (user.role === 'operator') {
     // An operator landed on an admin route — send them to the PWA.
-    window.location.href = '/inspect.html';
+    window.location.href = appUrl('inspect.html');
     return null;
   }
   return <>{children}</>;

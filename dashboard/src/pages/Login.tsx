@@ -9,6 +9,7 @@ import { Button } from '@/components/shared/Button';
 import { Icon } from '@/components/Icon';
 import { config } from '@/config';
 import { rememberUser, getRememberedUser, forgetUser } from '@/lib/remembered-user';
+import { appUrl } from '@/lib/basePath';
 
 const schema = z.object({
   // Admins sign in with an e-mail, operators with a username (ADR-018), so the
@@ -55,7 +56,7 @@ export function LoginPage() {
         // Operators belong in the inspection PWA, not the admin dashboard.
         // Record session start so the PWA scopes Taux NC to this login.
         localStorage.setItem('qc_session_start', new Date().toISOString());
-        window.location.href = '/inspect.html';
+        window.location.href = appUrl('inspect.html');
         return;
       }
       navigate('/', { replace: true });

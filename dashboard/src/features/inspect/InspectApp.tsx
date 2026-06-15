@@ -5,6 +5,7 @@ import { Toaster } from 'sonner';
 import { OfflineProvider } from './offline/OfflineContext';
 import { InspectionFlowProvider } from './flow/InspectionFlowContext';
 import { useInspectSession, hasToken, logoutToLogin } from './session';
+import { appUrl } from '@/lib/basePath';
 import { useHeartbeat } from './useHeartbeat';
 import { useWakeLock } from './useWakeLock';
 import { useIdleLogout } from './useIdleLogout';
@@ -48,7 +49,7 @@ function RequireOperator({ children }: { children: ReactNode }) {
     return <Splash />;
   }
   if (me.role !== 'operator') {
-    window.location.href = '/';
+    window.location.href = appUrl();
     return <Splash />;
   }
   return <>{children}</>;

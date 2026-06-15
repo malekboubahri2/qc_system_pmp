@@ -2,15 +2,15 @@
   "name": "Inspection — Contrôle Qualité",
   "short_name": "Inspection",
   "description": "Saisie des contrôles qualité au poste (PMP / Injection)",
-  "start_url": "/inspect.html",
-  "scope": "/inspect.html",
+  "start_url": "/level3/inspect.html",
+  "scope": "/level3/",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#1A5560",
   "theme_color": "#1A5560",
   "icons": [
     {
-      "src": "/logo.png",
+      "src": "/level3/logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

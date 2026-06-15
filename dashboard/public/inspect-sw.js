@@ -4,8 +4,16 @@
  * handled in the app (IndexedDB queue) — this only caches the app shell and
  * static assets. It never touches /api requests or admin-surface navigations.
  */
-const CACHE = 'qc-inspect-v3';
-const SHELL = ['/inspect.html', '/config.js', '/logo.png', '/inspect.webmanifest'];
+// Derive the app base from the SW's own location so this works whatever subpath
+// the platform is served under (e.g. "/level3/").
+const BASE = self.location.pathname.replace(/[^/]*$/, '');
+const CACHE = 'qc-inspect-v4';
+const SHELL = [
+  BASE + 'inspect.html',
+  BASE + 'config.js',
+  BASE + 'logo.png',
+  BASE + 'inspect.webmanifest',
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -28,12 +36,12 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
-  if (url.pathname.startsWith('/api/')) return; // never cache API calls
+  if (url.pathname.startsWith(BASE + 'api/')) return; // never cache API calls
 
   // Navigations: only shell-fallback the inspection PWA; leave admin pages alone.
   if (req.mode === 'navigate') {
-    if (url.pathname.startsWith('/inspect')) {
-      event.respondWith(fetch(req).catch(() => caches.match('/inspect.html')));
+    if (url.pathname.startsWith(BASE + 'inspect')) {
+      event.respondWith(fetch(req).catch(() => caches.match(BASE + 'inspect.html')));
     }
     return;
   }

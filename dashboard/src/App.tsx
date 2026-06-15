@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { routerBasename } from '@/lib/basePath';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { AuthProvider } from '@/hooks/useAuth';
@@ -41,7 +42,7 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <NotificationProvider>
-        <BrowserRouter>
+        <BrowserRouter basename={routerBasename}>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
 

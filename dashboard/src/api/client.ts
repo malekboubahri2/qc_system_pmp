@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { config } from '@/config';
+import { appUrl } from '@/lib/basePath';
 
 // The admin dashboard and the inspection PWA are separate entry bundles, so
 // each gets its own module instance of this client. Auth is pluggable: the
@@ -8,7 +9,7 @@ import { config } from '@/config';
 let getToken: () => string | null = () => localStorage.getItem('qc_token');
 let onUnauthorized: () => void = () => {
   localStorage.removeItem('qc_token');
-  window.location.href = '/login';
+  window.location.href = appUrl('login');
 };
 
 export function configureAuth(opts: {
