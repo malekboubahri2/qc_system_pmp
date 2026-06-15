@@ -1,0 +1,28 @@
+# Production overlay: run qc_system behind the shared pmp-edge ingress instead of
+# publishing host ports. See docs/deployment.md "Running behind pmp-edge".
+#
+#   # edge first (separate project, owns :80/:443/:53 + the `edge` network):
+#   docker compose -p pmp-edge -f ../pmp-edge/docker-compose.yml up -d
+#   # then qc_system behind it (omit dnsmasq — the edge provides DNS):
+#   docker compose -f infra/docker-compose.dev.yml -f infra/docker-compose.edge.yml \
+#     -p infra up -d qc-server qc-dashboard mosquitto
+#
+# The dashboard publishes NO host ports here; the edge proxy routes by Host to
+# its :80 (which still does the /level3 base + andon host-matching internally).
+# TLS is terminated by the edge (its internal CA), so the dashboard's own
+# :443/on_demand_tls config is unused behind the edge.
+services:
+  qc-dashboard:
+    ports: !reset []                # edge owns 80/443 — don't publish here
+    networks:
+      qc-net: {}                    # reach qc-server for /level3/api
+      edge: {}                      # reachable by the edge proxy
+    labels:
+      caddy: inspection.pmp.com andon.pmp.com
+      caddy.reverse_proxy: "{{upstreams 80}}"
+      caddy.tls: internal
+
+networks:
+  edge:
+    external: true                  # created by the pmp-edge stack
+    name: edge

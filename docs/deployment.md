@@ -9,6 +9,44 @@ For architectural decisions behind these choices see `docs/decisions.md`
 
 ---
 
+## 0. Running behind pmp-edge (current production model)
+
+On a Pi that hosts more than one app, qc_system runs **behind the shared
+`pmp-edge` ingress** (a single Caddy reverse proxy + a wildcard dnsmasq that own
+`:80/:443/:53` for the whole host). qc_system publishes **no host ports**; the
+edge routes by hostname over a shared external Docker network named `edge`.
+
+- pmp-edge repo + how it works: `infra/edge` (git submodule) and its README.
+- Hostnames (resolved by the edge's `*.pmp.com` wildcard → the Pi):
+  `https://inspection.pmp.com/level3/` (admin + PWA) and
+  `https://andon.pmp.com/` (public board). TLS is the **edge's** internal CA —
+  trust it once per client via `infra/edge/trust-ca.sh` (the dashboard's own CA
+  is not used behind the edge).
+
+**Deploy order** (edge first — it creates the `edge` network):
+
+```bash
+# 1. the shared edge (separate compose project)
+docker compose -p pmp-edge -f infra/edge/docker-compose.yml up -d --build
+
+# 2. qc_system behind it — note: NO dnsmasq (the edge provides DNS), and the
+#    edge overlay drops the dashboard's host ports + joins it to `edge`.
+docker compose -f infra/docker-compose.dev.yml -f infra/docker-compose.edge.yml \
+  -p infra up -d qc-server qc-dashboard mosquitto
+```
+
+The dashboard's own `Caddyfile` still does the `/level3` base + andon
+host-matching on its container `:80`; the edge terminates TLS and forwards the
+Host header, so that routing is preserved. The `dnsmasq` service in
+`docker-compose.dev.yml` and the dashboard's `:443`/`on_demand_tls` are
+**superseded by the edge** and are only used in the standalone setup below.
+
+The sections that follow describe the **standalone** (no-edge) deployment, still
+valid for a single-app box or local dev (`docker compose up` with published
+ports + the bundled dnsmasq).
+
+---
+
 ## 1. Network Topology
 
 ### Option A — RPi on existing plant Wi-Fi (default)
