@@ -84,7 +84,7 @@ export function LoginPage() {
       >
         {/* Teal header strip */}
         <div className="bg-brand px-8 pt-8 pb-6 flex flex-col items-center gap-4">
-          <img src="/logo.png" alt="PMP" className="h-20 w-auto" />
+          <img src={appUrl('logo.png')} alt="PMP" className="h-20 w-auto" />
           <div className="text-center">
             <h1 className="text-xl font-bold text-ink-inverse leading-tight">
               Contrôle Qualité

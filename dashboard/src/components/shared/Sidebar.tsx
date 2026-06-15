@@ -7,6 +7,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { Icon } from '@/components/Icon';
+import { appUrl } from '@/lib/basePath';
 
 // ── Hover/focus expand logic ─────────────────────────────────────────────────
 
@@ -98,7 +99,7 @@ export function Sidebar() {
     >
       {/* Logo */}
       <div className="flex items-center px-4 py-5 flex-shrink-0 border-b border-white/10">
-        <img src="/logo.png" alt="PMP" className="w-10 h-10 object-contain flex-shrink-0" />
+        <img src={appUrl('logo.png')} alt="PMP" className="w-10 h-10 object-contain flex-shrink-0" />
         <div
           className={cn(
             'ml-3 overflow-hidden transition-[opacity,max-width] duration-200',
