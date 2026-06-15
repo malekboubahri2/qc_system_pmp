@@ -27,7 +27,9 @@ interface Board {
   defects: BoardDefect[];
 }
 
-const POLL_MS = 12_000;
+// SSE drives real-time updates; this poll is just a safety net (reconnect gaps,
+// the daily date rollover when the line is idle).
+const POLL_MS = 30_000;
 
 type Tone = 'success' | 'warning' | 'danger';
 
@@ -75,9 +77,16 @@ function useBoard(): { data: Board | null; stale: boolean } {
     }
     tick();
     const id = setInterval(tick, POLL_MS);
+    // Real-time: refetch the instant an inspection lands. The /events stream is
+    // a content-free, unauthenticated nudge (EventSource auto-reconnects).
+    const es = new EventSource(`${config.apiBaseUrl}/events`);
+    es.addEventListener('inspection', () => {
+      void tick();
+    });
     return () => {
       alive = false;
       clearInterval(id);
+      es.close();
     };
   }, []);
 
@@ -99,11 +108,16 @@ function formatTime(iso: string): string {
 function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
     <div className="flex flex-col items-center justify-center text-center">
-      <div className="text-fluid-2xl font-bold text-ink-inverse tnum leading-none">{value}</div>
-      <div className="text-fluid-sm font-medium text-ink-inverse/70 mt-2 uppercase tracking-wide">
+      <div
+        className="font-bold text-ink-inverse tnum leading-none"
+        style={{ fontSize: 'clamp(2.6rem, 9.5vw, 6.5rem)' }}
+      >
+        {value}
+      </div>
+      <div className="text-fluid-base font-medium text-ink-inverse/70 mt-2 uppercase tracking-wide">
         {label}
       </div>
-      {hint && <div className="text-fluid-sm text-ink-inverse/50 mt-0.5">{hint}</div>}
+      {hint && <div className="text-fluid-base text-ink-inverse/50 mt-0.5">{hint}</div>}
     </div>
   );
 }
@@ -111,7 +125,7 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
 function Bar({ fraction, tone }: { fraction: number; tone: Tone }) {
   const w = Math.max(2, Math.min(100, fraction * 100));
   return (
-    <div className="h-2.5 rounded-full bg-cream-subtle overflow-hidden">
+    <div className="h-[1.1vmin] min-h-2.5 rounded-full bg-cream-subtle overflow-hidden">
       <div
         className={`h-full rounded-full ${TONE_BAR[tone]} transition-[width] duration-500`}
         style={{ width: `${w}%` }}
@@ -160,13 +174,16 @@ export function AndonApp() {
       <section className="shrink-0 rounded-2xl bg-brand shadow-elevated px-[3vmin] py-[3vmin] animate-fade-in-up">
         <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr_1fr_1fr] gap-[3vmin] items-center">
           <div className="text-center lg:text-left">
-            <div className="text-fluid-sm font-semibold uppercase tracking-wide text-ink-inverse/70">
+            <div className="text-fluid-lg font-semibold uppercase tracking-wide text-ink-inverse/70">
               Taux NC global
             </div>
-            <div className={`text-fluid-display font-bold tnum leading-none ${TONE_TEXT[tone]}`}>
+            <div
+              className={`font-bold tnum leading-[0.9] ${TONE_TEXT[tone]}`}
+              style={{ fontSize: 'clamp(5rem, 23vw, 16rem)' }}
+            >
               {hasParts ? pct(data!.nc_rate) : '—'}
             </div>
-            <div className="text-fluid-sm text-ink-inverse/60 mt-1">
+            <div className="text-fluid-base text-ink-inverse/60 mt-1">
               {data ? `${data.date}` : ''}
             </div>
           </div>
@@ -186,8 +203,8 @@ export function AndonApp() {
                 return (
                   <li key={p.name} className="flex flex-col gap-1.5">
                     <div className="flex items-baseline justify-between gap-3">
-                      <span className="text-fluid-base font-semibold text-ink truncate">{p.name}</span>
-                      <span className="text-fluid-sm text-ink-muted tnum shrink-0">
+                      <span className="text-fluid-lg font-semibold text-ink truncate">{p.name}</span>
+                      <span className="text-fluid-base text-ink-muted tnum shrink-0">
                         {p.parts} pcs · <span className={`font-bold ${TONE_TEXT[t]}`}>{pct(p.nc_rate)}</span>
                       </span>
                     </div>
@@ -207,8 +224,8 @@ export function AndonApp() {
               {data.defects.map((d) => (
                 <li key={d.label} className="flex flex-col gap-1.5">
                   <div className="flex items-baseline justify-between gap-3">
-                    <span className="text-fluid-base font-semibold text-ink truncate">{d.label}</span>
-                    <span className="text-fluid-sm text-ink-muted tnum shrink-0">
+                    <span className="text-fluid-lg font-semibold text-ink truncate">{d.label}</span>
+                    <span className="text-fluid-base text-ink-muted tnum shrink-0">
                       {d.count} · {pct(d.ratio)}
                     </span>
                   </div>
@@ -228,7 +245,7 @@ export function AndonApp() {
 function Panel({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="min-h-0 flex flex-col rounded-2xl bg-white shadow-card p-[2.4vmin] animate-fade-in-up">
-      <h2 className="text-fluid-base font-semibold text-ink-heading mb-[1.6vmin] shrink-0">{title}</h2>
+      <h2 className="text-fluid-lg font-semibold text-ink-heading mb-[1.6vmin] shrink-0">{title}</h2>
       <div className="flex-1 min-h-0 overflow-hidden">{children}</div>
     </section>
   );
@@ -237,7 +254,7 @@ function Panel({ title, children }: { title: string; children: ReactNode }) {
 function Empty({ children }: { children: ReactNode }) {
   return (
     <div className="h-full flex items-center justify-center text-center">
-      <p className="text-fluid-base text-ink-muted">{children}</p>
+      <p className="text-fluid-lg text-ink-muted">{children}</p>
     </div>
   );
 }
