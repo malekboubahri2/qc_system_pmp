@@ -25,6 +25,17 @@ def get_kpi_board(
     return board_svc.compute_board(db)
 
 
+@router.get("/board/public", response_model=KpiBoardResponse)
+def get_kpi_board_public(db: Session = Depends(get_db)):
+    """**Unauthenticated** andon snapshot for the web wall display.
+
+    Same bounded payload as `/board`, but no token required so the andon web
+    dashboard can be opened on any screen without an account. Exposes only
+    aggregate KPIs (no operator/PII), intended for a closed plant LAN.
+    """
+    return board_svc.compute_board(db)
+
+
 @router.get("", response_model=KpiSnapshot)
 def get_kpi(
     date: Optional[str] = Query(None, description="Plant-local day YYYY-MM-DD; default today"),
