@@ -60,9 +60,11 @@
 	# Everything else (inspection.pmp.com, the raw Pi IP): the platform.
 	handle {
 		import level3
-		# Bare root / stray paths → the app under /level3.
+		# Bare root / stray paths → the app under /level3. The explicit `*`
+		# matcher is required: `redir /level3/ 308` would parse /level3/ as a
+		# path matcher and 308 as the destination.
 		handle {
-			redir /level3/ 308
+			redir * /level3/ 308
 		}
 	}
 
