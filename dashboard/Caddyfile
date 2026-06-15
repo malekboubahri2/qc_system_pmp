@@ -60,6 +60,14 @@
 	# Everything else (inspection.pmp.com, the raw Pi IP): the platform.
 	handle {
 		import level3
+		# Public andon board reachable by raw IP (or any host) without DNS:
+		# http://<pi-ip>/andon. Its /level3/* assets + API are served by the
+		# import above, so only the page itself needs this route.
+		handle /andon* {
+			root * /usr/share/caddy
+			rewrite * /andon.html
+			file_server
+		}
 		# Bare root / stray paths → the app under /level3. The explicit `*`
 		# matcher is required: `redir /level3/ 308` would parse /level3/ as a
 		# path matcher and 308 as the destination.
