@@ -68,11 +68,13 @@
 			rewrite * /andon.html
 			file_server
 		}
-		# Bare root / stray paths → the app under /level3. The explicit `*`
-		# matcher is required: `redir /level3/ 308` would parse /level3/ as a
-		# path matcher and 308 as the destination.
+		# Bare root / stray paths → the app under /level3. Use 307 (temporary),
+		# NOT 308 (permanent): browsers cache a 308 forever, so if another host
+		# (e.g. andon.pmp.com) ever transiently hits this redirect, it gets stuck
+		# pointing at /level3 in that browser. The explicit `*` matcher is
+		# required — `redir /level3/ 307` would parse /level3/ as a path matcher.
 		handle {
-			redir * /level3/ 308
+			redir * /level3/ 307
 		}
 	}
 
