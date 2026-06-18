@@ -10,7 +10,7 @@ dependencies = [
     "pydantic-settings>=2.3.0",
     "paho-mqtt>=2.1.0",
     "argon2-cffi>=23.1.0",
-    "pyjwt>=2.8.0",
+    "pyjwt>=2.12.1",
     "loguru>=0.7.0",
     "python-multipart>=0.0.9",
 ]
